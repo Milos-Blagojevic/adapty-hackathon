@@ -91,14 +91,44 @@ class FakeLLM:
         return out
 
 
-def make_llm() -> LLM:
+def available_providers() -> dict[str, bool]:
+    """Which providers have their keys in the environment (values are never read out)."""
+    env = config.os.environ
+    return {
+        "openai": bool(env.get("OPENAI_API_KEY", "").strip() and config.OPENAI_MODEL),
+        "anthropic": bool(env.get("ANTHROPIC_API_KEY", "").strip()),
+    }
+
+
+def resolve_provider(choice: str | None = None) -> str:
+    """`choice` (from the settings page) or LLM_PROVIDER; `env`/`auto` → the first provider with keys."""
+    choice = (choice or config.LLM_PROVIDER or "auto").lower()
+    if choice in ("env", "auto"):
+        choice = config.LLM_PROVIDER if config.LLM_PROVIDER not in ("env", "auto") else "auto"
+    if choice == "auto":
+        have = available_providers()
+        return "openai" if have["openai"] else "anthropic" if have["anthropic"] else "openai"
+    return choice
+
+
+def make_llm(provider: str | None = None) -> LLM:
     """From the environment. Raises config.MissingKey when the provider's key or model is not set."""
-    if config.LLM_PROVIDER == "openai":
+    provider = resolve_provider(provider)
+    if provider == "openai":
         from resolve.llm_openai import OpenAILLM
 
-        return OpenAILLM(api_key=config.openai_key(), model=config.openai_model(), base_url=config.OPENAI_BASE_URL or None)
-    if config.LLM_PROVIDER == "anthropic":
+        import json
+
+        return OpenAILLM(
+            api_key=config.openai_key(),
+            model=config.openai_model(),
+            base_url=config.OPENAI_BASE_URL or None,
+            extra_body=json.loads(config.OPENAI_EXTRA_BODY) if config.OPENAI_EXTRA_BODY else None,
+            strict=config.OPENAI_STRICT_TOOLS,
+            max_tokens=config.OPENAI_MAX_TOKENS,
+        )
+    if provider == "anthropic":
         from resolve.llm_anthropic import AnthropicLLM
 
         return AnthropicLLM(api_key=config.anthropic_key(), model=config.ANTHROPIC_MODEL or None)
-    raise config.MissingKey(f"LLM_PROVIDER must be 'openai' or 'anthropic', got {config.LLM_PROVIDER!r}")
+    raise config.MissingKey(f"LLM provider must be 'openai' or 'anthropic', got {provider!r}")

@@ -16,9 +16,13 @@ STOPS = {"stop": "end", "tool_calls": "tool", "length": "max_tokens", "content_f
 class OpenAILLM:
     provider = "openai"
 
-    def __init__(self, api_key: str, model: str, base_url: str | None = None, client=None):
+    def __init__(self, api_key: str, model: str, base_url: str | None = None, client=None,
+                 extra_body: dict | None = None, strict: bool = True, max_tokens: int = MAX_TOKENS):
         self._key = api_key
         self.model = model
+        self.extra_body = extra_body
+        self.strict = strict
+        self.max_tokens = max_tokens
         self.client = client or openai.OpenAI(api_key=api_key, base_url=base_url, max_retries=1, timeout=120)
 
     def step(self, system: str, messages: list[dict], tools: list[ToolSpec]) -> Step:
@@ -29,12 +33,13 @@ class OpenAILLM:
                 tools=[
                     {
                         "type": "function",
-                        "function": {"name": t.name, "description": t.description, "parameters": strict_schema(t.params), "strict": True},
+                        "function": {"name": t.name, "description": t.description, "parameters": strict_schema(t.params), "strict": self.strict},
                     }
                     for t in tools
                 ]
                 or openai.omit,
-                max_completion_tokens=MAX_TOKENS,
+                max_completion_tokens=self.max_tokens,
+                extra_body=self.extra_body,
             )
         except openai.APIError as e:
             raise LLMError(error_message("openai", e, self._key)) from e

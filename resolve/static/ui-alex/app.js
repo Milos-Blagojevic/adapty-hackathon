@@ -831,6 +831,7 @@ async function showSettings() {
   topbar("");
   try {
     S.config = await api("GET", "/api/config");
+    S.llm = await api("GET", "/api/llm").catch(() => null); // not in mock mode
     Object.assign(S, { cfgDraft: null, cfgErrors: [], cfgSaved: false });
   } catch (e) {
     el.innerHTML = `<div class="alert err">${errText(e)}</div>`;
@@ -863,6 +864,7 @@ function renderSettings() {
       ${unmatched.map((e) => `<div>${esc((e.loc || []).join("."))}: ${esc(e.msg)}</div>`).join("")}</div>` : ""}
     ${S.cfgSaved ? `<div class="alert okk"><b>Saved.</b> Level 2 uses the new config from the next message.</div>` : ""}
     <form id="cfg" novalidate onsubmit="return false">
+      ${llmCard(c)}
       <div class="card">
         <div class="label">General</div>
         <div class="form-grid">
@@ -904,6 +906,28 @@ function renderSettings() {
   </div>`;
 }
 
+function llmCard(c) {
+  const info = S.llm;
+  const sel = c.llm_provider || "env";
+  if (!info) return `<div class="card"><div class="label">AI model</div><div class="hint">Provider: ${esc(sel)} (live info needs the API; mock mode).</div></div>`;
+  const have = info.available || {};
+  const opt = (v, label, ok) => `<option value="${v}" ${v === sel ? "selected" : ""} ${ok ? "" : "disabled"}>${esc(label)}${ok ? "" : " · no key in .env"}</option>`;
+  return `<div class="card">
+    <div class="label">AI model · runs both agents</div>
+    <div class="form-grid">
+      ${`<div class="field ${errsFor("llm_provider").length ? "has-err" : ""}"><label>Provider</label>
+        <select name="llm_provider">
+          ${opt("env", `Default from .env (${info.env_default})`, true)}
+          ${opt("openai", "OpenAI-compatible (OPENAI_* in .env)", have.openai)}
+          ${opt("anthropic", "Anthropic (ANTHROPIC_API_KEY in .env)", have.anthropic)}
+        </select>
+        <div class="hint">Keys stay in .env on the server; this only picks which one is used.</div>
+        ${errsFor("llm_provider").map((m) => `<div class="field-err">${esc(m)}</div>`).join("")}</div>`}
+      <div class="field"><label>Now running</label>
+        <div>${info.demo ? `<span class="pill">demo mode · no model calls</span>` : info.active ? `<b>${esc(info.active)}</b> · ${esc(info.model || "")}` : `<span class="pill">not configured</span>`}</div></div>
+    </div></div>`;
+}
+
 function collectConfig() {
   const f = $("#cfg").elements;
   const num = (v) => (v.trim() === "" || isNaN(Number(v)) ? v : Number(v)); // send what was typed; the server validates
@@ -916,6 +940,7 @@ function collectConfig() {
   c.grant = { ...(c.grant || {}), access_level: f.access_level.value, max_days: num(f.max_days.value),
     max_grants_per_user_30d: num(f.max_grants_per_user_30d.value), require_paid: f.require_paid.checked };
   c.always_handoff = HANDOFF_RULES.filter((r) => f[`ho:${r}`].checked);
+  if (f.llm_provider) c.llm_provider = f.llm_provider.value;
   return c;
 }
 
@@ -929,6 +954,7 @@ async function settingsAction(act) {
   S.busy = true;
   try {
     S.config = await api("PUT", "/api/config", draft);
+    S.llm = await api("GET", "/api/llm").catch(() => null);
     Object.assign(S, { cfgDraft: null, cfgErrors: [], cfgSaved: true });
     $("#app-name").textContent = S.config.app_name;
   } catch (e) {

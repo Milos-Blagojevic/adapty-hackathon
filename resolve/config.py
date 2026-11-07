@@ -14,9 +14,14 @@ APP_ID = os.environ.get("ADAPTY_APP_ID", "9c49efb6-f2ca-479a-8f57-4bb6c8ea2f41")
 ACCESS_LEVEL = os.environ.get("ADAPTY_ACCESS_LEVEL", "premium")
 COMPENSATION_DAYS = int(os.environ.get("COMPENSATION_DAYS", "7"))
 ANTHROPIC_MODEL = os.environ.get("ANTHROPIC_MODEL", "")
-LLM_PROVIDER = os.environ.get("LLM_PROVIDER", "openai").strip().lower()
+# auto = openai when OPENAI_API_KEY is set, else anthropic when ANTHROPIC_API_KEY is set.
+LLM_PROVIDER = os.environ.get("LLM_PROVIDER", "auto").strip().lower() or "auto"
 OPENAI_MODEL = os.environ.get("OPENAI_MODEL", "").strip()
 OPENAI_BASE_URL = os.environ.get("OPENAI_BASE_URL", "").strip()
+# Provider-specific body fields as JSON, e.g. DeepSeek without thinking: {"thinking": {"type": "disabled"}}
+OPENAI_EXTRA_BODY = os.environ.get("OPENAI_EXTRA_BODY", "").strip()
+OPENAI_STRICT_TOOLS = os.environ.get("OPENAI_STRICT_TOOLS", "1").strip() != "0"
+OPENAI_MAX_TOKENS = int(os.environ.get("OPENAI_MAX_TOKENS", "4000"))
 DEMO_MODE = os.environ.get("DEMO_MODE", "0") == "1"
 DB_PATH = Path(os.environ.get("RESOLVE_DB", ROOT / "data" / "resolve.sqlite"))
 DEMO_DB_PATH = ROOT / "data" / "demo.sqlite"

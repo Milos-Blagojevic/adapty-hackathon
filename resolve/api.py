@@ -9,7 +9,7 @@ from typing import Literal
 from fastapi import APIRouter, BackgroundTasks, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
-from resolve import analytics, config, db, frontline, policy, triage, workflow
+from resolve import analytics, config, db, frontline, llm, policy, triage, workflow
 from resolve.adapty import access_level
 from resolve.models import (
     API_STATUSES,
@@ -28,10 +28,26 @@ REJECT_STATUSES = ("new", "triaged", "proposed")
 MAX_USERS = 200
 
 
+def _switch_llm(services, choice: str) -> None:
+    """Rebuild the LLM client for both agents. Demo mode never builds one."""
+    if services.demo:
+        return
+    try:
+        services.llm = llm.make_llm(choice)
+    except (config.MissingKey, ValueError) as exc:
+        raise HTTPException(422, f"cannot use {choice}: {exc}") from None
+
+
 def install(app: FastAPI, services) -> None:
     """CORS for any origin (the APK and other UIs), then the JSON API routes."""
     app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
     app.include_router(build_router(services))
+    choice = policy.load_config(services.conn).llm_provider
+    if choice != "env" and not services.demo:
+        try:
+            _switch_llm(services, choice)
+        except HTTPException as exc:
+            print(f"warning: {exc.detail}; keeping the provider from .env")
 
 
 def _triage_view(ticket: dict) -> tuple[dict | None, bool]:
@@ -175,8 +191,23 @@ def build_router(services) -> APIRouter:
 
     @router.put("/api/config")
     def put_config(body: AgentConfig):
+        if body.llm_provider != policy.load_config(conn).llm_provider:
+            _switch_llm(services, body.llm_provider)  # 422 when that provider has no keys; nothing saved
         db.save_config(conn, body.model_dump())
         return body.model_dump()
+
+    @router.get("/api/llm")
+    def get_llm():
+        active = services.llm
+        return {
+            "selected": policy.load_config(conn).llm_provider,
+            "env_default": config.LLM_PROVIDER,
+            "active": getattr(active, "provider", None),
+            # AnthropicLLM resolves its model lazily over the network; never trigger that from here.
+            "model": None if active is None else (config.ANTHROPIC_MODEL or "newest Opus") if active.provider == "anthropic" else active.model,
+            "available": llm.available_providers(),
+            "demo": services.demo,
+        }
 
     @router.get("/api/analytics")
     def get_analytics():

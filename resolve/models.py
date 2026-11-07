@@ -43,6 +43,8 @@ class AgentConfig(BaseModel):
     grant: GrantLimits = Field(default_factory=GrantLimits)
     always_handoff: list[Literal[*HANDOFF_RULES]] = Field(default_factory=lambda: list(HANDOFF_RULES))
     max_turns: int = Field(8, ge=1, le=50)
+    # Which LLM runs both agents: env = LLM_PROVIDER from .env (auto picks the one with keys).
+    llm_provider: Literal["env", "openai", "anthropic"] = "env"
 
 
 # --- Level 1 ticket ------------------------------------------------------------------------------
