@@ -1,0 +1,542 @@
+[
+  {
+    "id": "t-001",
+    "customer_user_id": "lumen_443814_01670",
+    "subject": "Want my money back",
+    "body": "€45.99 for this?? Charged on Oct 10. I want a full refund, I am not using it.",
+    "created_at": "2026-10-11T00:04:56Z",
+    "demo": false,
+    "rule": "refund_request"
+  },
+  {
+    "id": "t-002",
+    "customer_user_id": "lumen_443814_01800",
+    "subject": "No access after paying A$19.99",
+    "body": "Receipt says paid on Oct 12. App says free. I reinstalled, logged out, nothing. What now?",
+    "created_at": "2026-10-13T11:54:30Z",
+    "demo": false,
+    "rule": "no_access_after_purchase"
+  },
+  {
+    "id": "t-003",
+    "customer_user_id": "lumen_443814_04229",
+    "subject": "Can I use it on two phones?",
+    "body": "Can I use my account on my tablet too? Didn't find it in the settings.",
+    "created_at": "2026-10-13T12:07:49Z",
+    "demo": false,
+    "rule": "other"
+  },
+  {
+    "id": "t-004",
+    "customer_user_id": "lumen_443814_01430",
+    "subject": "billing issue??",
+    "body": "app says 'billing issue detected' since Oct 11. i have money on the card. fix your app",
+    "created_at": "2026-10-13T14:06:09Z",
+    "demo": false,
+    "rule": "billing_issue"
+  },
+  {
+    "id": "t-005",
+    "customer_user_id": "lumen_443814_03421",
+    "subject": "Payment problem message",
+    "body": "Since Oct 12 the app says there is a problem with my payment and I lost access to premium. My card works everywhere else. What is going on?",
+    "created_at": "2026-10-14T04:20:46Z",
+    "demo": false,
+    "rule": "billing_issue"
+  },
+  {
+    "id": "t-006",
+    "customer_user_id": "lumen_443814_01947",
+    "subject": "billing issue??",
+    "body": "app says 'billing issue detected' since Oct 14. i have money on the card. fix your app",
+    "created_at": "2026-10-14T22:10:16Z",
+    "demo": false,
+    "rule": "billing_issue"
+  },
+  {
+    "id": "t-007",
+    "customer_user_id": "lumen_443814_01340",
+    "subject": "Refund request",
+    "body": "I was charged R$267.99 for the Pro annual plan on Oct 13. I don't use the app anymore and want a refund. Please process it.",
+    "created_at": "2026-10-15T09:38:07Z",
+    "demo": false,
+    "rule": "refund_request"
+  },
+  {
+    "id": "t-008",
+    "customer_user_id": "lumen_443814_03079",
+    "subject": "SCAM - trial was not free",
+    "body": "Downloaded this for the \"free\" trial and got hit with ₹209.00 2 days ago. I used the app twice. This is a scam, cancel it and give me my money back.",
+    "created_at": "2026-10-15T11:53:08Z",
+    "demo": false,
+    "rule": "charged_after_trial"
+  },
+  {
+    "id": "t-009",
+    "customer_user_id": "lumen_443814_04852",
+    "subject": "Paid but still locked",
+    "body": "I paid €66.99 for the Pro annual plan on Oct 13 and the app still shows me the subscribe screen. Restore purchases does nothing. I have the receipt from the App Store.",
+    "created_at": "2026-10-17T00:20:23Z",
+    "demo": false,
+    "rule": "no_access_after_purchase"
+  },
+  {
+    "id": "t-010",
+    "customer_user_id": "lumen_443814_04967",
+    "subject": "App crashes on export",
+    "body": "Lumen 3.6.0 crashes every time I export an edited photo. I use it for selfies. Android, latest update.",
+    "created_at": "2026-10-17T05:55:25Z",
+    "demo": false,
+    "rule": "other"
+  },
+  {
+    "id": "t-011",
+    "customer_user_id": "lumen_443814_02380",
+    "subject": "Trial converted without warning",
+    "body": "The paywall said \"try free\". 7 days later I'm paying A$75.99. I would have cancelled if I had known the date. Can you at least refund this one?",
+    "created_at": "2026-10-18T14:49:13Z",
+    "demo": false,
+    "rule": "charged_after_trial"
+  },
+  {
+    "id": "t-012",
+    "customer_user_id": "lumen_443814_02151",
+    "subject": "Charged after free trial",
+    "body": "I started the 3-day free trial on Oct 15 and on Oct 18 you charged me £5.99. Nowhere did it say the trial turns into a weekly plan. I want this reversed.",
+    "created_at": "2026-10-18T16:57:42Z",
+    "demo": false,
+    "rule": "charged_after_trial"
+  },
+  {
+    "id": "t-013",
+    "customer_user_id": "lumen_443814_00654",
+    "subject": "billing issue??",
+    "body": "app says 'billing issue detected' since Oct 15. i have money on the card. fix your app",
+    "created_at": "2026-10-18T19:55:17Z",
+    "demo": false,
+    "rule": "billing_issue"
+  },
+  {
+    "id": "t-014",
+    "customer_user_id": "lumen_443814_02184",
+    "subject": "you charged me without asking",
+    "body": "trial ended and boom R$20.99 gone from my account on Oct 19. no reminder, no email, nothing. not ok",
+    "created_at": "2026-10-20T13:27:53Z",
+    "demo": false,
+    "rule": "charged_after_trial"
+  },
+  {
+    "id": "t-015",
+    "customer_user_id": "lumen_443814_04892",
+    "subject": "you charged me without asking",
+    "body": "trial ended and boom $49.99 gone from my account on Oct 19. no reminder, no email, nothing. not ok",
+    "created_at": "2026-10-20T14:45:01Z",
+    "demo": false,
+    "rule": "charged_after_trial"
+  },
+  {
+    "id": "t-016",
+    "customer_user_id": "lumen_443814_01392",
+    "subject": "Charged after free trial",
+    "body": "I started the 3-day free trial on Oct 15 and on Oct 18 you charged me $6.99. Nowhere did it say the trial turns into a weekly plan. I want this reversed.",
+    "created_at": "2026-10-20T22:39:44Z",
+    "demo": false,
+    "rule": "charged_after_trial"
+  },
+  {
+    "id": "t-017",
+    "customer_user_id": "lumen_443814_01712",
+    "subject": "Subscription stopped working",
+    "body": "My weekly plan just stopped 3 days ago, Google Play shows some payment error. I don't want to lose my edits. Help.",
+    "created_at": "2026-10-21T00:55:34Z",
+    "demo": false,
+    "rule": "billing_issue"
+  },
+  {
+    "id": "t-018",
+    "customer_user_id": "lumen_443814_00395",
+    "subject": "SCAM - trial was not free",
+    "body": "Downloaded this for the \"free\" trial and got hit with ¥939 yesterday. I used the app twice. This is a scam, cancel it and give me my money back.",
+    "created_at": "2026-10-22T11:44:32Z",
+    "demo": false,
+    "rule": "charged_after_trial"
+  },
+  {
+    "id": "t-019",
+    "customer_user_id": "lumen_443814_00319",
+    "subject": "Trial converted without warning",
+    "body": "The paywall said \"try free\". 3 days later I'm paying $6.99. I would have cancelled if I had known the date. Can you at least refund this one?",
+    "created_at": "2026-10-22T17:55:59Z",
+    "demo": false,
+    "rule": "charged_after_trial"
+  },
+  {
+    "id": "t-020",
+    "customer_user_id": "lumen_443814_02373",
+    "subject": "Can I use it on two phones?",
+    "body": "Can I use my account on my tablet too? Didn't find it in the settings.",
+    "created_at": "2026-10-22T18:10:48Z",
+    "demo": false,
+    "rule": "other"
+  },
+  {
+    "id": "t-021",
+    "customer_user_id": "lumen_443814_00931",
+    "subject": "Refund please - not what I expected",
+    "body": "Paid $49.99 on Oct 19 expecting the AI tools to work on my photos. Results are bad. I'd like a refund.",
+    "created_at": "2026-10-23T09:32:07Z",
+    "demo": false,
+    "rule": "refund_request"
+  },
+  {
+    "id": "t-022",
+    "customer_user_id": "lumen_443814_00428",
+    "subject": "Charged but features locked",
+    "body": "the App Store charged me €45.99 on Oct 20 and Lumen still treats me as a free user. This is unacceptable, I needed the export today.",
+    "created_at": "2026-10-23T10:55:30Z",
+    "demo": false,
+    "rule": "no_access_after_purchase"
+  },
+  {
+    "id": "t-023",
+    "customer_user_id": "lumen_443814_03037",
+    "subject": "Unexpected charge €6.99",
+    "body": "Why was I charged €6.99 on Oct 21? I only signed up for the trial. I did not agree to a weekly plan. Please refund.",
+    "created_at": "2026-10-23T14:37:35Z",
+    "demo": false,
+    "rule": "charged_after_trial"
+  },
+  {
+    "id": "t-024",
+    "customer_user_id": "lumen_443814_03193",
+    "subject": "Lost premium - billing error",
+    "body": "Got a notification about a billing issue on Oct 20 and now the weekly plan is gone. I didn't change anything. How do I get it back?",
+    "created_at": "2026-10-23T16:16:24Z",
+    "demo": false,
+    "rule": "billing_issue"
+  },
+  {
+    "id": "t-025",
+    "customer_user_id": "lumen_443814_01911",
+    "subject": "Refund for accidental purchase",
+    "body": "My kid bought the Pro annual plan (€82.99) on Oct 24 by accident. Please refund, I already removed the app.",
+    "created_at": "2026-10-24T12:07:49Z",
+    "demo": false,
+    "rule": "refund_request"
+  },
+  {
+    "id": "t-026",
+    "customer_user_id": "lumen_443814_00990",
+    "subject": "Didn't know the trial was only 3 days",
+    "body": "I thought the trial was a week. Charged CA$9.99 on Oct 21. Honestly I like the app but I feel tricked. What can you do?",
+    "created_at": "2026-10-24T16:56:02Z",
+    "demo": false,
+    "rule": "charged_after_trial"
+  },
+  {
+    "id": "t-027",
+    "customer_user_id": "lumen_443814_03988",
+    "subject": "SCAM - trial was not free",
+    "body": "Downloaded this for the \"free\" trial and got hit with $6.99 3 days ago. I used the app twice. This is a scam, cancel it and give me my money back.",
+    "created_at": "2026-10-24T21:26:30Z",
+    "demo": false,
+    "rule": "charged_after_trial"
+  },
+  {
+    "id": "t-028",
+    "customer_user_id": "lumen_443814_00936",
+    "subject": "SCAM - trial was not free",
+    "body": "Downloaded this for the \"free\" trial and got hit with $6.99 yesterday. I used the app twice. This is a scam, cancel it and give me my money back.",
+    "created_at": "2026-10-26T08:24:41Z",
+    "demo": false,
+    "rule": "charged_after_trial"
+  },
+  {
+    "id": "t-029",
+    "customer_user_id": "lumen_443814_00239",
+    "subject": "billing issue??",
+    "body": "app says 'billing issue detected' since Oct 25. i have money on the card. fix your app",
+    "created_at": "2026-10-27T14:45:27Z",
+    "demo": false,
+    "rule": "billing_issue"
+  },
+  {
+    "id": "t-030",
+    "customer_user_id": "lumen_443814_00854",
+    "subject": "Unexpected charge 19.99 PLN",
+    "body": "Why was I charged 19.99 PLN on Oct 26? I only signed up for the trial. I did not agree to a weekly plan. Please refund.",
+    "created_at": "2026-10-28T02:54:21Z",
+    "demo": false,
+    "rule": "charged_after_trial"
+  },
+  {
+    "id": "t-031",
+    "customer_user_id": "lumen_443814_02085",
+    "subject": "Stop renewal",
+    "body": "I don't need the annual plan anymore. I deleted the app, does that cancel it? I don't want another charge on Oct 28.",
+    "created_at": "2026-10-28T18:11:37Z",
+    "demo": false,
+    "rule": "cancel_how"
+  },
+  {
+    "id": "t-032",
+    "customer_user_id": "lumen_443814_00772",
+    "subject": "Want my money back",
+    "body": "$99.99 for this?? Charged on Oct 26. I want a full refund, I am not using it.",
+    "created_at": "2026-10-29T04:53:30Z",
+    "demo": false,
+    "rule": "refund_request"
+  },
+  {
+    "id": "t-033",
+    "customer_user_id": "lumen_443814_03448",
+    "subject": "Trial converted without warning",
+    "body": "The paywall said \"try free\". 3 days later I'm paying R$20.99. I would have cancelled if I had known the date. Can you at least refund this one?",
+    "created_at": "2026-10-29T07:17:10Z",
+    "demo": false,
+    "rule": "charged_after_trial"
+  },
+  {
+    "id": "t-034",
+    "customer_user_id": "lumen_443814_02227",
+    "subject": "Refund please - not what I expected",
+    "body": "Paid €82.99 on Oct 30 expecting the AI tools to work on my photos. Results are bad. I'd like a refund.",
+    "created_at": "2026-10-31T16:04:38Z",
+    "demo": false,
+    "rule": "refund_request"
+  },
+  {
+    "id": "t-035",
+    "customer_user_id": "lumen_443814_00504",
+    "subject": "Trial converted without warning",
+    "body": "The paywall said \"try free\". 7 days later I'm paying MX$539.99. I would have cancelled if I had known the date. Can you at least refund this one?",
+    "created_at": "2026-10-31T20:02:47Z",
+    "demo": false,
+    "rule": "charged_after_trial"
+  },
+  {
+    "id": "t-036",
+    "customer_user_id": "lumen_443814_04036",
+    "subject": "Pricing is misleading",
+    "body": "The price on the paywall looked like a monthly price. It's $6.99 every week. That's more than Netflix. Not happy.",
+    "created_at": "2026-11-01T16:17:28Z",
+    "demo": false,
+    "rule": "price_complaint"
+  },
+  {
+    "id": "t-037",
+    "customer_user_id": "lumen_443814_02343",
+    "subject": "Didn't know the trial was only 3 days",
+    "body": "I thought the trial was a week. Charged €6.99 on Nov 1. Honestly I like the app but I feel tricked. What can you do?",
+    "created_at": "2026-11-02T08:45:20Z",
+    "demo": false,
+    "rule": "charged_after_trial"
+  },
+  {
+    "id": "t-038",
+    "customer_user_id": "lumen_443814_00812",
+    "subject": "Trial converted without warning",
+    "body": "The paywall said \"try free\". 3 days later I'm paying $6.99. I would have cancelled if I had known the date. Can you at least refund this one?",
+    "created_at": "2026-11-02T18:21:50Z",
+    "demo": false,
+    "rule": "charged_after_trial"
+  },
+  {
+    "id": "t-039",
+    "customer_user_id": "lumen_443814_02882",
+    "subject": "Paid but still locked",
+    "body": "I paid $6.99 for the weekly plan on Nov 2 and the app still shows me the subscribe screen. Restore purchases does nothing. I have the receipt from Google Play.",
+    "created_at": "2026-11-02T21:56:13Z",
+    "demo": false,
+    "rule": "no_access_after_purchase"
+  },
+  {
+    "id": "t-040",
+    "customer_user_id": "lumen_443814_04855",
+    "subject": "Refund please - not what I expected",
+    "body": "Paid $12.99 on Oct 31 expecting the AI tools to work on my photos. Results are bad. I'd like a refund.",
+    "created_at": "2026-11-03T02:11:58Z",
+    "demo": false,
+    "rule": "refund_request"
+  },
+  {
+    "id": "t-041",
+    "customer_user_id": "lumen_443814_04225",
+    "subject": "Cancel my subscription",
+    "body": "Please cancel my annual plan before Oct 31. There is no cancel button anywhere in the app.",
+    "created_at": "2026-11-03T09:24:07Z",
+    "demo": false,
+    "rule": "cancel_how"
+  },
+  {
+    "id": "t-042",
+    "customer_user_id": "lumen_443814_03967",
+    "subject": "No access after paying $6.99",
+    "body": "Receipt says paid on Nov 1. App says free. I reinstalled, logged out, nothing. What now?",
+    "created_at": "2026-11-03T21:59:44Z",
+    "demo": false,
+    "rule": "no_access_after_purchase"
+  },
+  {
+    "id": "t-043",
+    "customer_user_id": "lumen_443814_00997",
+    "subject": "Lost premium - billing error",
+    "body": "Got a notification about a billing issue on Nov 1 and now the weekly plan is gone. I didn't change anything. How do I get it back?",
+    "created_at": "2026-11-04T00:53:18Z",
+    "demo": false,
+    "rule": "billing_issue"
+  },
+  {
+    "id": "t-044",
+    "customer_user_id": "lumen_443814_00437",
+    "subject": "Too expensive",
+    "body": "Charged A$10.99 again on Nov 2. For what, three filters? Lower the price or I'm out.",
+    "created_at": "2026-11-04T06:43:10Z",
+    "demo": false,
+    "rule": "price_complaint"
+  },
+  {
+    "id": "t-045",
+    "customer_user_id": "lumen_443814_02110",
+    "subject": "How do I cancel?",
+    "body": "I can't find where to cancel the weekly plan. It renews on Nov 10 and I don't want to be charged again. Please cancel it for me.",
+    "created_at": "2026-11-04T10:51:04Z",
+    "demo": false,
+    "rule": "cancel_how"
+  },
+  {
+    "id": "t-046",
+    "customer_user_id": "lumen_443814_01486",
+    "subject": "Charged after free trial",
+    "body": "I started the 3-day free trial on Oct 30 and on Nov 2 you charged me $6.99. Nowhere did it say the trial turns into a weekly plan. I want this reversed.",
+    "created_at": "2026-11-05T04:59:25Z",
+    "demo": false,
+    "rule": "charged_after_trial"
+  },
+  {
+    "id": "t-047",
+    "customer_user_id": "lumen_443814_02153",
+    "subject": "Charged but features locked",
+    "body": "the App Store charged me ₹1,469.00 on Nov 4 and Lumen still treats me as a free user. This is unacceptable, I needed the export today.",
+    "created_at": "2026-11-05T09:18:09Z",
+    "demo": false,
+    "rule": "no_access_after_purchase"
+  },
+  {
+    "id": "demo-3",
+    "customer_user_id": "lumen_443814_02138",
+    "subject": "Payment problem after trial",
+    "body": "My 3-day trial ended on Nov 4 and instead of charging me the app now says there is a problem with my payment and locked all my edits. My card is fine, I bought groceries with it this morning. I actually wanted to keep the subscription. What do I do?",
+    "created_at": "2026-11-05T09:20:00Z",
+    "demo": true,
+    "rule": "billing_issue"
+  },
+  {
+    "id": "t-048",
+    "customer_user_id": "lumen_443814_01531",
+    "subject": "Too expensive",
+    "body": "Charged R$20.99 again on Nov 4. For what, three filters? Lower the price or I'm out.",
+    "created_at": "2026-11-05T12:48:23Z",
+    "demo": false,
+    "rule": "price_complaint"
+  },
+  {
+    "id": "demo-2",
+    "customer_user_id": "lumen_443814_00014",
+    "subject": "Paid $49.99, app still locked",
+    "body": "I bought the annual plan yesterday for $49.99 (Apple receipt attached) and Lumen still shows the upgrade screen every time I open an AI tool. Restore Purchases says there is nothing to restore. I need this for a client shoot tomorrow.",
+    "created_at": "2026-11-05T14:12:00Z",
+    "demo": true,
+    "rule": "no_access_after_purchase"
+  },
+  {
+    "id": "t-049",
+    "customer_user_id": "lumen_443814_02798",
+    "subject": "How do I cancel?",
+    "body": "I can't find where to cancel the weekly plan. It renews on Nov 12 and I don't want to be charged again. Please cancel it for me.",
+    "created_at": "2026-11-06T14:03:35Z",
+    "demo": false,
+    "rule": "cancel_how"
+  },
+  {
+    "id": "t-050",
+    "customer_user_id": "lumen_443814_04613",
+    "subject": "No access after paying A$10.99",
+    "body": "Receipt says paid on Nov 4. App says free. I reinstalled, logged out, nothing. What now?",
+    "created_at": "2026-11-06T16:30:33Z",
+    "demo": false,
+    "rule": "no_access_after_purchase"
+  },
+  {
+    "id": "demo-1",
+    "customer_user_id": "lumen_443814_00549",
+    "subject": "Charged after my free trial",
+    "body": "I downloaded Lumen on Oct 27 for the 3-day free trial. I've now been charged €6.99 twice, on Oct 30 and again today. The trial screen never said it turns into a weekly plan, I thought I had a week to decide. I don't want to pay €7 every week for a few filters. I feel tricked. What can you do about this?",
+    "created_at": "2026-11-06T18:40:00Z",
+    "demo": true,
+    "rule": "charged_after_trial"
+  },
+  {
+    "id": "t-051",
+    "customer_user_id": "lumen_443814_04751",
+    "subject": "How do I cancel?",
+    "body": "I can't find where to cancel the annual plan. It renews on Nov 13 and I don't want to be charged again. Please cancel it for me.",
+    "created_at": "2026-11-06T23:59:32Z",
+    "demo": false,
+    "rule": "cancel_how"
+  },
+  {
+    "id": "t-052",
+    "customer_user_id": "lumen_443814_04371",
+    "subject": "Where is my refund",
+    "body": "I requested a refund through the App Store for the 137.99 SEK charge on Nov 5. Still nothing. Can you check on your side?",
+    "created_at": "2026-11-07T05:09:31Z",
+    "demo": false,
+    "rule": "refund_request"
+  },
+  {
+    "id": "t-053",
+    "customer_user_id": "lumen_443814_01826",
+    "subject": "Trial converted without warning",
+    "body": "The paywall said \"try free\". 3 days later I'm paying £5.99. I would have cancelled if I had known the date. Can you at least refund this one?",
+    "created_at": "2026-11-07T14:55:51Z",
+    "demo": false,
+    "rule": "charged_after_trial"
+  },
+  {
+    "id": "t-054",
+    "customer_user_id": "lumen_443814_02021",
+    "subject": "SCAM - trial was not free",
+    "body": "Downloaded this for the \"free\" trial and got hit with $6.99 yesterday. I used the app twice. This is a scam, cancel it and give me my money back.",
+    "created_at": "2026-11-07T14:55:51Z",
+    "demo": false,
+    "rule": "charged_after_trial"
+  },
+  {
+    "id": "t-055",
+    "customer_user_id": "lumen_443814_04719",
+    "subject": "Unexpected charge $6.99",
+    "body": "Why was I charged $6.99 on Nov 5? I only signed up for the trial. I did not agree to a weekly plan. Please refund.",
+    "created_at": "2026-11-07T14:55:51Z",
+    "demo": false,
+    "rule": "charged_after_trial"
+  },
+  {
+    "id": "t-056",
+    "customer_user_id": "lumen_443814_03456",
+    "subject": "How do I cancel?",
+    "body": "I can't find where to cancel the weekly plan. It renews on Nov 13 and I don't want to be charged again. Please cancel it for me.",
+    "created_at": "2026-11-07T14:55:51Z",
+    "demo": false,
+    "rule": "cancel_how"
+  },
+  {
+    "id": "t-057",
+    "customer_user_id": "lumen_443814_00076",
+    "subject": "Pricing is misleading",
+    "body": "The price on the paywall looked like a monthly price. It's $6.99 every week. That's more than Netflix. Not happy.",
+    "created_at": "2026-11-07T14:55:51Z",
+    "demo": false,
+    "rule": "price_complaint"
+  }
+]
