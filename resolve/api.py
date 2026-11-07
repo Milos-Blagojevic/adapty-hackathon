@@ -26,6 +26,7 @@ from resolve.models import (
     ErrorDetail,
     LlmInfo,
     Rejection,
+    Reopen,
     Ticket,
     TicketSummary,
     UserItem,
@@ -104,6 +105,7 @@ def ticket_full(conn: db.Database, ticket: dict) -> dict:
         "action_error": ticket["action_error"],
         "triage_error": ticket["triage_error"],
         "conversation": conversation,
+        "history": ticket["history"],
     }
 
 
@@ -195,6 +197,15 @@ def build_router(services) -> APIRouter:
             workflow.reject(services, ticket_id, body)
         except workflow.NotFound:
             raise HTTPException(404, f"no ticket {ticket_id}") from None
+        return ticket_full(conn, ticket_or_404(ticket_id))
+
+    @router.post("/api/tickets/{ticket_id}/reopen", response_model=Ticket, tags=["inbox"], responses={**E404, **E409},
+                 summary="Send a closed ticket back to Incoming; Adapty changes are not undone")
+    def reopen(ticket_id: str, body: Reopen | None = None):
+        ticket = ticket_or_404(ticket_id)
+        if ticket["status"] not in workflow.CLOSED_STATUSES:
+            raise HTTPException(409, "only a closed ticket can be reopened")
+        workflow.reopen(services, ticket_id, (body or Reopen()).note)
         return ticket_full(conn, ticket_or_404(ticket_id))
 
     @router.get("/api/config", response_model=AgentConfig, tags=["settings"])

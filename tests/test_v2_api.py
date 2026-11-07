@@ -341,3 +341,22 @@ def test_demo_mode_serves_the_api_without_clients(tmp_path, http):
     t = get_ticket(env, "t-001")
     assert t["status"] == "done" and t["action"]["demo"] is True
     assert len(http.calls) == 0
+
+
+def test_reopen_endpoint(tmp_path):
+    from fastapi.testclient import TestClient
+
+    from resolve import web
+    from resolve.adapty import Client
+    from resolve.llm import FakeLLM
+    from tests.fakes_v2 import new_db
+
+    new_db(tmp_path, name="r.sqlite")
+    c = TestClient(web.create_app(tmp_path / "r.sqlite", demo=True, adapty_client=Client("sk"), llm_client=FakeLLM([]), seed_file=tmp_path / "none.json"))
+    assert c.post("/api/tickets/nope/reopen").status_code == 404
+    assert c.post("/api/tickets/t-001/reopen").status_code == 409  # still open
+    assert c.post("/api/tickets/t-001/reject", json={"note": "x"}).json()["status"] == "dismissed"
+    r = c.post("/api/tickets/t-001/reopen", json={"note": "again"})
+    assert r.status_code == 200 and r.json()["status"] in ("new", "proposed")
+    assert r.json()["history"][0]["from_status"] == "dismissed" and r.json()["history"][0]["note"] == "again"
+    assert c.post("/api/tickets/t-001/reopen").status_code == 409

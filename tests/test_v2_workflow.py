@@ -255,3 +255,43 @@ def test_the_edited_reply_is_the_support_message(http, conn):
 def test_non_chat_ticket_gets_no_conversation_message(http, conn):
     accept(conn, Decision(option=1))
     assert conn.execute("SELECT COUNT(*) FROM messages").fetchone()[0] == 0
+
+
+# --- Reopen ------------------------------------------------------------------------------------------
+
+
+def test_reopen_after_accept_goes_back_to_proposed_and_keeps_history(http, conn):
+    mock_profile(http, paid_profile())
+    mock_grant_ok(http)
+    accept(conn, Decision(option=0))
+    before = ticket(conn)
+    reopened = workflow.reopen(services(conn), "t-001", "the user wrote again")
+    assert reopened["status"] == "proposed"
+    assert reopened["decision"] is None and reopened["action"] is None and reopened["reply_sent_at"] is None
+    assert reopened["triage"] == before["triage"]
+    [entry] = reopened["history"]
+    assert entry["from_status"] == "done" and entry["decision"] == before["decision"] and entry["action"] == before["action"]
+    assert entry["note"] == "the user wrote again"
+    posts = len(http_calls(http, "POST"))
+    workflow.reopen(services(conn), "t-001")  # not closed any more: nothing happens
+    assert len(ticket(conn)["history"]) == 1 and len(http_calls(http, "POST")) == posts  # nothing undone or redone in Adapty
+
+
+def test_reopen_after_dismiss_and_untriaged_goes_to_new(conn):
+    workflow.reject(services(conn), "t-002", Rejection(note="spam"))
+    assert ticket_of(conn, "t-002")["status"] == "dismissed"
+    assert workflow.reopen(services(conn), "t-002")["status"] == "new"
+
+
+def test_reopened_ticket_can_be_accepted_again(http, conn):
+    mock_profile(http, paid_profile())
+    mock_grant_ok(http)
+    accept(conn, Decision(option=1))
+    workflow.reopen(services(conn), "t-001")
+    accept(conn, Decision(option=1))
+    t = ticket(conn)
+    assert t["status"] == "done" and t["decision"]["option"] == 1 and len(t["history"]) == 1
+
+
+def ticket_of(conn, ticket_id):
+    return db.get_ticket(conn, ticket_id)

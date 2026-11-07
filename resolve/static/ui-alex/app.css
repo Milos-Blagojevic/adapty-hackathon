@@ -327,3 +327,10 @@ table.mini td { padding: 4px 6px 4px 0; border-top: 1px solid var(--line-2); ver
 .chosen-pill { background: var(--green); color: #fff; }
 .closed-mark { color: var(--green); font-weight: 650; }
 .closed-mark.muted { color: var(--ink-2); font-weight: 500; }
+
+.closed-bar { display: flex; align-items: center; gap: 12px; background: var(--green-bg); border: 1px solid #bfe6cf; border-radius: var(--radius); padding: 12px 14px; margin-bottom: 14px; }
+.closed-bar.dismissed { background: var(--brand-50); border-color: var(--brand-100); }
+.closed-bar.dismissed .resolved-check { background: var(--ink-2); }
+.closed-bar b { font-size: 15px; }
+.card.reopen { max-width: 720px; }
+.card.reopen p { margin: 8px 0 12px; }

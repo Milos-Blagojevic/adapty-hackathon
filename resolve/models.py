@@ -94,6 +94,10 @@ class Decision(BaseModel):
     edits: OptionEdits = Field(default_factory=OptionEdits)
 
 
+class Reopen(BaseModel):
+    note: str = ""
+
+
 class Rejection(BaseModel):
     note: str = ""
     reply: str | None = None  # a manual reply → ticket done; none → dismissed
@@ -193,6 +197,7 @@ class Ticket(TicketSummary):
     action_error: str | None = None
     triage_error: str | None = None
     conversation: list[ChatMessage] | None = None
+    history: list[dict] = Field(default_factory=list, description="Earlier closes of a reopened ticket: {at, from_status, decision, action, note}")
 
 
 class LlmInfo(BaseModel):

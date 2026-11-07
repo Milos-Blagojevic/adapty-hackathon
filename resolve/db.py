@@ -110,6 +110,7 @@ TICKET_COLUMNS_V2 = {
     "triage_at": "TEXT",
     "triage_error": "TEXT",
     "decision_json": "TEXT",
+    "history_json": "TEXT",  # earlier closes of a reopened ticket: [{at, from_status, decision, action, note}]
 }
 
 TICKET_COLUMNS = (
@@ -207,6 +208,7 @@ def _row(row: sqlite3.Row | None) -> dict | None:
     ticket["action"] = json.loads(ticket["action_json"]) if ticket["action_json"] else None
     ticket["triage"] = json.loads(ticket["triage_json"]) if ticket.get("triage_json") else None
     ticket["decision"] = json.loads(ticket["decision_json"]) if ticket.get("decision_json") else None
+    ticket["history"] = json.loads(ticket["history_json"]) if ticket.get("history_json") else []
     return ticket
 
 
@@ -235,7 +237,7 @@ def update_ticket(conn: Database, ticket_id: str, only_status: tuple[str, ...] |
     unknown = set(fields) - set(TICKET_COLUMNS)
     if unknown:
         raise ValueError(f"unknown ticket columns: {sorted(unknown)}")
-    for key in ("profile", "proposal", "action", "context", "triage", "decision"):
+    for key in ("profile", "proposal", "action", "context", "triage", "decision", "history"):
         if key in fields:
             raise ValueError(f"pass {key}_json, not {key}")
     fields["updated_at"] = now_iso()

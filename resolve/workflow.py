@@ -160,6 +160,34 @@ def reject(services: Services, ticket_id: str, rejection: Rejection) -> dict:
     return _ticket(services, ticket_id)
 
 
+CLOSED_STATUSES = ("done", "dismissed")
+
+
+def reopen(services: Services, ticket_id: str, note: str = "") -> dict:
+    """Send a closed ticket back to Incoming: `proposed` when it has a triage (or a v1 proposal), else `new`.
+
+    The earlier decision and action move to `history`; nothing is undone in Adapty (a grant stays).
+    Only from done/dismissed, as one conditional update, so a double click reopens once.
+    """
+    ticket = _ticket(services, ticket_id)
+    if ticket["status"] not in CLOSED_STATUSES:
+        return ticket
+    entry = {"at": db.now_iso(), "from_status": ticket["status"], "decision": ticket["decision"], "action": ticket["action"], "note": note}
+    db.update_ticket(
+        services.conn,
+        ticket_id,
+        only_status=CLOSED_STATUSES,
+        status="proposed" if (ticket["triage"] or ticket["proposal"]) else "new",
+        history_json=json.dumps([*ticket["history"], entry]),
+        decision_json=None,
+        action_json=None,
+        action_at=None,
+        action_error=None,
+        reply_sent_at=None,
+    )
+    return _ticket(services, ticket_id)
+
+
 def _post_reply(services: Services, ticket: dict, reply: str) -> None:
     """A ticket from a chat handoff: the reply shows up in that chat. Nothing is sent anywhere else."""
     if ticket.get("session_id"):
