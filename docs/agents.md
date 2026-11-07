@@ -238,3 +238,20 @@ While the session is `handed_off`, each user message still gets a model reply, b
 ### Options: three equal answers with an emoji (binding)
 
 Level 1 aims for 3 equally strong options (2 are still accepted), the first is the agent's pick but the UI shows them with equal weight. Each option has `emoji`: one sincere emoji for what the answer means to the user (👍 give, ❌ refuse/cancel, 🙏 apologise, ❓ ask, 🧾 explain a charge, 🔁 restore, 💸 store refund). Old tickets without it: the UI falls back by action (`triage.LEGACY_EMOJI`).
+
+### v3: code loads the facts (binding on branch `alex/agents-v3`)
+
+From the design review (one model call per message where possible; code owns facts and limits).
+
+Level 2:
+- Before the first model call of every message, code loads the profile (same `profile_summary` as `get_profile`, plus `free_days_available: true|false` and `free_days_blocked_reason: str|null` from `policy.check_grant` with days=1) and appends it to the system prompt under `Account facts (loaded by the system just now):`. `get_profile` stays as a refresh (after a restore). The prefetch is not a tool call: nothing in `actions` or `l2_events`.
+- `grant_access` is offered to the model only when `free_days_available` is true (and the config enables it). The code check on a call stays as is (a hidden tool can still be called; it is checked and blocked the same way).
+- If the account cannot be loaded for a reason other than 404 (Adapty not configured, error, timeout): no model call; handoff `other` with summary `account could not be loaded`; fixed reply `ACCOUNT_DOWN_REPLY` = "I can't load your account right now, so I've passed this to a teammate. They will reply here." After a handoff the same failure gives `HANDED_OFF_REPLY`. A 404 goes to the model as `account: not found` (the profile_mismatch rule applies).
+- Demo mode / no LLM: unchanged (no prefetch).
+
+Level 1:
+- Before the first model call, code resolves the user: the ticket's `customer_user_id`, else the email in the index (the found id is allowed, as with `find_user_by_email`). For the resolved id it loads the profile and the history (same summaries as the tools) and renders the config; all of it is appended to the first user message under `Facts loaded by the system:`, with `lookup: by customer_user_id | by email (unverified sender) | not identified (…)`. A profile loaded here counts as fetched for the grant check.
+- `get_agent_config` is removed (the config is in the facts). `get_profile`, `find_user_by_email`, `get_user_history` stay, for a second id or email named in the ticket.
+- New check: two options with the same `action` → rejected ("options[i] repeats the action of options[j]; each option must be a different action"), same single retry.
+- When the user was found only by email: the prompt says replies must not state plan, dates, amounts or payment details (the sender is unverified).
+- `triage.ungrounded_evidence(ticket, facts_text) -> list[str]`: evidence lines whose value (after the first `: `) does not occur, case-insensitively, in the facts the run loaded. Used by eval only; the run does not drop them.

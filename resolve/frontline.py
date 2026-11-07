@@ -31,6 +31,7 @@ HANDED_OFF_REPLY = "A teammate has your conversation and will reply here."
 TOO_LONG_REPLY = "This is taking longer than it should, so I've passed our conversation to a teammate. They will reply here."
 FALLBACK_REPLY = "Sorry, something went wrong on my side. I've passed our conversation to a teammate, who will reply here."
 AUTO_HANDOFF_REPLY = "I've passed this to a teammate who can help with this; they will reply here."
+ACCOUNT_DOWN_REPLY = "I can't load your account right now, so I've passed this to a teammate. They will reply here."
 
 # A blocked grant hands off in code, whatever the model does next: policy reason → handoff reason.
 # A mapped rule hands off only when it is in cfg.always_handoff; "other" always hands off.
@@ -97,15 +98,15 @@ AFTER_HANDOFF_PROMPT = """
 A teammate already has this conversation (ticket {ticket_id}) and will reply here. Until then you may still answer questions from the account and give store steps, but you take no account actions: no free access, no new handoff. New messages are visible to the teammate. If the user clearly says they no longer need a human (they want to continue with you, or the problem is gone), call cancel_handoff with a one-line note, then continue normally in the next message."""
 
 
-def tool_specs(cfg: AgentConfig) -> list[llm.ToolSpec]:
-    """Always-on tools, plus grant_access only when the config enables it."""
+def tool_specs(cfg: AgentConfig, grant_available: bool = True) -> list[llm.ToolSpec]:
+    """Always-on tools, plus grant_access when the config enables it and the prefetched facts allow a grant."""
     specs = [
-        llm.ToolSpec("get_profile", "Load this user's account: plans, purchases, charges, dates, access. Call it before saying anything about the account.", GetProfileArgs),
+        llm.ToolSpec("get_profile", "Reload this user's account (the facts in the prompt are already loaded). Use it only to refresh, e.g. after the user restored purchases.", GetProfileArgs),
         llm.ToolSpec("store_instructions", "Get the exact steps for the user to restore purchases, cancel, or request a refund in the App Store or Google Play.", StoreInstructionsArgs),
         llm.ToolSpec("handoff", "Pass the conversation to a human teammate. `reason` is the matching rule or 'other'; `summary` is one or two sentences on what the user wants and what you tried.", HandoffArgs),
         llm.ToolSpec("mark_resolved", "Close the conversation as solved, only after the user confirmed it works. `note`: one line on what fixed it.", MarkResolvedArgs),
     ]
-    if cfg.tools.get("grant_access"):
+    if cfg.tools.get("grant_access") and grant_available:
         specs.insert(1, llm.ToolSpec(
             "grant_access",
             f"Add free days of premium access to this user's account, at most {cfg.grant.max_days} days. `reason`: one line why. The system checks the limits and may answer 'blocked: <reason>'.",
@@ -134,9 +135,11 @@ def after_handoff_specs() -> list[llm.ToolSpec]:
     ]
 
 
-def system_prompt(cfg: AgentConfig) -> str:
+def system_prompt(cfg: AgentConfig, grant_available: bool = True) -> str:
     rules = "\n".join(f"- {HANDOFF_RULE_TEXT[r]}" for r in cfg.always_handoff)
-    if cfg.tools.get("grant_access"):
+    if cfg.tools.get("grant_access") and not grant_available:
+        grant = "Free access is not available for this user right now (see free_days_blocked_reason in the facts). Do not offer it; if they need it, hand off."
+    elif cfg.tools.get("grant_access"):
         grant = (
             "Free access (grant_access): use it only when a paying user is blocked from what they paid for "
             "(paid, but premium is locked) or was misled (charged when a trial converted without them noticing). "
@@ -151,7 +154,7 @@ def system_prompt(cfg: AgentConfig) -> str:
     return f"""You are the first-line support assistant of {cfg.app_name}, an app with subscriptions sold through the App Store and Google Play. You talk with one user in the app's support chat. Tone: {cfg.tone}.
 
 How to answer:
-- Call get_profile first, before you say anything about the user's plan, charges, dates or access. Ground every statement in it; never state a plan, price, charge or date that is not there.
+- The user's account facts are at the end of these instructions, loaded by the system just now. Ground every statement in them; never state a plan, price, charge or date that is not there. Call get_profile only to refresh them (for example after the user restored purchases).
 - Explain charges, plans, trials, renewals and expiry dates from the account in plain words. Dates are UTC; write them as plain dates (Nov 6).
 - Answer in the language the user writes in.
 - Never promise a refund: only Apple or Google can refund a purchase. When the user needs steps (restore, cancel, refund request), call store_instructions with the store from the account and pass the steps on.
@@ -270,16 +273,26 @@ def chat(services, customer_user_id: str, session_id: str, message: str) -> Chat
     if services.demo or services.llm is None:
         return _finish(turn, DEMO_REPLY)  # declared stub
 
+    facts, account_down = _prefetch(turn)
+    if account_down:
+        if after_handoff:
+            return _finish(turn, HANDED_OFF_REPLY)
+        _handoff(turn, "other", "account could not be loaded")
+        return _finish(turn, ACCOUNT_DOWN_REPLY)
+    grant_available = bool(facts and facts["free_days_available"])
+
     messages = [
         {"role": "user", "content": m["content"]} if m["role"] == "user"
         else {"role": "assistant", "text": m["content"], "tool_calls": [], "raw": None, "provider": ""}
         for m in history
     ]
-    system = system_prompt(cfg)
-    tools = tool_specs(cfg)
+    system = system_prompt(cfg, grant_available)
+    tools = tool_specs(cfg, grant_available)
     if after_handoff:
         system += AFTER_HANDOFF_PROMPT.format(ticket_id=conversation["ticket_id"])
         tools = after_handoff_specs()
+    # Dynamic part last, so the static prefix stays byte-identical for prompt caching.
+    system += "\n\nAccount facts (loaded by the system just now):\n" + (json.dumps(facts) if facts else "account: not found")
     text = None
     failed = None
     try:
@@ -360,6 +373,27 @@ def _fetch_profile(turn: _Turn) -> tuple[dict | None, str | None]:
         if exc.status == 404:
             return None, "error: no account found for this user. Hand off (reason profile_mismatch, or other)."
         return None, "error: the account could not be loaded right now. Hand off with reason other."
+
+
+def _prefetch(turn: _Turn) -> tuple[dict | None, bool]:
+    """(facts, account_down) before the first model call. A 404 is (None, False): the model is told 'not found'."""
+    if turn.services.adapty is None:
+        return None, True
+    try:
+        profile = turn.services.adapty.get_profile(turn.customer)
+    except AdaptyError as exc:
+        return None, exc.status != 404
+    except Exception:  # noqa: BLE001  (timeouts and transport errors: the user still gets an honest answer)
+        log.warning("session %s: profile prefetch failed", turn.session_id, exc_info=True)
+        return None, True
+    now = datetime.now(timezone.utc)
+    grants = _grants_30d(turn, now)
+    facts = profile_summary(profile, turn.cfg, len(grants), now)
+    in_session = any(g["ref"] == turn.session_id for g in db.grants_since(turn.services.conn, turn.customer, ""))
+    allowed, reason = policy.check_grant(profile, turn.cfg, grants, 1, in_session)
+    facts["free_days_available"] = allowed
+    facts["free_days_blocked_reason"] = None if allowed else reason
+    return facts, False
 
 
 def _grants_30d(turn: _Turn, now: datetime) -> list[dict]:
