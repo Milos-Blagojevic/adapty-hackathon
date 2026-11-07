@@ -945,53 +945,417 @@ async function reopenAction(act) {
 }
 
 // ====================================================================================================
-// Analyze (kept minimal on purpose)
+// Analyze: one dashboard over GET /api/analytics. Real data only: every chart has an empty state.
+// Hand-written SVG, no libraries. Refreshes every 10 s while the tab is open (pollTimer, cleared by route()).
 // ====================================================================================================
 const BLOCKED_LABEL = {
   grant_limit_30d: "Second grant within 30 days", over_max_days: "More days than allowed", not_paid: "User never paid",
   lifetime: "Lifetime user", already_granted_this_session: "Already granted in this chat", tool_disabled: "Tool switched off",
 };
+// Series of the hero chart, bottom to top of the stack. Colours validated (dataviz validate_palette.js) on the ink band.
+const FLOW = [
+  { k: "agent", label: "Kept by the agent", cls: "f-agent" },
+  { k: "handed_off", label: "Handed to people", cls: "f-hand" },
+  { k: "closed_by_people", label: "Closed by people", cls: "f-people" },
+];
+const TASK_GROUPS = [
+  { kind: "chat", title: "Talking now", empty: "Nobody is talking to the chat agent right now." },
+  { kind: "triage", title: "Being triaged", empty: "Nothing waiting for Level 1 triage." },
+  { kind: "review", title: "Waiting for a person", empty: "No ticket is waiting for a person." },
+];
+const TASKS_SHOWN = 5;
+const AN = { data: null, at: 0, key: "", tick: 0, err: null, expand: {}, table: false, flow: null };
+
+const nf = (n) => Number(n || 0).toLocaleString("en-US");
+const sumOf = (o) => Object.values(o || {}).reduce((x, y) => x + (Number(y) || 0), 0);
+const pctOf = (n, d) => (d ? Math.round((n / d) * 100) : null);
 
 async function showAnalyze() {
-  const el = view();
-  el.className = "main";
-  let a;
-  try { a = await api("GET", "/api/analytics"); } catch (e) {
-    el.innerHTML = pageTitle("Analyze") + `<div class="page">${errLine(e)}</div>`;
-    return;
-  }
-  const sum = (o) => Object.values(o || {}).reduce((x, y) => x + (Number(y) || 0), 0);
-  const pct = (n, d) => (d ? `${Math.round((n / d) * 100)}%` : "—");
-  const t = a.tickets || {}, l2 = a.level2 || {}, tri = a.triage || {}, ev = a.eval;
-  const acc = tri.accepted_option || {};
-  const decided = sum(acc);
-  const num = (n, label) => `<div class="num"><b>${n}</b><span>${label}</span></div>`;
-  const causes = Object.fromEntries((tri.top_root_causes || []).map((r) => [r.root_cause, r.n]));
-  el.innerHTML = `${pageTitle("Analyze")}
-    <div class="page">
-      <div class="nums">
-        ${num(t.total ?? 0, "tickets")}
-        ${num(t.by_status?.proposed || 0, "ready for review")}
-        ${num(`${l2.resolved ?? 0} / ${l2.sessions ?? 0}`, "chats closed by Level 2")}
-        ${num(l2.grants ?? 0, `grants, ${l2.days_granted ?? 0} days`)}
-        ${num(sum(l2.blocked), "blocked by limits")}
-        ${num(pct(acc["1"] || 0, decided), "first option accepted")}
-        ${ev ? num(`${ev.action_correct} / ${ev.cases}`, "eval, right action") : ""}
-      </div>
-      <div class="lists">
-        ${plainList("Tickets by category", t.by_category, cap)}
-        ${plainList("Top root causes", causes, (k) => k)}
-        ${plainList("Why chats went to a person", l2.handoff_reasons, (k) => HANDOFF_LABEL[k]?.[0] || cap(k))}
-        ${plainList("What the limits blocked", l2.blocked, (k) => BLOCKED_LABEL[k] || cap(k))}
-      </div>
-    </div>`;
+  clearInterval(pollTimer);
+  AN.tick = 0;
+  await loadAnalyze(true);
+  if (S.tab !== "analyze") return;
+  clearInterval(pollTimer);
+  pollTimer = setInterval(() => {
+    if (S.tab !== "analyze") return clearInterval(pollTimer);
+    AN.tick += 1;
+    if (AN.tick % 2 === 0) loadAnalyze(false); // data every 10 s
+    else tickAges(); // ages every 5 s
+  }, 5000);
 }
 
-function plainList(title, obj, label) {
-  const rows = Object.entries(obj || {}).map(([k, v]) => [k, Number(v) || 0]).filter(([, v]) => v).sort((a, b) => b[1] - a[1]).slice(0, 7);
-  return `<section><h2>${esc(title)}</h2>
-    ${rows.length ? rows.map(([k, v]) => `<div class="li"><span>${esc(label(k))}</span><span class="grey">${v}</span></div>`).join("") : `<p class="grey">No data yet.</p>`}
+async function loadAnalyze(first) {
+  let a;
+  try { a = await api("GET", "/api/analytics"); } catch (e) {
+    if (S.tab !== "analyze") return;
+    AN.err = e;
+    if (first || !AN.data) { view().className = "main"; view().innerHTML = pageTitle("Analyze") + `<div class="page">${errLine(e)}</div>`; }
+    else renderFoot();
+    return;
+  }
+  if (S.tab !== "analyze") return;
+  AN.err = null;
+  AN.at = Date.now();
+  const key = JSON.stringify({ ...a, open_tasks: (a.open_tasks || []).map(({ age_s, ...t }) => t) });
+  const same = !first && key === AN.key && $("#an-root");
+  AN.data = a;
+  AN.key = key;
+  if (same) { renderTasks(); renderFoot(); return; } // nothing moved: keep the charts (and any hover) as they are
+  const top = view().scrollTop;
+  renderAnalyze();
+  view().scrollTop = top;
+}
+
+function renderAnalyze() {
+  const el = view();
+  el.className = "main";
+  const a = AN.data;
+  const l2 = a.level2 || {}, tri = a.triage || {};
+  el.innerHTML = `${pageTitle("Analyze", `<span class="grow"></span><span class="an-live"><i></i>Live</span>
+      <button class="icon-btn" data-act="refresh-analyze" title="Refresh now">${SVG.refresh}</button>`)}
+    <div id="an-root">
+      ${heroHtml(a)}
+      <section class="an-row">
+        ${outcomeCell(l2)}
+        ${barsCell("Why chats went to people", l2.handed_off ?? sumOf(l2.handoff_reasons), "handed to a person",
+          l2.handoff_reasons, (k) => HANDOFF_LABEL[k]?.[0] || cap(k), "b-hand", "No handoffs yet. Every chat stayed with the agent.")}
+        ${barsCell("Blocked by limits", sumOf(l2.blocked), "grants the guard rails stopped",
+          l2.blocked, (k) => BLOCKED_LABEL[k] || cap(k), "b-ink", "Nothing blocked yet. The limits have not been tested.")}
+        ${funnelCell(tri)}
+      </section>
+      <section class="an-tasks" id="an-tasks"></section>
+      <footer class="an-foot" id="an-foot"></footer>
+    </div>`;
+  drawFlow();
+  renderTasks();
+  renderFoot();
+  const tbl = $("#an-table-btn");
+  if (tbl) tbl.onclick = () => { AN.table = !AN.table; drawFlow(); };
+
+}
+
+// --- Hero: headline share + stacked area "AI vs people" ---------------------------------------------
+function fillTimeline(tl) {
+  const pts = (tl?.points || []).slice().sort((x, y) => String(x.t).localeCompare(String(y.t)));
+  const step = tl?.bucket === "hour" ? 3600e3 : 86400e3;
+  const ms = (p) => new Date(tl?.bucket === "hour" ? p.t : `${String(p.t).slice(0, 10)}T00:00:00Z`).getTime();
+  if (pts.length < 2 || pts.some((p) => isNaN(ms(p)))) return pts.map((p) => ({ ...p, ms: ms(p) }));
+  const first = ms(pts[0]), last = ms(pts[pts.length - 1]);
+  if ((last - first) / step > 400) return pts.map((p) => ({ ...p, ms: ms(p) }));
+  const by = new Map(pts.map((p) => [ms(p), p]));
+  const out = [];
+  for (let m = first; m <= last; m += step) { // a bucket with no events is a real zero, not a gap
+    const p = by.get(m) || { t: null, agent: 0, handed_off: 0, closed_by_people: 0, feedback: 0, grant_days: 0 };
+    out.push({ ...p, ms: m });
+  }
+  return out;
+}
+function bucketLabel(p, bucket, long = false) {
+  const d = new Date(p.ms);
+  if (isNaN(d)) return esc(p.t);
+  if (bucket === "hour") {
+    const h = (x) => `${String(x.getHours()).padStart(2, "0")}:00`;
+    return long ? `${MONTHS[d.getMonth()]} ${d.getDate()}, ${h(d)}–${h(new Date(p.ms + 3600e3))}` : h(d);
+  }
+  const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  return `${long ? days[d.getUTCDay()] + ", " : ""}${MONTHS[d.getUTCMonth()]} ${d.getUTCDate()}`;
+}
+
+function heroHtml(a) {
+  const tl = a.timeline || { bucket: "day", points: [] };
+  const pts = fillTimeline(tl);
+  const tot = Object.fromEntries([...FLOW.map((s) => s.k), "feedback", "grant_days"].map((k) => [k, pts.reduce((x, p) => x + (Number(p[k]) || 0), 0)]));
+  const share = tl.agent_share;
+  const chats = tot.agent + tot.handed_off;
+  const last = pts[pts.length - 1];
+  const span = !pts.length ? "" : tl.bucket === "hour"
+    ? `${fmt(new Date(pts[0].ms).toISOString())} – ${bucketLabel({ ms: last.ms + 3600e3 }, "hour")}`
+    : pts.length === 1 ? bucketLabel(pts[0], "day") : `${bucketLabel(pts[0], "day")} – ${bucketLabel(last, "day")}`;
+  const big = share == null || !chats
+    ? `<div class="an-big an-big-empty">No chats yet</div>
+       <div class="an-sub">The share appears after the first chat. <a href="#/chat">Try one in Chat</a></div>`
+    : `<div class="an-big">${Math.round(share * 100)}%<span>handled by agents</span></div>
+       <div class="an-sub">${nf(tot.agent)} of ${nf(chats)} chat${chats === 1 ? "" : "s"} closed without a person</div>`;
+  const legend = FLOW.map((s) => `<span class="an-key"><i class="sw ${s.cls}"></i><b>${nf(tot[s.k])}</b>${s.label.toLowerCase()}</span>`).join("")
+    + `<span class="an-key"><i class="ln"></i><b>${nf(tot.feedback)}</b>other feedback</span>`;
+  const l2 = a.level2 || {};
+  const review = (a.open_tasks || []).filter((x) => x.kind === "review").length;
+  return `<section class="an-hero">
+    <div class="an-hero-head">
+      <div class="an-fig">
+        <div class="an-eyebrow">AI vs people${span ? ` · ${esc(span)}` : ""}</div>
+        ${big}
+      </div>
+      <div class="an-kpis">
+        <div class="an-kpi"><span>Chats with the agent</span><b>${nf(l2.sessions)}</b><em>${nf(l2.open)} still open</em></div>
+        <div class="an-kpi"><span>Free days granted</span><b>${nf(l2.days_granted)}</b><em>${l2.grants ? `in ${nf(l2.grants)} grant${l2.grants === 1 ? "" : "s"}` : "no grants yet"}</em>${grantBars(pts, tl.bucket)}</div>
+        <div class="an-kpi"><span>Waiting for a person</span><b>${nf(review)}</b><em>${review ? `<a href="#/incoming">Open Incoming</a>` : "inbox is clear"}</em></div>
+      </div>
+    </div>
+    <div class="an-legend">${legend}<span class="grow"></span>
+      ${pts.length ? `<button class="an-tbl-btn" id="an-table-btn">${AN.table ? "Show chart" : "Show table"}</button>` : ""}</div>
+    <div class="an-chart" id="an-flow" data-bucket="${esc(tl.bucket)}"></div>
   </section>`;
+}
+
+function grantBars(pts, bucket) {
+  const vals = pts.map((p) => Number(p.grant_days) || 0);
+  if (!vals.some(Boolean)) return "";
+  const W = 132, H = 28, n = vals.length, slot = W / n, bw = Math.max(2, Math.min(8, slot - 2)), max = Math.max(...vals);
+  const bars = vals.map((v, i) => {
+    const h = v ? Math.max(3, (v / max) * H) : 0, x = i * slot + (slot - bw) / 2;
+    return `<rect class="${i === n - 1 ? "now" : ""}" x="${x.toFixed(1)}" y="${(H - h).toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" rx="${Math.min(2, bw / 2)}"><title>${bucketLabel(pts[i], bucket, true)}: ${v} days</title></rect>`;
+  }).join("");
+  return `<svg class="an-gbars" viewBox="0 0 ${W} ${H + 1}" width="${W}" height="${H + 1}" role="img" aria-label="Free days granted per ${bucket}"><line x1="0" x2="${W}" y1="${H + 0.5}" y2="${H + 0.5}"/>${bars}</svg>`;
+}
+
+// Monotone cubic (Fritsch–Butland tangents): smooth, never overshoots the data, never dips below zero.
+function monoSegs(P) {
+  const n = P.length, dx = [], m = [], t = [];
+  for (let i = 0; i < n - 1; i++) { dx[i] = P[i + 1][0] - P[i][0]; m[i] = (P[i + 1][1] - P[i][1]) / dx[i]; }
+  t[0] = m[0]; t[n - 1] = m[n - 2];
+  for (let i = 1; i < n - 1; i++) {
+    t[i] = m[i - 1] * m[i] <= 0 ? 0 : (3 * (dx[i - 1] + dx[i])) / ((2 * dx[i] + dx[i - 1]) / m[i - 1] + (dx[i] + 2 * dx[i - 1]) / m[i]);
+  }
+  t[0] = n > 2 && m[0] * t[1] <= 0 ? 0 : Math.min(Math.abs(m[0]), Math.abs(t[0])) * Math.sign(m[0]);
+  const segs = [];
+  for (let i = 0; i < n - 1; i++) {
+    const h = dx[i] / 3;
+    segs.push([[P[i][0] + h, P[i][1] + t[i] * h], [P[i + 1][0] - h, P[i + 1][1] - t[i + 1] * h], P[i + 1]]);
+  }
+  return segs;
+}
+const pt = (p) => `${p[0].toFixed(1)},${p[1].toFixed(1)}`;
+const linePath = (P) => `M${pt(P[0])}` + monoSegs(P).map(([a, b, c]) => `C${pt(a)} ${pt(b)} ${pt(c)}`).join("");
+function areaPath(top, bottom) {
+  const back = monoSegs(bottom).reverse().map(([a, b], i, all) => `C${pt(b)} ${pt(a)} ${pt(i + 1 < all.length ? all[i + 1][2] : bottom[0])}`).join("");
+  return `${linePath(top)}L${pt(bottom[bottom.length - 1])}${back}Z`;
+}
+function niceTicks(max) {
+  if (max <= 0) return [0, 1];
+  const raw = max / 4, p = 10 ** Math.floor(Math.log10(raw));
+  const step = Math.max(1, [1, 2, 5, 10].map((k) => k * p).find((s) => s >= raw));
+  const ticks = [];
+  for (let v = 0; v < max + step; v += step) ticks.push(v);
+  return ticks;
+}
+
+function drawFlow() {
+  const host = $("#an-flow");
+  if (!host) return;
+  const tl = AN.data.timeline || { bucket: "day", points: [] };
+  const bucket = tl.bucket, pts = fillTimeline(tl);
+  const any = pts.some((p) => FLOW.some((s) => p[s.k]) || p.feedback);
+  const btn = $("#an-table-btn");
+  if (btn) btn.textContent = AN.table ? "Show chart" : "Show table";
+  if (AN.table && pts.length) {
+    host.innerHTML = `<div class="an-tbl-wrap"><table class="an-tbl"><thead><tr><th>${bucket === "hour" ? "Hour" : "Day"}</th>${FLOW.map((s) => `<th>${s.label}</th>`).join("")}<th>Other feedback</th><th>Free days</th></tr></thead>
+      <tbody>${pts.map((p) => `<tr><td>${bucketLabel(p, bucket, true)}</td>${FLOW.map((s) => `<td>${nf(p[s.k])}</td>`).join("")}<td>${nf(p.feedback)}</td><td>${nf(p.grant_days)}</td></tr>`).join("")}</tbody></table></div>`;
+    return;
+  }
+  const W = Math.max(320, host.clientWidth), H = any ? 300 : 190, L = 40, R = 12, T = 14, B = 30;
+  const pw = W - L - R, ph = H - T - B;
+  const stack = pts.map((p) => { let acc = 0; return FLOW.map((s) => (acc += Number(p[s.k]) || 0)); });
+  const ticks = niceTicks(Math.max(1, ...stack.map((s) => s[s.length - 1]), ...pts.map((p) => Number(p.feedback) || 0)));
+  const top = ticks[ticks.length - 1];
+  const n = pts.length;
+  const X = (i) => (n === 1 ? L + pw / 2 : L + (i * pw) / (n - 1));
+  const Y = (v) => T + ph - (v / top) * ph;
+  const grid = (any ? ticks : [0]).map((v) => `<line class="g${v ? "" : " base"}" x1="${L}" x2="${W - R}" y1="${Y(v).toFixed(1)}" y2="${Y(v).toFixed(1)}"/>
+    <text class="yt" x="${L - 10}" y="${(Y(v) + 4).toFixed(1)}">${nf(v)}</text>`).join("");
+  const every = Math.max(1, Math.ceil(n / Math.max(1, Math.floor(pw / 76))));
+  const xl = pts.map((p, i) => ((n - 1 - i) % every ? "" : `<text class="xt" x="${X(i).toFixed(1)}" y="${H - 8}" text-anchor="${n > 1 && i === 0 ? "start" : n > 1 && i === n - 1 ? "end" : "middle"}">${bucketLabel(p, bucket)}</text>`)).join("");
+  let marks = "";
+  if (!any) {
+    marks = `<foreignObject x="${L}" y="${T}" width="${pw}" height="${ph}"><div xmlns="http://www.w3.org/1999/xhtml" class="an-empty">
+      <b>Nothing to plot yet</b><span>Kept, handed off and closed chats appear here, ${bucket === "hour" ? "hour" : "day"} by ${bucket === "hour" ? "hour" : "day"}.</span></div></foreignObject>`;
+  } else if (n === 1) { // one bucket: a single stacked column, not a fake line
+    const bw = 44, x = X(0) - bw / 2;
+    marks = FLOW.map((s, j) => {
+      const y0 = j ? stack[0][j - 1] : 0, y1 = stack[0][j];
+      if (y1 === y0) return "";
+      const yt = Y(y1), h = Y(y0) - Y(y1) - (j ? 2 : 0);
+      return `<rect class="col ${s.cls}" x="${x}" y="${yt.toFixed(1)}" width="${bw}" height="${Math.max(1, h).toFixed(1)}" rx="3"/>`;
+    }).join("");
+    if (pts[0].feedback) marks += `<line class="fb" x1="${x - 18}" x2="${x + bw + 18}" y1="${Y(pts[0].feedback)}" y2="${Y(pts[0].feedback)}"/>`;
+  } else {
+    const defs = FLOW.map((s) => `<linearGradient id="g-${s.cls}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" class="${s.cls}" stop-opacity="${s.k === "agent" ? 0.62 : 0.42}"/><stop offset="1" class="${s.cls}" stop-opacity="${s.k === "agent" ? 0.16 : 0.08}"/></linearGradient>`).join("");
+    marks = `<defs>${defs}</defs>`;
+    FLOW.forEach((s, j) => {
+      const upper = pts.map((p, i) => [X(i), Y(stack[i][j])]);
+      const lower = pts.map((p, i) => [X(i), Y(j ? stack[i][j - 1] : 0)]);
+      if (!pts.some((p) => p[s.k])) return;
+      marks += `<path class="area" fill="url(#g-${s.cls})" d="${areaPath(upper, lower)}"/><path class="edge ${s.cls}" d="${linePath(upper)}"/>`;
+    });
+    if (pts.some((p) => p.feedback)) marks += `<path class="fb" d="${linePath(pts.map((p, i) => [X(i), Y(Number(p.feedback) || 0)]))}"/>`;
+    if (n <= 6) { // few points: show where the real data sits
+      marks += pts.map((p, i) => FLOW.map((s, j) => (p[s.k] ? `<circle class="pt ${s.cls}" cx="${X(i).toFixed(1)}" cy="${Y(stack[i][j]).toFixed(1)}" r="3"/>` : "")).join("")).join("");
+    }
+  }
+  host.innerHTML = `<svg class="an-flow" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" tabindex="0"
+      aria-label="Chats kept by the agent, handed to people and closed by people per ${bucket}. Use arrow keys to read values.">
+      ${grid}${xl}${marks}
+      <line class="cross" id="an-cross" x1="0" x2="0" y1="${T}" y2="${T + ph}" visibility="hidden"/>
+      <g id="an-hot"></g>
+      <rect class="hit" x="${L}" y="0" width="${pw}" height="${H}"/>
+    </svg><div class="an-tip" id="an-tip" hidden></div>`;
+  AN.flow = { pts, stack, X, Y, bucket, W, i: -1 };
+  if (!any) return;
+  const svg = host.querySelector("svg");
+  const at = (clientX) => {
+    const r = svg.getBoundingClientRect(), x = clientX - r.left;
+    return n === 1 ? 0 : Math.max(0, Math.min(n - 1, Math.round(((x - L) / pw) * (n - 1))));
+  };
+  svg.addEventListener("pointermove", (e) => flowHover(at(e.clientX)));
+  svg.addEventListener("pointerleave", () => flowHover(-1));
+  svg.addEventListener("blur", () => flowHover(-1));
+  svg.addEventListener("keydown", (e) => {
+    if (!["ArrowLeft", "ArrowRight"].includes(e.key)) return;
+    e.preventDefault();
+    const i = AN.flow.i < 0 ? n - 1 : AN.flow.i + (e.key === "ArrowLeft" ? -1 : 1);
+    flowHover(Math.max(0, Math.min(n - 1, i)));
+  });
+}
+
+function flowHover(i) {
+  const f = AN.flow, cross = $("#an-cross"), tip = $("#an-tip"), hot = $("#an-hot");
+  if (!f || !cross) return;
+  f.i = i;
+  if (i < 0) { cross.setAttribute("visibility", "hidden"); tip.hidden = true; hot.innerHTML = ""; return; }
+  const p = f.pts[i], x = f.X(i);
+  cross.setAttribute("x1", x); cross.setAttribute("x2", x); cross.setAttribute("visibility", "visible");
+  hot.innerHTML = FLOW.map((s, j) => (p[s.k] ? `<circle class="hot ${s.cls}" cx="${x}" cy="${f.Y(f.stack[i][j])}" r="5"/>` : "")).join("")
+    + (p.feedback ? `<circle class="hot fbdot" cx="${x}" cy="${f.Y(p.feedback)}" r="4"/>` : "");
+  const chats = (p.agent || 0) + (p.handed_off || 0);
+  tip.innerHTML = `<div class="tip-h">${bucketLabel(p, f.bucket, true)}</div>
+    ${FLOW.slice().reverse().map((s) => `<div class="tip-r"><i class="lk ${s.cls}"></i><b>${nf(p[s.k])}</b><span>${s.label}</span></div>`).join("")}
+    <div class="tip-r"><i class="lk fbk"></i><b>${nf(p.feedback)}</b><span>Other feedback</span></div>
+    ${p.grant_days ? `<div class="tip-r"><i class="lk none"></i><b>${nf(p.grant_days)}</b><span>Free days granted</span></div>` : ""}
+    ${chats ? `<div class="tip-f">${Math.round((p.agent / chats) * 100)}% of chats kept by the agent</div>` : ""}`;
+  tip.hidden = false;
+  const w = tip.offsetWidth;
+  tip.style.left = `${x + 16 + w > f.W ? x - 16 - w : x + 16}px`;
+}
+
+let anResize;
+window.addEventListener("resize", () => {
+  clearTimeout(anResize);
+  anResize = setTimeout(() => { if (S.tab === "analyze" && AN.data && !AN.table) drawFlow(); }, 120);
+});
+
+// --- Row of small charts -------------------------------------------------------------------------------
+const cell = (title, big, unit, body) => `<div class="an-cell">
+    <h2>${esc(title)}</h2>
+    <div class="an-num">${big}<span>${unit}</span></div>
+    ${body}
+  </div>`;
+
+function outcomeCell(l2) {
+  const parts = [
+    { label: "Resolved", v: Number(l2.resolved) || 0, cls: "d-agent" },
+    { label: "Still open", v: Number(l2.open) || 0, cls: "d-open" },
+    { label: "Handed off", v: Number(l2.handed_off) || 0, cls: "d-hand" },
+  ];
+  const total = parts.reduce((x, p) => x + p.v, 0);
+  const R = 46, C = 2 * Math.PI * R, live = parts.filter((p) => p.v).length, gap = live > 1 ? 3 : 0;
+  let off = 0;
+  const arcs = parts.map((p) => {
+    if (!p.v) return "";
+    const len = (p.v / total) * C;
+    const s = `<circle class="${p.cls}" r="${R}" cx="60" cy="60" stroke-dasharray="${Math.max(0.5, len - gap).toFixed(2)} ${C.toFixed(2)}" stroke-dashoffset="${(-off).toFixed(2)}"><title>${p.label}: ${p.v} (${pctOf(p.v, total)}%)</title></circle>`;
+    off += len;
+    return s;
+  }).join("");
+  const donut = `<svg class="an-donut" viewBox="0 0 120 120" width="120" height="120" role="img" aria-label="Chat outcomes">
+      <circle class="track" r="${R}" cx="60" cy="60"/><g transform="rotate(-90 60 60)">${arcs}</g>
+      <text x="60" y="58" class="dn">${nf(total)}</text><text x="60" y="76" class="dl">chat${total === 1 ? "" : "s"}</text></svg>`;
+  const legend = `<div class="an-dlegend">${parts.map((p) => `<div><i class="sw ${p.cls}"></i><span>${p.label}</span><b>${nf(p.v)}</b></div>`).join("")}</div>`;
+  const body = total ? `<div class="an-donut-wrap">${donut}${legend}</div>`
+    : `<div class="an-donut-wrap is-empty">${donut}<p class="an-none">No chats yet — <a href="#/chat">try one in Chat</a></p></div>`;
+  const share = pctOf(Number(l2.resolved) || 0, total);
+  return cell("Chat outcomes", share == null ? "—" : `${share}%`, "resolved by the agent", body);
+}
+
+function barRows(rows, cls, max) {
+  return `<div class="an-bars">${rows.map(([label, v, sub]) => `<div class="an-bar" title="${esc(label)}: ${nf(v)}${sub ? ` (${esc(sub)})` : ""}">
+      <span class="an-bar-l">${esc(label)}</span>
+      <span class="an-bar-t"><i class="${cls}" style="width:${max ? Math.max(v ? 2 : 0, (v / max) * 100).toFixed(1) : 0}%"></i></span>
+      <b>${nf(v)}</b></div>`).join("")}</div>`;
+}
+
+function barsCell(title, big, unit, obj, label, cls, empty) {
+  const all = Object.entries(obj || {}).map(([k, v]) => [k, Number(v) || 0]).filter(([, v]) => v).sort((a, b) => b[1] - a[1]);
+  const rows = all.slice(0, 5).map(([k, v]) => [label(k), v]);
+  if (all.length > 5) rows.push(["Other", all.slice(5).reduce((x, [, v]) => x + v, 0)]);
+  const body = rows.length ? barRows(rows, cls, rows[0][1]) : `<p class="an-none">${esc(empty)}</p>`;
+  return cell(title, nf(big || 0), unit, body);
+}
+
+function funnelCell(tri) {
+  const acc = tri.accepted_option || {};
+  const n1 = Number(acc["1"]) || 0, other = (Number(acc["2"]) || 0) + (Number(acc["3"]) || 0);
+  const edited = Number(acc.edited) || 0, rejected = Number(acc.rejected) || 0;
+  const decided = n1 + other + edited + rejected, triaged = Number(tri.triaged) || 0;
+  const rows = [["Triaged", triaged], ["Decided by a person", decided], ["1st option accepted", n1], ["2nd or 3rd option", other], ["Edited first", edited], ["Rejected", rejected]];
+  const max = Math.max(triaged, decided);
+  const body = !triaged && !decided ? `<p class="an-none">Nothing triaged yet. New tickets appear in <a href="#/incoming">Incoming</a>.</p>`
+    : `<div class="an-bars">${rows.map(([l, v], i) => `<div class="an-bar${i < 2 ? " total" : ""}" title="${esc(l)}: ${nf(v)}${i > 1 && decided ? ` (${pctOf(v, decided)}% of decisions)` : ""}">
+        <span class="an-bar-l">${esc(l)}</span>
+        <span class="an-bar-t"><i class="${i < 2 ? "b-soft" : i === 5 ? "b-grey" : "b-agent"}" style="width:${max ? Math.max(v ? 2 : 0, (v / max) * 100).toFixed(1) : 0}%"></i></span>
+        <b>${nf(v)}</b></div>`).join("")}</div>`;
+  const share = pctOf(n1, decided);
+  return cell("Level 1 decisions", share == null ? "—" : `${share}%`, decided ? `first option accepted, of ${nf(decided)}` : "first option accepted", body);
+}
+
+// --- Agents at work: open tasks, live ages -------------------------------------------------------------
+function taskAge(t) {
+  const base = t.age_s != null ? t.age_s : t.since ? (AN.at - new Date(t.since)) / 1000 : null;
+  if (base == null || isNaN(base)) return "";
+  const s = Math.max(0, Math.floor(base + (Date.now() - AN.at) / 1000));
+  if (s < 60) return `${s}s`;
+  if (s < 3600) return `${Math.floor(s / 60)}m`;
+  if (s < 86400) return `${Math.floor(s / 3600)}h`;
+  return `${Math.floor(s / 86400)}d`;
+}
+
+function renderTasks() {
+  const host = $("#an-tasks");
+  if (!host) return;
+  const tasks = AN.data.open_tasks || [];
+  const groups = TASK_GROUPS.map((g) => ({ ...g, rows: tasks.filter((t) => t.kind === g.kind) }));
+  const href = (t) => (t.kind === "chat" ? `#/chat/${encodeURIComponent(t.id)}` : `#/incoming/${encodeURIComponent(t.id)}`);
+  host.innerHTML = `<div class="an-tasks-head"><h2>Agents at work</h2>
+      <span class="grey">${groups.map((g) => `${g.rows.length} ${g.title.toLowerCase()}`).join(" · ")}</span></div>
+    ${groups.map((g) => {
+      const open = AN.expand[g.kind], shown = open ? g.rows : g.rows.slice(0, TASKS_SHOWN), more = g.rows.length - shown.length;
+      return `<div class="an-group">
+        <div class="an-group-h"><span>${g.title}</span><b>${g.rows.length}</b></div>
+        ${shown.map((t) => `<a class="an-task k-${esc(t.kind)}" href="${href(t)}">
+            <span class="an-tdot"></span>
+            <span class="an-ttitle">${esc(t.title || t.id)}</span>
+            <span class="an-tuser">${t.user ? esc(t.user) : `<span class="faint">no user id</span>`}</span>
+            <span class="an-tnote">${esc(t.note || "")}</span>
+            <span class="an-tage" data-task="${esc(t.kind)}:${esc(t.id)}">${taskAge(t)}</span>
+          </a>`).join("") || `<div class="an-task none"><span>${g.empty}${g.kind === "chat" ? ` <a href="#/chat">Start a chat</a>` : ""}</span></div>`}
+        ${more > 0 || (open && g.rows.length > TASKS_SHOWN) ? `<button class="an-more" data-kind="${g.kind}">${open ? "Show fewer" : `Show ${more} more`}</button>` : ""}
+      </div>`;
+    }).join("")}`;
+  host.querySelectorAll(".an-more").forEach((b) => (b.onclick = () => { AN.expand[b.dataset.kind] = !AN.expand[b.dataset.kind]; renderTasks(); }));
+}
+
+function tickAges() {
+  const by = new Map((AN.data?.open_tasks || []).map((t) => [`${t.kind}:${t.id}`, t]));
+  document.querySelectorAll(".an-tage").forEach((el) => { const t = by.get(el.dataset.task); if (t) el.textContent = taskAge(t); });
+  renderFoot();
+}
+
+function renderFoot() {
+  const host = $("#an-foot");
+  if (!host || !AN.data) return;
+  const d = new Date(AN.at), hh = (x) => String(x).padStart(2, "0");
+  const ev = AN.data.eval;
+  const evText = ev && ev.cases ? ` · Level 1 eval${ev.model ? ` (${esc(ev.model)})` : ""}: category right in ${nf(ev.category_correct)} of ${nf(ev.cases)} cases, action right in ${nf(ev.action_correct)} of ${nf(ev.cases)}` : "";
+  host.innerHTML = `${AN.err ? `<span class="error">Could not refresh: ${errText(AN.err)}</span> · ` : ""}Data refreshed at ${hh(d.getHours())}:${hh(d.getMinutes())}:${hh(d.getSeconds())}, updates every 10 s${MOCK ? " · mock data" : ""}${evText}`;
 }
 
 // ====================================================================================================
