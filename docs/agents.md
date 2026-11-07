@@ -171,3 +171,39 @@ Already in the repo (contract core, do not change shapes without asking): `resol
 | `resolve/analytics.py` | `compute(conn) -> dict` | numbers for Analyze (list above) |
 
 Names in the 4-tab UI are free; endpoints and JSON shapes are not.
+
+### Tool names and arguments (fixed)
+
+Level 2 (`frontline`), the customer id is always the session's, never a model argument:
+- `get_profile {}` → profile summary
+- `grant_access {days: int, reason: str}`
+- `store_instructions {kind: "restore"|"cancel"|"refund_request", store: "app_store"|"play_store"}` → canned steps text
+- `handoff {reason: one of HANDOFF_RULES or "other", summary: str}`
+- `mark_resolved {note: str}`
+
+Level 1 (`triage`):
+- `get_profile {customer_user_id: str}`: only the ticket's id or an id returned by `find_user_by_email` in this run; anything else → error result `not allowed`
+- `find_user_by_email {email: str}` → `{customer_user_id}` or `{not_found: true}`
+- `get_user_history {customer_user_id: str}` → earlier tickets (id, created_at, category, status, decision), grants, Level 2 sessions (outcome, last messages)
+- `get_agent_config {}` → AgentConfig
+- `submit_ticket {TriageTicket}` → ends the run
+
+Legacy proposals (v1 `proposal_json`, e.g. in `data/demo.sqlite`) are shown as a one-option ticket via `triage.legacy_to_ticket(proposal)`: grant_access→grant_access(days 7), explain→reply_only, escalate_refund→refund_to_human, no_action→no_reply.
+
+### JSON shapes (fixed)
+
+Ticket summary (`GET /api/tickets`): `{id, status, source, category, customer_user_id, email, subject, created_at, updated_at, confidence, top_action}`.
+Ticket (`GET /api/tickets/{id}`): summary fields + `{body, session_id, triage (TriageTicket | null), legacy (bool), profile (raw Adapty profile | null), decision, action, action_error, triage_error, conversation ([{role, content, ts}] | null)}`.
+`GET /api/users`: `[{customer_user_id, badge: "active"|"expired"|"lifetime"|"none"|"unknown", product: str | null}]`.
+`GET /api/chat/{session_id}`: `{session_id, customer_user_id, outcome, ticket_id, messages: [{role, content, ts}], events: [{ts, tool, args, allowed, blocked_reason, result}]}`; 404 if unknown.
+`GET /api/analytics`:
+```json
+{
+  "tickets": {"total": 0, "by_status": {}, "by_source": {}, "by_category": {}, "per_day": [{"day": "2026-11-07", "n": 0}]},
+  "level2": {"sessions": 0, "resolved": 0, "handed_off": 0, "open": 0, "handoff_reasons": {}, "grants": 0, "days_granted": 0, "blocked": {}},
+  "triage": {"triaged": 0, "confidence_buckets": {"0-0.5": 0, "0.5-0.7": 0, "0.7-0.9": 0, "0.9-1": 0},
+             "accepted_option": {"1": 0, "2": 0, "3": 0, "edited": 0, "rejected": 0}, "top_root_causes": [{"root_cause": "", "n": 0}]},
+  "eval": {"model": "", "cases": 0, "category_correct": 0, "action_correct": 0}
+}
+```
+(`eval` is null when no results file.) Errors: 404 unknown id, 409 wrong status for accept/reject, 422 invalid body. `web.py` calls `api.install(app, services)`, which adds CORS (all origins, for the APK and other UIs) and includes the router.
