@@ -20,18 +20,19 @@ from resolve import config  # noqa: E402
 from resolve.tickets import Ticket, generate  # noqa: E402
 
 # Hand-written so they read well on stage. Profiles checked live on Sat 7 Nov:
-#   00549  FR, Play, meta_ads, onb_weekly: weekly 3-day trial from Oct 27, charged €6.99 on Oct 30 and Nov 6, renewing
+#   02021  US, Play, meta_ads, onb_weekly: weekly 3-day trial from Nov 3, charged $6.99 on Nov 6, renewing to Nov 13
+#          (00549, the Gate 1 profile, already carries a grant, so it is not the demo profile)
 #   00014  US, iOS, apple_search_ads, settings flow: annual $49.99 bought Nov 4, active until Nov 2027
 #   02138  US, Play, meta_ads, onb_weekly: weekly trial from Nov 1, billing error at trial end on Nov 4, no revenue
 DEMO_TICKETS = [
     Ticket(
         id="demo-1",
-        customer_user_id="lumen_443814_00549",
+        customer_user_id="lumen_443814_02021",
         subject="Charged after my free trial",
         body=(
-            "I downloaded Lumen on Oct 27 for the 3-day free trial. I've now been charged €6.99 twice, on Oct 30 and again today. "
+            "I downloaded Lumen on Nov 3 for the 3-day free trial. This morning I got charged $6.99. "
             "The trial screen never said it turns into a weekly plan, I thought I had a week to decide. "
-            "I don't want to pay €7 every week for a few filters. I feel tricked. What can you do about this?"
+            "I don't want to pay $7 every week for a few filters. I feel tricked. What can you do about this?"
         ),
         created_at="2026-11-06T18:40:00Z",
         demo=True,
