@@ -1,7 +1,7 @@
 {% set pr = ticket.profile %}
 <section id="profile" class="card profile" {% if oob_profile %}hx-swap-oob="true"{% endif %}>
   <div class="cardhead">
-    <h2>Adapty profile <span class="muted small">live</span></h2>
+    <h2>Adapty profile <span class="muted small">{% if demo %}snapshot{% else %}live{% endif %}</span></h2>
     {% if not demo %}
     <button class="quiet small" hx-post="/tickets/{{ ticket.id }}/profile" hx-target="#profile" hx-swap="outerHTML" hx-disabled-elt="this">Refresh</button>
     {% endif %}

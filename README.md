@@ -19,7 +19,7 @@ git clone https://github.com/Milos-Blagojevic/adapty-hackathon.git && cd adapty-
 python3 -m venv .venv && source .venv/bin/activate      # or: uv venv .venv
 pip install -r requirements.txt
 cp .env.example .env                                     # fill in the keys (see below)
-python -m resolve                                        # http://127.0.0.1:8000
+python -m resolve                                        # http://127.0.0.1:8000 (--port 8010 if 8000 is taken)
 ```
 
 Keys (`.env`, git-ignored; the judges get them in the submission form, never in the repo):
@@ -44,6 +44,7 @@ Tests (no network, no keys) and the eval:
 ```bash
 python -m pytest                      # Adapty client (success, 4xx, timeout), enum rejection, call cap, approve idempotency, generator shape, pages
 python scripts/eval.py                # category + action accuracy on data/eval.json; reuses cached proposals, paid for the rest
+python scripts/batch_triage.py        # one Level 2 pass over every open ticket (paid, ~1.2 calls per ticket); Level 1 needs it
 python scripts/generate_tickets.py    # regenerate the 60 tickets from the seed repo's CSVs (deterministic)
 python scripts/snapshot.py            # rebuild data/demo.sqlite from the live DB
 ```
@@ -68,7 +69,15 @@ Two things we learned about the grant and kept visible rather than hiding: after
 
 ## Agent accuracy
 
-*(to fill in: category and action accuracy on the 20-ticket hand-labelled eval set)*
+20 hand-labelled tickets (`data/eval.json`, labels written by a person, with notes on the judgment calls), model `claude-opus-5-5`, proposals as cached by the batch run on Sat 7 Nov (`data/eval_results.json`):
+
+| Metric | Score |
+|---|---|
+| Category | 18 / 20 |
+| Action | 16 / 20 |
+| Both | 16 / 20 |
+
+All four misses are trial-conversion complaints that also ask for a refund ("give me my money back", "I want this reversed"): the model classified two of them as `refund_request` and proposed `escalate_refund` (three) or `explain` (one) where the policy says compensate first. The three demo tickets and every billing, cancel, price and refund case were right. Across the 59-ticket batch the first output was rejected 14 times, all because the 1,024-token output budget cut the JSON (Opus's thinking shares it); the budget is now 4,096 and a truncated response is reported as such.
 
 ## What we would do next
 
