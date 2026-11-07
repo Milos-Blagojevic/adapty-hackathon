@@ -9,6 +9,7 @@ acts; the owner approves in the UI.
 from __future__ import annotations
 
 import json
+import logging
 from datetime import datetime, timezone
 from typing import Literal
 
@@ -20,8 +21,12 @@ from resolve import config
 from resolve.adapty import access_level, compensation_expiry, format_datetime, is_active, parse_datetime
 from resolve.tickets import ACTIONS, CATEGORIES
 
+log = logging.getLogger("resolve.agent")
+
 MAX_CALLS = 3
-MAX_TOKENS = 1024
+# Output budget per call. Opus thinks before the JSON and the thinking counts against max_tokens:
+# at 1024 the JSON was cut off on 14 of 59 batch tickets ("EOF while parsing a string").
+MAX_TOKENS = 4096
 
 
 class Proposal(BaseModel):
@@ -202,17 +207,22 @@ def propose(client: anthropic.Anthropic, model: str, ticket: dict, profile: dict
                 model=model, max_tokens=MAX_TOKENS, system=SYSTEM_PROMPT, messages=[{"role": "user", "content": content}], output_format=Proposal
             )
             proposal = response.parsed_output
-            if proposal is None:
+            if getattr(response, "stop_reason", None) == "max_tokens":
+                last_error = f"output truncated at {MAX_TOKENS} tokens"
+            elif proposal is None:
                 last_error = "empty structured output"
-                continue
-            problem = validate(proposal, profile)
-            if problem is None:
-                return proposal, calls
-            last_error = problem
+            else:
+                problem = validate(proposal, profile)
+                if problem is None:
+                    return proposal, calls
+                last_error = problem
         except pydantic.ValidationError as exc:
-            last_error = f"output did not match the schema: {exc.errors()[0].get('msg')}"
+            first = exc.errors()[0]
+            last_error = f"output did not match the schema at {'.'.join(str(p) for p in first.get('loc', ()))}: {first.get('msg')}"
         except anthropic.APIError as exc:
             raise AgentError(f"Anthropic API error: {exc.__class__.__name__}: {exc}", calls=calls) from None
+        # The reason only, never the ticket or the reply text.
+        log.warning("ticket %s: call %d rejected: %s", ticket.get("id"), calls, last_error)
     raise AgentError(f"no valid proposal after {calls} call(s): {last_error}", calls=calls)
 
 
