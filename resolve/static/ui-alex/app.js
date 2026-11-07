@@ -441,7 +441,7 @@ function listHtml() {
     return `<button class="trow ${t.id === S.ticketId ? "active" : ""}" data-act="open" data-id="${esc(t.id)}">
       <div class="trow-top">${srcIcon(t.source)}<span class="trow-subj">${esc(t.subject)}</span><span class="trow-age" title="${esc(fmt(t.created_at))}">${esc(ago(t.created_at))}</span></div>
       <div class="trow-meta">${statusPill(t.status)}${user}<span class="tag">${esc(human(t.category))}</span>
-        ${t.top_action ? `<span>→ ${esc(ACTION_LABEL[t.top_action] || t.top_action)}</span>` : ""}${conf}</div>
+        ${t.status === "done" ? `<span class="closed-mark">✓ closed</span>` : t.status === "dismissed" ? `<span class="closed-mark muted">dismissed</span>` : t.top_action ? `<span>→ ${esc(ACTION_LABEL[t.top_action] || t.top_action)}</span>` : ""}${["done", "dismissed"].includes(t.status) ? "" : conf}</div>
     </button>`;
   }).join("");
 }
@@ -587,7 +587,7 @@ function triageHtml(t) {
     </div>
     <div class="spacer"></div>
     <div class="row" style="margin-bottom:8px"><div class="label grow" style="margin:0">Options · ranked, best first</div>
-      ${t.status === "proposed" ? `<span class="small muted">Nothing runs until you accept one.</span>` : ""}</div>
+      ${t.status === "proposed" ? `<span class="small muted">Nothing runs until you accept one.</span>` : ["done", "dismissed"].includes(t.status) ? `<span class="small muted">Closed: kept here for the record.</span>` : ""}</div>
     <div class="opts">${tr.options.map((o, i) => optionHtml(o, i, canAct, accepted)).join("")}</div>`;
 }
 
@@ -602,10 +602,13 @@ function paramsText(o) {
 
 function optionHtml(o, i, canAct, accepted) {
   const editing = S.editing === i;
-  return `<div class="opt ${i === 0 ? "best" : ""}">
-    <div class="opt-head"><span class="rank">${i + 1}</span><span class="opt-action">${esc(ACTION_LABEL[o.action] || o.action)}</span>
+  const closed = ["done", "dismissed"].includes(S.ticket.status);
+  const chosen = accepted === i;
+  const cls = chosen ? "chosen" : closed ? "dim" : i === 0 ? "best" : "";
+  return `<div class="opt ${cls}">
+    <div class="opt-head"><span class="rank">${chosen ? "✓" : i + 1}</span><span class="opt-action">${esc(ACTION_LABEL[o.action] || o.action)}</span>
       <span class="opt-params">${esc(paramsText(o))}</span>
-      ${accepted === i ? `<span class="pill ok">accepted${Object.keys(S.ticket.decision.edits || {}).length ? " · edited" : ""}</span>` : ""}
+      ${chosen ? `<span class="pill chosen-pill">chosen${realEdits(S.ticket.decision).length ? " · edited, see sent reply above" : ""}</span>` : closed ? `<span class="pill">not chosen</span>` : ""}
       <span class="opt-risk">${riskPill(o.risk)}</span></div>
     <div class="risk-reason">${esc(o.risk_reason)}</div>
     <div class="reply-preview ${o.reply ? "" : "none"}">${o.reply ? esc(o.reply) : "No reply to the user."}</div>
@@ -647,16 +650,50 @@ function collectEdits(i) {
   return edits;
 }
 
+// Decision.model_dump() sends every edit field, null when unchanged: only non-null ones are edits.
+const realEdits = (d) => Object.entries(d?.edits || {}).filter(([, v]) => v !== null && v !== undefined);
+
+function finalOption(t) {
+  const d = t.decision, o = t.triage?.options?.[d?.option];
+  if (!o) return null;
+  if (t.action?.final) return t.action.final; // what the server actually ran
+  const e = Object.fromEntries(realEdits(d));
+  return { action: e.action || o.action, params: { ...o.params, ...Object.fromEntries(["days", "kind", "store", "question"].filter((k) => k in e).map((k) => [k, e[k]])) }, reply: e.reply ?? o.reply };
+}
+
+function whatRan(t, f) {
+  const a = t.action || {};
+  if (a.demo) return "Demo mode: nothing was written to Adapty.";
+  if (f.action === "grant_access") return `Granted ${a.days ?? f.params?.days} days of ${esc(a.access_level || "premium")}${a.expires_at ? ` · access until ${fmt(a.expires_at, false)}` : ""}.`;
+  if (f.action === "refund_to_human") return "Flagged for a refund decision; the user got the store refund steps.";
+  if (f.action === "no_reply") return "Closed without a reply.";
+  return "No change in Adapty.";
+}
+
 function decisionHtml(t) {
   const d = t.decision;
   if (!d) return "";
+  const when = t.action?.approved_at || t.updated_at;
   if ("option" in d) {
-    const edits = Object.keys(d.edits || {});
-    return `<div class="alert okk"><b>Accepted option ${d.option + 1}</b>${edits.length ? ` with edits: ${esc(edits.join(", "))}` : ""}.
-      ${t.action ? `<details style="margin-top:6px"><summary>Action result</summary><pre class="json">${pretty(t.action)}</pre></details>` : ""}</div>`;
+    const f = finalOption(t) || {};
+    const edits = realEdits(d).map(([k]) => k);
+    return `<div class="resolved">
+      <div class="resolved-head"><span class="resolved-check">✓</span>
+        <div class="grow"><div class="resolved-title">Ticket closed · option ${d.option + 1} accepted${edits.length ? " with edits" : ""}</div>
+          <div class="resolved-sub">${esc(ACTION_LABEL[f.action] || f.action || "")} · ${esc(fmt(when))}${edits.length ? ` · changed: ${esc(edits.join(", "))}` : ""}</div></div>
+        ${statusPill(t.status)}</div>
+      <div class="resolved-ran">${whatRan(t, f)}</div>
+      ${f.reply ? `<div class="label" style="margin-top:10px">Reply sent to the user</div><div class="reply-preview sent">${esc(f.reply)}</div>` : ""}
+      ${t.action ? `<details style="margin-top:8px"><summary>Action result (JSON)</summary><pre class="json">${pretty(t.action)}</pre></details>` : ""}
+    </div>`;
   }
   if (d.rejected || "note" in d) {
-    return `<div class="alert info"><b>Rejected all options.</b> ${d.note ? `Note: ${esc(d.note)}.` : ""} ${d.reply ? `<div style="margin-top:6px">Manual reply sent: “${esc(d.reply)}”</div>` : "No reply sent."}</div>`;
+    return `<div class="resolved rejected">
+      <div class="resolved-head"><span class="resolved-check">✕</span>
+        <div class="grow"><div class="resolved-title">${d.reply ? "Ticket closed · options rejected, manual reply" : "Ticket dismissed · no option used"}</div>
+          <div class="resolved-sub">${esc(fmt(when))}${d.note ? ` · ${esc(d.note)}` : ""}</div></div>${statusPill(t.status)}</div>
+      ${d.reply ? `<div class="label" style="margin-top:10px">Reply sent to the user</div><div class="reply-preview sent">${esc(d.reply)}</div>` : ""}
+    </div>`;
   }
   return `<div class="alert info"><b>Decision</b><pre class="json">${pretty(d)}</pre></div>`;
 }
