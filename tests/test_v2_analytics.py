@@ -100,3 +100,15 @@ def test_triage_counts(conn):
 def test_eval_block_is_null_or_complete(conn):
     out = analytics.compute(conn)["eval"]
     assert out is None or EVAL_KEYS <= set(out)
+
+
+def test_rejections_count_as_rejected(conn):
+    """reject stores {"rejected": true, "note", "reply"} (binding rule), with or without a reply."""
+    import json
+
+    for status, reply in (("dismissed", None), ("done", "We checked: no charge.")):
+        tid = ticket(conn, "form", status, "2026-11-07T09:00:00Z", "other", 0.95, ROOT_C)
+        db.update_ticket(conn, tid, decision_json=json.dumps({"rejected": True, "note": "n", "reply": reply}))
+    accepted = analytics.compute(conn)["triage"]["accepted_option"]
+    assert accepted["rejected"] == 2
+    assert (accepted["1"], accepted["2"], accepted["edited"]) == (1, 1, 1), "rejections are not counted as options"

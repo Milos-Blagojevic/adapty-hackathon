@@ -4,12 +4,13 @@ import pytest
 
 from resolve import db, frontline
 from resolve.llm import FakeLLM, LLMError
-from resolve.models import ChatResult
+from resolve.models import HANDOFF_RULES, ChatResult
 from tests.fakes_v2 import (
     CUID,
     STRANGER,
     all_grants,
     call,
+    calls,
     customer_headers,
     http_calls,
     lifetime_profile,
@@ -21,9 +22,11 @@ from tests.fakes_v2 import (
     services,
     set_config,
     tool_results,
+    unpaid_profile,
 )
 
 SESSION = "s-1"
+FIXED_REPLY = "I've passed this to a teammate who can help with this; they will reply here."
 ALWAYS_ON = {"get_profile", "store_instructions", "handoff", "mark_resolved"}
 
 
@@ -86,16 +89,50 @@ def test_grant_tool_not_offered_when_disabled(http, conn):
     assert ALWAYS_ON <= offered
 
 
-def test_grant_called_anyway_while_disabled_is_blocked(http, conn):
+def handed_off_in_code(conn, result, fake, model_calls):
+    """Binding rule: a blocked grant that maps to an always_handoff rule ends the turn in code."""
+    assert result.handed_off is True and result.ticket_id
+    assert result.reply == FIXED_REPLY
+    assert len(fake.calls) == model_calls, "no model call after the blocked grant"
+    ticket = db.get_ticket(conn, result.ticket_id)
+    assert ticket["source"] == "chat_handoff" and ticket["session_id"] == result_session(conn, result)
+    assert db.get_conversation(conn, ticket["session_id"])["outcome"] == "handed_off"
+
+
+def result_session(conn, result):
+    return db.get_ticket(conn, result.ticket_id)["session_id"]
+
+
+def without(rule):
+    return [r for r in HANDOFF_RULES if r != rule]
+
+
+def blocked_event(conn, session=SESSION):
+    events = [e for e in db.list_events(conn, session) if e["tool"] == "grant_access"]
+    assert events and events[-1]["allowed"] is False
+    return events[-1]
+
+
+def test_grant_called_anyway_while_disabled_hands_off(http, conn):
     set_config(conn, tools={"grant_access": False})
     mock_profile(http, paid_profile())
     mock_grant_ok(http)
-    result, _ = chat(conn, grant_steps())
+    result, fake = chat(conn, grant_steps())
     assert http_calls(http, "POST") == [] and all_grants(conn) == []
     assert all(not a.allowed for a in result.actions if a.tool == "grant_access")
+    assert blocked_event(conn)["blocked_reason"] == "tool_disabled"
+    handed_off_in_code(conn, result, fake, model_calls=2)
 
 
-def test_grant_over_max_days_is_blocked(http, conn):
+def test_tool_disabled_hands_off_even_with_no_always_handoff_rules(http, conn):
+    set_config(conn, tools={"grant_access": False}, always_handoff=[])
+    mock_profile(http, paid_profile())
+    result, fake = chat(conn, grant_steps())
+    assert blocked_event(conn)["blocked_reason"] == "tool_disabled"
+    handed_off_in_code(conn, result, fake, model_calls=2)
+
+
+def test_grant_over_max_days_is_blocked_once_and_the_model_may_answer(http, conn):
     mock_profile(http, paid_profile())
     mock_grant_ok(http)
     result, fake = chat(conn, grant_steps(days=30, reply="I can't do 30 days."))
@@ -104,40 +141,99 @@ def test_grant_over_max_days_is_blocked(http, conn):
     assert grant.allowed is False and grant.blocked_reason == "over_max_days"
     assert http_calls(http, "POST") == [] and all_grants(conn) == []
     (shown,) = tool_results(fake, "grant_access")
-    assert shown["content"].startswith("blocked:") and "over_max_days" in shown["content"]
-    event = [e for e in db.list_events(conn, SESSION) if e["tool"] == "grant_access"][0]
-    assert event["allowed"] is False and event["blocked_reason"] == "over_max_days"
+    assert shown["content"].startswith("blocked: over_max_days") and "max 7 days" in shown["content"]
+    assert blocked_event(conn)["blocked_reason"] == "over_max_days"
+    assert result.handed_off is False and result.reply == "I can't do 30 days."
+
+
+def test_over_max_days_retry_within_the_limit_is_allowed(http, conn):
+    mock_profile(http, paid_profile())
+    mock_grant_ok(http)
+    result, _ = chat(conn, [call("get_profile"), call("grant_access", days=30, reason="x"), call("grant_access", days=5, reason="x"), say("Added 5 days.")])
+    assert [(a.allowed, a.blocked_reason) for a in action(result, "grant_access")] == [(False, "over_max_days"), (True, None)]
+    assert len(http_calls(http, "POST")) == 1 and all_grants(conn)[0]["days"] == 5
+    assert result.handed_off is False and result.reply == "Added 5 days."
+
+
+def test_second_over_max_days_in_a_turn_hands_off(http, conn):
+    mock_profile(http, paid_profile())
+    mock_grant_ok(http)
+    result, fake = chat(conn, [call("get_profile"), call("grant_access", days=30, reason="x"), call("grant_access", days=14, reason="x"), say("unused")])
+    assert [a.blocked_reason for a in action(result, "grant_access")] == ["over_max_days", "over_max_days"]
+    assert http_calls(http, "POST") == []
+    handed_off_in_code(conn, result, fake, model_calls=3)
+
+
+def test_over_max_days_counts_per_turn(http, conn):
+    mock_profile(http, paid_profile())
+    chat(conn, [call("grant_access", days=30, reason="x"), say("No, sorry.")])
+    second, _ = chat(conn, [call("grant_access", days=30, reason="x"), say("Still no.")], message="please, 30 days")
+    assert second.handed_off is False and second.reply == "Still no."
 
 
 def test_max_days_follows_the_stored_config(http, conn):
     set_config(conn, grant={"max_days": 3})
     mock_profile(http, paid_profile())
     mock_grant_ok(http)
-    result, _ = chat(conn, grant_steps(days=4))
+    result, fake = chat(conn, grant_steps(days=4))
     assert action(result, "grant_access")[0].blocked_reason == "over_max_days"
+    assert "max 3 days" in tool_results(fake, "grant_access")[0]["content"]
     assert http_calls(http, "POST") == []
 
 
-def test_lifetime_user_is_blocked(http, conn):
+def test_lifetime_user_hands_off_in_code(http, conn):
+    """lifetime → profile_mismatch, which is in the default always_handoff."""
     mock_profile(http, lifetime_profile())
     mock_grant_ok(http)
-    result, fake = chat(conn, grant_steps())
+    fake = FakeLLM([call("get_profile"), calls(("grant_access", {"days": 3, "reason": "x"}), ("store_instructions", {"kind": "restore", "store": "app_store"})), say("unused")])
+    result, _ = chat(conn, fake)
     (grant,) = action(result, "grant_access")
     assert grant.allowed is False and grant.blocked_reason == "lifetime"
     assert http_calls(http, "POST") == []
-    assert tool_results(fake, "grant_access")[0]["content"].startswith("blocked:")
+    assert [e["tool"] for e in db.list_events(conn, SESSION)][:2] == ["get_profile", "grant_access"]
+    after = [e for e in db.list_events(conn, SESSION) if e["tool"] == "store_instructions"]
+    assert all(e["allowed"] is False for e in after), "no further tool calls this turn (a skipped call may be logged, never run)"
+    assert blocked_event(conn)["blocked_reason"] == "lifetime"
+    handed_off_in_code(conn, result, fake, model_calls=2)
+
+
+def test_lifetime_without_profile_mismatch_rule_is_just_blocked(http, conn):
+    set_config(conn, always_handoff=without("profile_mismatch"))
+    mock_profile(http, lifetime_profile())
+    result, fake = chat(conn, grant_steps(reply="Your plan is lifetime already."))
+    (grant,) = action(result, "grant_access")
+    assert grant.blocked_reason == "lifetime"
+    assert tool_results(fake, "grant_access")[0]["content"] == "blocked: lifetime"
+    assert result.handed_off is False and result.reply == "Your plan is lifetime already."
+
+
+def test_not_paid_hands_off_in_code(http, conn):
+    mock_profile(http, unpaid_profile())
+    result, fake = chat(conn, grant_steps())
+    assert blocked_event(conn)["blocked_reason"] == "not_paid"
+    handed_off_in_code(conn, result, fake, model_calls=2)
+
+
+def test_not_paid_without_profile_mismatch_rule_is_just_blocked(http, conn):
+    set_config(conn, always_handoff=without("profile_mismatch"))
+    mock_profile(http, unpaid_profile())
+    result, fake = chat(conn, grant_steps(reply="You have no purchase yet."))
+    assert tool_results(fake, "grant_access")[0]["content"] == "blocked: not_paid"
+    assert result.handed_off is False
 
 
 def test_complaining_again_does_not_give_more_days(http, conn):
-    """Default config: one grant per user per 30 days; the second message in the session is blocked."""
+    """Default config: one grant per user per 30 days; the second message is blocked and handed off."""
     mock_profile(http, paid_profile())
     mock_grant_ok(http)
     first, _ = chat(conn, grant_steps())
     assert action(first, "grant_access")[0].allowed is True
-    second, _ = chat(conn, grant_steps(), message="still locked, give me more")
+    fake = FakeLLM(grant_steps())
+    second, _ = chat(conn, fake, message="still locked, give me more")
     (grant,) = action(second, "grant_access")
     assert grant.allowed is False and grant.blocked_reason in ("grant_limit_30d", "already_granted_this_session")
     assert len(http_calls(http, "POST")) == 1 and len(all_grants(conn)) == 1
+    handed_off_in_code(conn, second, fake, model_calls=2)
 
 
 def test_second_grant_in_the_same_session_is_blocked_even_under_the_30d_limit(http, conn):
@@ -145,18 +241,31 @@ def test_second_grant_in_the_same_session_is_blocked_even_under_the_30d_limit(ht
     mock_profile(http, paid_profile())
     mock_grant_ok(http)
     chat(conn, grant_steps())
-    second, _ = chat(conn, grant_steps(), message="one more please")
+    fake = FakeLLM(grant_steps())
+    second, _ = chat(conn, fake, message="one more please")
     assert action(second, "grant_access")[0].blocked_reason == "already_granted_this_session"
     assert len(http_calls(http, "POST")) == 1
+    handed_off_in_code(conn, second, fake, model_calls=2)
 
 
-def test_grant_from_another_channel_within_30_days_blocks(http, conn):
+def test_grant_from_another_channel_within_30_days_hands_off(http, conn):
     db.record_grant(conn, CUID, "premium", 3, None, "l1", "t-001", {})
     mock_profile(http, paid_profile())
     mock_grant_ok(http)
-    result, _ = chat(conn, grant_steps(), session="s-new")
+    result, fake = chat(conn, grant_steps(), session="s-new")
     assert action(result, "grant_access")[0].blocked_reason == "grant_limit_30d"
     assert http_calls(http, "POST") == []
+    handed_off_in_code(conn, result, fake, model_calls=2)
+
+
+def test_grant_limit_without_repeat_rule_is_just_blocked(http, conn):
+    set_config(conn, always_handoff=without("repeat_after_grant"))
+    db.record_grant(conn, CUID, "premium", 3, None, "l1", "t-001", {})
+    mock_profile(http, paid_profile())
+    result, fake = chat(conn, grant_steps(reply="You already got days this month."), session="s-new")
+    assert tool_results(fake, "grant_access")[0]["content"] == "blocked: grant_limit_30d"
+    assert result.handed_off is False and result.reply == "You already got days this month."
+    assert db.get_conversation(conn, "s-new")["outcome"] != "handed_off"
 
 
 def test_grant_older_than_30_days_does_not_block(http, conn):
@@ -262,3 +371,28 @@ def test_messages_are_stored(http, conn):
     assert {"role": "user", "content": "when do I renew?"}.items() <= messages[0].items()
     assert messages[-1]["role"] == "agent" and messages[-1]["content"] == "Your plan renews on Nov 13."
     assert db.get_conversation(conn, SESSION)["customer_user_id"] == CUID
+
+
+@pytest.mark.parametrize(
+    "setup,steps,mapped",
+    [
+        ("lifetime", [call("get_profile"), call("grant_access", days=3, reason="x"), say("unused")], "profile_mismatch"),
+        ("unpaid", [call("get_profile"), call("grant_access", days=3, reason="x"), say("unused")], "profile_mismatch"),
+        ("granted", [call("get_profile"), call("grant_access", days=3, reason="x"), say("unused")], "repeat_after_grant"),
+        ("disabled", [call("grant_access", days=3, reason="x"), say("unused")], "other"),
+        ("paid", [call("grant_access", days=30, reason="x"), call("grant_access", days=20, reason="x"), say("unused")], "other"),
+    ],
+    ids=["lifetime", "not_paid", "grant_limit_30d", "tool_disabled", "over_max_days-twice"],
+)
+def test_blocked_grant_handoff_reason_is_mapped(http, conn, setup, steps, mapped):
+    """The mapped rule is what Analyze reports as the handoff reason."""
+    from resolve import analytics
+
+    mock_profile(http, {"lifetime": lifetime_profile(), "unpaid": unpaid_profile()}.get(setup, paid_profile()))
+    if setup == "granted":
+        db.record_grant(conn, CUID, "premium", 3, None, "l1", "t-001", {})
+    if setup == "disabled":
+        set_config(conn, tools={"grant_access": False})
+    result, _ = chat(conn, steps)
+    assert result.handed_off is True
+    assert analytics.compute(conn)["level2"]["handoff_reasons"] == {mapped: 1}

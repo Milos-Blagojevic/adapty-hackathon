@@ -23,6 +23,11 @@ from tests.fakes_v2 import (
     tool_results,
     triage_dict,
     triage_ticket,
+    unidentified_ticket,
+    grant_dict,
+    grant_ticket,
+    lifetime_profile,
+    say,
 )
 
 L1_TOOLS = {"get_profile", "find_user_by_email", "get_user_history", "get_agent_config", "submit_ticket"}
@@ -110,6 +115,15 @@ def test_find_user_by_email_uses_the_index_and_unlocks_get_profile(http, conn):
     assert OTHER in found["content"] and "not_found" not in found["content"]
     assert customer_headers(http) == {OTHER}
     assert ticket["status"] == "proposed" and ticket["profile"] == prof
+    assert ticket["customer_user_id"] == OTHER, "an id found by email is written to a ticket that had none"
+
+
+def test_id_found_by_email_does_not_overwrite_the_tickets_own_id(http, conn):
+    db.index_email(conn, "anna@example.com", OTHER)
+    mock_profile(http, paid_profile(OTHER))
+    ticket, _ = run(conn, [call("find_user_by_email", email="anna@example.com"), submit(triage_ticket(customer_user_id=OTHER, lookup="email in index"))])
+    assert ticket["status"] == "proposed"
+    assert ticket["customer_user_id"] == CUID
 
 
 def test_unknown_email_is_not_found_and_unlocks_nothing(http, conn):
@@ -118,7 +132,7 @@ def test_unknown_email_is_not_found_and_unlocks_nothing(http, conn):
     ticket, fake = run(conn, [
         call("find_user_by_email", email="ghost@example.com"),
         call("get_profile", customer_user_id=STRANGER),
-        submit(triage_ticket(customer_user_id=None, lookup="email not in index")),
+        submit(unidentified_ticket()),
     ], ticket_id=tid)
     assert "not_found" in tool_results(fake, "find_user_by_email")[0]["content"]
     assert "not allowed" in tool_results(fake, "get_profile")[0]["content"]
@@ -188,6 +202,94 @@ def test_rerun_cannot_change_a_done_ticket(http, conn):
     after, _ = run(conn, [submit(triage_ticket(summary="late"))], force=True)
     assert after["status"] == "done"
     assert after["triage"]["summary"] == "first", "the accepted ticket's options stay what the person accepted"
+
+
+# --- binding submit checks (docs/agents.md, "Rules added after the first build") --------------------
+
+GP = call("get_profile", customer_user_id=CUID)
+GRANT = option("grant_access", days=3, reply="I added 3 days.")
+REFUND = option("refund_to_human", reply="I asked the store team about a refund.", store="play_store")
+REPLY = option("reply_only", reply="Here is what happened.")
+STORE = option("store_instructions", reply="Here is how to cancel.", kind="cancel", store="play_store")
+
+BAD_SUBMITS = {
+    "unknown-customer-id": ([], triage_dict(customer_user_id=STRANGER)),
+    "grant-without-get_profile": ([], grant_dict()),
+    "grant-for-lifetime": ([GP], grant_dict()),
+    "grant-0-days": ([GP], triage_dict(options=[option("grant_access", days=0, reply="x"), REPLY])),
+    "grant-400-days": ([GP], triage_dict(options=[option("grant_access", days=400, reply="x"), REPLY])),
+    "best-grant-no-safe-option": ([GP], triage_dict(options=[GRANT, REFUND])),
+    "best-refund-no-safe-option": ([], triage_dict(options=[REFUND, REFUND])),
+    "unidentified-without-ask_user": ([], triage_dict(customer_user_id=None, options=[REPLY, STORE])),
+    "ask_user-without-question": ([], triage_dict(options=[option("ask_user", reply="Which store?"), REPLY])),
+    "empty-reply": ([], triage_dict(options=[option("reply_only", reply=""), STORE])),
+    "reply-over-160-words": ([], triage_dict(options=[option("reply_only", reply="word " * 161), STORE])),
+}
+
+
+@pytest.mark.parametrize("case", list(BAD_SUBMITS))
+def test_failed_submit_check_gets_one_corrective_retry(http, conn, case):
+    prefix, bad = BAD_SUBMITS[case]
+    mock_profile(http, lifetime_profile() if case == "grant-for-lifetime" else paid_profile())
+    ticket, fake = run(conn, [*prefix, call("submit_ticket", **bad), submit(triage_ticket())])
+    assert len(fake.calls) == len(prefix) + 2
+    assert ticket["status"] == "proposed"
+    assert TriageTicket.model_validate(ticket["triage"]) == triage_ticket()
+
+
+@pytest.mark.parametrize("case", list(BAD_SUBMITS))
+def test_failed_submit_check_twice_is_a_triage_error(http, conn, case):
+    prefix, bad = BAD_SUBMITS[case]
+    mock_profile(http, lifetime_profile() if case == "grant-for-lifetime" else paid_profile())
+    fake = FakeLLM([*prefix, call("submit_ticket", **bad), call("submit_ticket", **bad), submit(triage_ticket())])
+    ticket, _ = run(conn, fake)
+    assert len(fake.calls) == len(prefix) + 2, "only one corrective retry"
+    assert ticket["status"] == "new" and ticket["triage"] is None and ticket["triage_error"]
+
+
+@pytest.mark.parametrize(
+    "prefix,options",
+    [
+        ([GP], [GRANT, REPLY]),
+        ([GP], [GRANT, STORE]),
+        ([], [REFUND, REPLY]),
+        ([], [REPLY, option("no_reply", reply="")]),
+        ([GP], [REPLY, GRANT]),
+        ([], [REPLY, option("ask_user", reply="Which store did you buy in?", question="App Store or Google Play?")]),
+    ],
+    ids=["grant+reply", "grant+store", "refund+reply", "no_reply-empty-reply", "grant-second", "ask_user-with-question"],
+)
+def test_valid_submits_pass_the_checks(http, conn, prefix, options):
+    mock_profile(http, paid_profile())
+    ticket, fake = run(conn, [*prefix, submit(triage_dict(options=options))])
+    assert len(fake.calls) == len(prefix) + 1
+    assert ticket["status"] == "proposed" and [o["action"] for o in ticket["triage"]["options"]] == [o["action"] for o in options]
+
+
+def test_grant_ticket_after_get_profile_is_proposed(http, conn):
+    mock_profile(http, paid_profile())
+    ticket, _ = run(conn, [GP, submit(grant_ticket())])
+    assert ticket["status"] == "proposed" and ticket["triage"]["options"][0]["action"] == "grant_access"
+
+
+def test_text_answer_gets_one_nudge(http, conn):
+    mock_profile(http, paid_profile())
+    ticket, fake = run(conn, [say("The user was charged after the trial."), submit(triage_ticket())])
+    assert len(fake.calls) == 2 and ticket["status"] == "proposed"
+
+
+def test_second_text_answer_is_a_triage_error(http, conn):
+    mock_profile(http, paid_profile())
+    fake = FakeLLM([say("thinking"), say("still thinking"), submit(triage_ticket())])
+    ticket, _ = run(conn, fake)
+    assert len(fake.calls) == 2, "one nudge only"
+    assert ticket["status"] == "new" and ticket["triage_error"]
+
+
+def test_get_user_history_for_a_foreign_id_is_not_allowed(http, conn):
+    ticket, fake = run(conn, [call("get_user_history", customer_user_id=STRANGER), submit(triage_ticket())])
+    assert "not allowed" in tool_results(fake, "get_user_history")[0]["content"]
+    assert ticket["status"] == "proposed"
 
 
 # --- legacy proposals -------------------------------------------------------------------------------

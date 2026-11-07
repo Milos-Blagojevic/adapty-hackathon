@@ -94,17 +94,45 @@ def triage_dict(**overrides) -> dict:
         "evidence": ["subscriptions[0].store_product_id: lumen_weekly"],
         "root_cause": "The weekly trial converted and the user missed the date.",
         "confidence": 0.85,
-        "options": [
-            option("grant_access", days=3, reply="I added 3 days of premium."),
-            option("reply_only", reply="Here is how the trial works.", risk="low"),
-        ],
+        "options": SAFE_OPTIONS,
     }
     base.update(overrides)
     return base
 
 
+# Valid without a profile (binding rules: no grant_access before get_profile).
+SAFE_OPTIONS = [
+    option("reply_only", reply="Here is how the trial works and when it renews."),
+    option("store_instructions", reply="Here is how to cancel in Google Play.", kind="cancel", store="play_store"),
+]
+# grant_access first needs get_profile in the run and a safe second option.
+GRANT_OPTIONS = [
+    option("grant_access", days=3, reply="I added 3 days of premium."),
+    option("reply_only", reply="Here is how the trial works.", risk="low"),
+]
+# Unidentified user (customer_user_id null): one option must be ask_user with a question.
+ASK_OPTIONS = [
+    option("ask_user", reply="Could you tell me the email you used to buy?", question="Which email did you buy with?"),
+    option("reply_only", reply="Here is how to restore purchases."),
+]
+
+
 def triage_ticket(**overrides) -> TriageTicket:
+    """Default: identified user, reply_only + store_instructions (valid with no tool calls)."""
     return TriageTicket.model_validate(triage_dict(**overrides))
+
+
+def grant_dict(**overrides) -> dict:
+    return triage_dict(**{"options": GRANT_OPTIONS, **overrides})
+
+
+def grant_ticket(**overrides) -> TriageTicket:
+    """grant_access 3 days first, reply_only second: valid only after get_profile on a non-lifetime user."""
+    return TriageTicket.model_validate(grant_dict(**overrides))
+
+
+def unidentified_ticket(**overrides) -> TriageTicket:
+    return TriageTicket.model_validate(triage_dict(**{"customer_user_id": None, "lookup": "email not in index", "options": ASK_OPTIONS, **overrides}))
 
 
 # --- profiles ---------------------------------------------------------------------------------------
@@ -198,8 +226,8 @@ def new_db(tmp_path, seed=True, name="t.sqlite"):
 
 
 def make_proposed(conn, ticket_id="t-001", ticket: TriageTicket | None = None, prof: dict | None = None) -> TriageTicket:
-    """Put a ticket in `proposed` with a stored Level 1 ticket, as triage would."""
-    tt = ticket or triage_ticket()
+    """Put a ticket in `proposed` with a stored Level 1 ticket, as triage would (default: grant_access 3 days first)."""
+    tt = ticket or grant_ticket()
     fields = dict(triage_json=tt.model_dump_json(), triage_at=db.now_iso(), category=tt.category, status="proposed")
     if prof is not None:
         fields["profile_json"] = json.dumps(prof)

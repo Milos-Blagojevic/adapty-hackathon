@@ -182,3 +182,76 @@ def test_approve_is_accept_option_0(http, conn):
     t = ticket(conn)
     assert t["status"] == "done" and t["decision"]["option"] == 0 and t["action"]["type"] == "grant_access"
     assert all_grants(conn)[0]["customer_user_id"] == CUID
+
+
+# --- binding rules: decision shapes, reject statuses, return value, support message -----------------
+
+
+def test_accept_stores_the_decision_model_dump(http, conn):
+    mock_profile(http, paid_profile())
+    mock_grant_ok(http)
+    decision = Decision(option=0, edits=OptionEdits(days=5, reply="I added 5 days."))
+    accept(conn, decision)
+    assert ticket(conn)["decision"] == decision.model_dump()
+
+
+@pytest.mark.parametrize("rejection,status", [(Rejection(note="wrong", reply="We checked: no charge."), "done"), (Rejection(note="spam"), "dismissed")])
+def test_reject_stores_the_rejected_shape(http, conn, rejection, status):
+    workflow.reject(services(conn), "t-001", rejection)
+    t = ticket(conn)
+    assert t["status"] == status
+    assert t["decision"] == {"rejected": True, "note": rejection.note, "reply": rejection.reply}
+
+
+@pytest.mark.parametrize("start", ["new", "triaged", "proposed"])
+def test_reject_is_allowed_from_open_statuses(http, conn, start):
+    db.update_ticket(conn, "t-001", status=start)
+    workflow.reject(services(conn), "t-001", Rejection(note="dup"))
+    assert ticket(conn)["status"] == "dismissed"
+
+
+def test_reject_a_done_ticket_changes_nothing(http, conn):
+    accept(conn, Decision(option=1))
+    before = ticket(conn)
+    try:
+        workflow.reject(services(conn), "t-001", Rejection(note="late", reply="late reply"))
+    except Exception:
+        pass
+    after = ticket(conn)
+    assert after["status"] == "done" and after["decision"] == before["decision"]
+
+
+def test_accept_and_reject_return_the_full_ticket(http, conn):
+    out = accept(conn, Decision(option=1))
+    assert out["id"] == "t-001" and out["status"] == "done" and out["decision"]["option"] == 1
+    db.update_ticket(conn, "t-002", status="new")
+    out = workflow.reject(services(conn), "t-002", Rejection(note="spam"))
+    assert out["id"] == "t-002" and out["status"] == "dismissed"
+
+
+def chat_ticket(conn):
+    db.ensure_conversation(conn, "s-h", CUID)
+    db.append_message(conn, "s-h", "user", "refund me")
+    tid = db.insert_feedback(conn, "refund me", source="chat_handoff", customer_user_id=CUID, session_id="s-h")
+    make_proposed(conn, tid, ticket=triage_ticket())  # option 0: reply_only
+    return tid
+
+
+def test_accepting_a_reply_on_a_chat_ticket_appends_a_support_message(http, conn):
+    tid = chat_ticket(conn)
+    workflow.accept(services(conn), tid, Decision(option=0))
+    last = db.list_messages(conn, "s-h")[-1]
+    assert (last["role"], last["content"]) == ("support", triage_ticket().options[0].reply)
+
+
+def test_the_edited_reply_is_the_support_message(http, conn):
+    tid = chat_ticket(conn)
+    workflow.accept(services(conn), tid, Decision(option=0, edits=OptionEdits(reply="Edited by a person.")))
+    messages = db.list_messages(conn, "s-h")
+    assert [m["role"] for m in messages] == ["user", "support"]
+    assert messages[-1]["content"] == "Edited by a person."
+
+
+def test_non_chat_ticket_gets_no_conversation_message(http, conn):
+    accept(conn, Decision(option=1))
+    assert conn.execute("SELECT COUNT(*) FROM messages").fetchone()[0] == 0
