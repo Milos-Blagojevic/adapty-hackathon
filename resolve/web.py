@@ -12,6 +12,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
+from resolve.models import Health
 from resolve import api, config, db, insights, llm, models, policy, triage, workflow
 from resolve.adapty import Client, parse_datetime
 from resolve.tickets import CATEGORIES, STATUSES
@@ -227,7 +228,7 @@ def create_app(
                 error = str(exc)
         return render("_insights_report.html", request, report=report, groups=groups, drafts=db.list_ab_drafts(conn), placements=insights.PLACEMENTS, draft_error=error)
 
-    @app.get("/healthz")
+    @app.get("/healthz", response_model=Health, tags=["mobile"])
     def healthz():
         return {"ok": True, "demo": demo}
 

@@ -22,9 +22,17 @@ from resolve.models import (
     Decision,
     FeedbackCreated,
     FeedbackRequest,
+    Analytics,
+    ErrorDetail,
+    LlmInfo,
     Rejection,
+    Ticket,
+    TicketSummary,
     UserItem,
 )
+
+E404 = {404: {"model": ErrorDetail, "description": "Unknown id"}}
+E409 = {409: {"model": ErrorDetail, "description": "Wrong ticket status for this call"}}
 from resolve.tickets import CATEGORIES
 
 ACCEPT_STATUSES = ("proposed",)
@@ -118,7 +126,7 @@ def build_router(services) -> APIRouter:
             background.add_task(triage.run, services, result.ticket_id)
         return result.model_dump()
 
-    @router.get("/api/chat/{session_id}", response_model=ChatSession, tags=["mobile"], summary="Conversation, tool-call log and outcome (404 if unknown)")
+    @router.get("/api/chat/{session_id}", response_model=ChatSession, tags=["mobile"], summary="Conversation, tool-call log and outcome", responses=E404)
     def chat_history(session_id: str):
         conversation = db.get_conversation(conn, session_id)
         if conversation is None:
@@ -144,7 +152,7 @@ def build_router(services) -> APIRouter:
         background.add_task(triage.run, services, ticket_id)
         return {"ticket_id": ticket_id}
 
-    @router.get("/api/tickets")
+    @router.get("/api/tickets", response_model=list[TicketSummary], tags=["inbox"])
     def tickets(
         status: Literal[*API_STATUSES] | None = None,
         source: Literal[*SOURCES] | None = None,
@@ -159,17 +167,17 @@ def build_router(services) -> APIRouter:
             and (category is None or t["category"] == category)
         ]
 
-    @router.get("/api/tickets/{ticket_id}")
+    @router.get("/api/tickets/{ticket_id}", response_model=Ticket, tags=["inbox"], responses=E404)
     def ticket(ticket_id: str):
         return ticket_full(conn, ticket_or_404(ticket_id))
 
-    @router.post("/api/tickets/{ticket_id}/triage")
+    @router.post("/api/tickets/{ticket_id}/triage", response_model=Ticket, tags=["inbox"], responses=E404, summary="Run Level 1 now (cached unless ?force=1)")
     def run_triage(ticket_id: str, force: bool = False):
         ticket_or_404(ticket_id)
         triage.run(services, ticket_id, force=force)
         return ticket_full(conn, ticket_or_404(ticket_id))
 
-    @router.post("/api/tickets/{ticket_id}/accept")
+    @router.post("/api/tickets/{ticket_id}/accept", response_model=Ticket, tags=["inbox"], responses={**E404, **E409})
     def accept(ticket_id: str, body: Decision):
         if ticket_or_404(ticket_id)["status"] not in ACCEPT_STATUSES:
             raise HTTPException(409, "only a proposed ticket can be accepted")
@@ -179,7 +187,7 @@ def build_router(services) -> APIRouter:
             raise HTTPException(404, f"no ticket {ticket_id}") from None
         return ticket_full(conn, ticket_or_404(ticket_id))
 
-    @router.post("/api/tickets/{ticket_id}/reject")
+    @router.post("/api/tickets/{ticket_id}/reject", response_model=Ticket, tags=["inbox"], responses={**E404, **E409})
     def reject(ticket_id: str, body: Rejection):
         if ticket_or_404(ticket_id)["status"] not in REJECT_STATUSES:
             raise HTTPException(409, "only an open ticket can be rejected")
@@ -189,18 +197,18 @@ def build_router(services) -> APIRouter:
             raise HTTPException(404, f"no ticket {ticket_id}") from None
         return ticket_full(conn, ticket_or_404(ticket_id))
 
-    @router.get("/api/config")
+    @router.get("/api/config", response_model=AgentConfig, tags=["settings"])
     def get_config():
         return policy.load_config(conn).model_dump()
 
-    @router.put("/api/config")
+    @router.put("/api/config", response_model=AgentConfig, tags=["settings"], summary="Save; a provider without keys → 422")
     def put_config(body: AgentConfig):
         if body.llm_provider != policy.load_config(conn).llm_provider:
             _switch_llm(services, body.llm_provider)  # 422 when that provider has no keys; nothing saved
         db.save_config(conn, body.model_dump())
         return body.model_dump()
 
-    @router.get("/api/llm")
+    @router.get("/api/llm", response_model=LlmInfo, tags=["settings"])
     def get_llm():
         active = services.llm
         return {
@@ -213,7 +221,7 @@ def build_router(services) -> APIRouter:
             "demo": services.demo,
         }
 
-    @router.get("/api/analytics")
+    @router.get("/api/analytics", response_model=Analytics, tags=["analyze"])
     def get_analytics():
         return analytics.compute(conn)
 

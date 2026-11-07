@@ -52,7 +52,7 @@
     "tags": [
      "mobile"
     ],
-    "summary": "Conversation, tool-call log and outcome (404 if unknown)",
+    "summary": "Conversation, tool-call log and outcome",
     "operationId": "chat_history_api_chat__session_id__get",
     "parameters": [
      {
@@ -72,6 +72,16 @@
        "application/json": {
         "schema": {
          "$ref": "#/components/schemas/ChatSession"
+        }
+       }
+      }
+     },
+     "404": {
+      "description": "Unknown id",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorDetail"
         }
        }
       }
@@ -132,6 +142,9 @@
   },
   "/api/tickets": {
    "get": {
+    "tags": [
+     "inbox"
+    ],
     "summary": "Tickets",
     "operationId": "tickets_api_tickets_get",
     "parameters": [
@@ -209,7 +222,13 @@
       "description": "Successful Response",
       "content": {
        "application/json": {
-        "schema": {}
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/TicketSummary"
+         },
+         "title": "Response Tickets Api Tickets Get"
+        }
        }
       }
      },
@@ -228,6 +247,9 @@
   },
   "/api/tickets/{ticket_id}": {
    "get": {
+    "tags": [
+     "inbox"
+    ],
     "summary": "Ticket",
     "operationId": "ticket_api_tickets__ticket_id__get",
     "parameters": [
@@ -246,7 +268,19 @@
       "description": "Successful Response",
       "content": {
        "application/json": {
-        "schema": {}
+        "schema": {
+         "$ref": "#/components/schemas/Ticket"
+        }
+       }
+      }
+     },
+     "404": {
+      "description": "Unknown id",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorDetail"
+        }
        }
       }
      },
@@ -265,7 +299,10 @@
   },
   "/api/tickets/{ticket_id}/triage": {
    "post": {
-    "summary": "Run Triage",
+    "tags": [
+     "inbox"
+    ],
+    "summary": "Run Level 1 now (cached unless ?force=1)",
     "operationId": "run_triage_api_tickets__ticket_id__triage_post",
     "parameters": [
      {
@@ -293,7 +330,19 @@
       "description": "Successful Response",
       "content": {
        "application/json": {
-        "schema": {}
+        "schema": {
+         "$ref": "#/components/schemas/Ticket"
+        }
+       }
+      }
+     },
+     "404": {
+      "description": "Unknown id",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorDetail"
+        }
        }
       }
      },
@@ -312,6 +361,9 @@
   },
   "/api/tickets/{ticket_id}/accept": {
    "post": {
+    "tags": [
+     "inbox"
+    ],
     "summary": "Accept",
     "operationId": "accept_api_tickets__ticket_id__accept_post",
     "parameters": [
@@ -340,7 +392,29 @@
       "description": "Successful Response",
       "content": {
        "application/json": {
-        "schema": {}
+        "schema": {
+         "$ref": "#/components/schemas/Ticket"
+        }
+       }
+      }
+     },
+     "404": {
+      "description": "Unknown id",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorDetail"
+        }
+       }
+      }
+     },
+     "409": {
+      "description": "Wrong ticket status for this call",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorDetail"
+        }
        }
       }
      },
@@ -359,6 +433,9 @@
   },
   "/api/tickets/{ticket_id}/reject": {
    "post": {
+    "tags": [
+     "inbox"
+    ],
     "summary": "Reject",
     "operationId": "reject_api_tickets__ticket_id__reject_post",
     "parameters": [
@@ -387,7 +464,29 @@
       "description": "Successful Response",
       "content": {
        "application/json": {
-        "schema": {}
+        "schema": {
+         "$ref": "#/components/schemas/Ticket"
+        }
+       }
+      }
+     },
+     "404": {
+      "description": "Unknown id",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorDetail"
+        }
+       }
+      }
+     },
+     "409": {
+      "description": "Wrong ticket status for this call",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorDetail"
+        }
        }
       }
      },
@@ -406,6 +505,9 @@
   },
   "/api/config": {
    "get": {
+    "tags": [
+     "settings"
+    ],
     "summary": "Get Config",
     "operationId": "get_config_api_config_get",
     "responses": {
@@ -413,14 +515,19 @@
       "description": "Successful Response",
       "content": {
        "application/json": {
-        "schema": {}
+        "schema": {
+         "$ref": "#/components/schemas/AgentConfig"
+        }
        }
       }
      }
     }
    },
    "put": {
-    "summary": "Put Config",
+    "tags": [
+     "settings"
+    ],
+    "summary": "Save; a provider without keys \u2192 422",
     "operationId": "put_config_api_config_put",
     "requestBody": {
      "content": {
@@ -437,7 +544,9 @@
       "description": "Successful Response",
       "content": {
        "application/json": {
-        "schema": {}
+        "schema": {
+         "$ref": "#/components/schemas/AgentConfig"
+        }
        }
       }
      },
@@ -456,6 +565,9 @@
   },
   "/api/llm": {
    "get": {
+    "tags": [
+     "settings"
+    ],
     "summary": "Get Llm",
     "operationId": "get_llm_api_llm_get",
     "responses": {
@@ -463,7 +575,9 @@
       "description": "Successful Response",
       "content": {
        "application/json": {
-        "schema": {}
+        "schema": {
+         "$ref": "#/components/schemas/LlmInfo"
+        }
        }
       }
      }
@@ -472,6 +586,9 @@
   },
   "/api/analytics": {
    "get": {
+    "tags": [
+     "analyze"
+    ],
     "summary": "Get Analytics",
     "operationId": "get_analytics_api_analytics_get",
     "responses": {
@@ -479,7 +596,9 @@
       "description": "Successful Response",
       "content": {
        "application/json": {
-        "schema": {}
+        "schema": {
+         "$ref": "#/components/schemas/Analytics"
+        }
        }
       }
      }
@@ -513,6 +632,9 @@
   },
   "/healthz": {
    "get": {
+    "tags": [
+     "mobile"
+    ],
     "summary": "Healthz",
     "operationId": "healthz_healthz_get",
     "responses": {
@@ -520,7 +642,9 @@
       "description": "Successful Response",
       "content": {
        "application/json": {
-        "schema": {}
+        "schema": {
+         "$ref": "#/components/schemas/Health"
+        }
        }
       }
      }
@@ -637,6 +761,36 @@
     },
     "type": "object",
     "title": "AgentConfig"
+   },
+   "Analytics": {
+    "properties": {
+     "tickets": {
+      "$ref": "#/components/schemas/TicketStats"
+     },
+     "level2": {
+      "$ref": "#/components/schemas/Level2Stats"
+     },
+     "triage": {
+      "$ref": "#/components/schemas/TriageStats"
+     },
+     "eval": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/EvalSummary"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     }
+    },
+    "type": "object",
+    "required": [
+     "tickets",
+     "level2",
+     "triage"
+    ],
+    "title": "Analytics"
    },
    "Body_ab_draft_insights_ab_draft_post": {
     "properties": {
@@ -928,6 +1082,24 @@
     "title": "ChatSession",
     "description": "GET /api/chat/{session_id}: poll this to show a support reply that arrives after a handoff."
    },
+   "DayCount": {
+    "properties": {
+     "day": {
+      "type": "string",
+      "title": "Day"
+     },
+     "n": {
+      "type": "integer",
+      "title": "N"
+     }
+    },
+    "type": "object",
+    "required": [
+     "day",
+     "n"
+    ],
+    "title": "DayCount"
+   },
    "Decision": {
     "properties": {
      "option": {
@@ -945,6 +1117,69 @@
      "option"
     ],
     "title": "Decision"
+   },
+   "ErrorDetail": {
+    "properties": {
+     "detail": {
+      "type": "string",
+      "title": "Detail"
+     }
+    },
+    "type": "object",
+    "required": [
+     "detail"
+    ],
+    "title": "ErrorDetail"
+   },
+   "EvalSummary": {
+    "properties": {
+     "model": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Model"
+     },
+     "cases": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Cases"
+     },
+     "category_correct": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Category Correct"
+     },
+     "action_correct": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Action Correct"
+     }
+    },
+    "type": "object",
+    "title": "EvalSummary"
    },
    "FeedbackCreated": {
     "properties": {
@@ -1058,6 +1293,136 @@
     "type": "object",
     "title": "HTTPValidationError"
    },
+   "Health": {
+    "properties": {
+     "ok": {
+      "type": "boolean",
+      "title": "Ok"
+     },
+     "demo": {
+      "type": "boolean",
+      "title": "Demo"
+     }
+    },
+    "type": "object",
+    "required": [
+     "ok",
+     "demo"
+    ],
+    "title": "Health"
+   },
+   "Level2Stats": {
+    "properties": {
+     "sessions": {
+      "type": "integer",
+      "title": "Sessions"
+     },
+     "resolved": {
+      "type": "integer",
+      "title": "Resolved"
+     },
+     "handed_off": {
+      "type": "integer",
+      "title": "Handed Off"
+     },
+     "open": {
+      "type": "integer",
+      "title": "Open"
+     },
+     "handoff_reasons": {
+      "additionalProperties": {
+       "type": "integer"
+      },
+      "type": "object",
+      "title": "Handoff Reasons"
+     },
+     "grants": {
+      "type": "integer",
+      "title": "Grants"
+     },
+     "days_granted": {
+      "type": "integer",
+      "title": "Days Granted"
+     },
+     "blocked": {
+      "additionalProperties": {
+       "type": "integer"
+      },
+      "type": "object",
+      "title": "Blocked"
+     }
+    },
+    "type": "object",
+    "required": [
+     "sessions",
+     "resolved",
+     "handed_off",
+     "open",
+     "handoff_reasons",
+     "grants",
+     "days_granted",
+     "blocked"
+    ],
+    "title": "Level2Stats"
+   },
+   "LlmInfo": {
+    "properties": {
+     "selected": {
+      "type": "string",
+      "enum": [
+       "env",
+       "openai",
+       "anthropic"
+      ],
+      "title": "Selected"
+     },
+     "env_default": {
+      "type": "string",
+      "title": "Env Default"
+     },
+     "active": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Active"
+     },
+     "model": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Model"
+     },
+     "available": {
+      "additionalProperties": {
+       "type": "boolean"
+      },
+      "type": "object",
+      "title": "Available"
+     },
+     "demo": {
+      "type": "boolean",
+      "title": "Demo"
+     }
+    },
+    "type": "object",
+    "required": [
+     "selected",
+     "env_default",
+     "available",
+     "demo"
+    ],
+    "title": "LlmInfo"
+   },
    "OptionEdits": {
     "properties": {
      "action": {
@@ -1150,6 +1515,69 @@
     "title": "OptionEdits",
     "description": "What the support person may change before accepting. Any field left None keeps the option's value."
    },
+   "OptionParams": {
+    "properties": {
+     "days": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Days",
+      "description": "grant_access only: days of the access level"
+     },
+     "kind": {
+      "anyOf": [
+       {
+        "type": "string",
+        "enum": [
+         "restore",
+         "cancel",
+         "refund_request"
+        ]
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Kind",
+      "description": "store_instructions only"
+     },
+     "store": {
+      "anyOf": [
+       {
+        "type": "string",
+        "enum": [
+         "app_store",
+         "play_store"
+        ]
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Store",
+      "description": "store_instructions / refund_to_human: which store"
+     },
+     "question": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Question",
+      "description": "ask_user only: the question to the user"
+     }
+    },
+    "type": "object",
+    "title": "OptionParams"
+   },
    "Rejection": {
     "properties": {
      "note": {
@@ -1171,6 +1599,568 @@
     },
     "type": "object",
     "title": "Rejection"
+   },
+   "RootCauseCount": {
+    "properties": {
+     "root_cause": {
+      "type": "string",
+      "title": "Root Cause"
+     },
+     "n": {
+      "type": "integer",
+      "title": "N"
+     }
+    },
+    "type": "object",
+    "required": [
+     "root_cause",
+     "n"
+    ],
+    "title": "RootCauseCount"
+   },
+   "Ticket": {
+    "properties": {
+     "id": {
+      "type": "string",
+      "title": "Id"
+     },
+     "status": {
+      "type": "string",
+      "enum": [
+       "new",
+       "proposed",
+       "done",
+       "dismissed"
+      ],
+      "title": "Status"
+     },
+     "source": {
+      "type": "string",
+      "enum": [
+       "chat_handoff",
+       "email",
+       "form"
+      ],
+      "title": "Source"
+     },
+     "category": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Category"
+     },
+     "customer_user_id": {
+      "type": "string",
+      "title": "Customer User Id",
+      "description": "Empty string when the user is not identified"
+     },
+     "email": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Email"
+     },
+     "subject": {
+      "type": "string",
+      "title": "Subject"
+     },
+     "created_at": {
+      "type": "string",
+      "title": "Created At"
+     },
+     "updated_at": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Updated At"
+     },
+     "confidence": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Confidence"
+     },
+     "top_action": {
+      "anyOf": [
+       {
+        "type": "string",
+        "enum": [
+         "grant_access",
+         "reply_only",
+         "store_instructions",
+         "refund_to_human",
+         "ask_user",
+         "no_reply"
+        ]
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Top Action"
+     },
+     "body": {
+      "type": "string",
+      "title": "Body"
+     },
+     "session_id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Session Id"
+     },
+     "triage": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/TriageView"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "legacy": {
+      "type": "boolean",
+      "title": "Legacy",
+      "description": "True when triage was built from a v1 proposal"
+     },
+     "profile": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Profile",
+      "description": "Raw Adapty profile snapshot"
+     },
+     "decision": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Decision",
+      "description": "Decision on accept; {rejected: true, note, reply} on reject"
+     },
+     "action": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Action",
+      "description": "Result of the executed action"
+     },
+     "action_error": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Action Error"
+     },
+     "triage_error": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Triage Error"
+     },
+     "conversation": {
+      "anyOf": [
+       {
+        "items": {
+         "$ref": "#/components/schemas/ChatMessage"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Conversation"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "status",
+     "source",
+     "customer_user_id",
+     "subject",
+     "created_at",
+     "body",
+     "legacy"
+    ],
+    "title": "Ticket"
+   },
+   "TicketStats": {
+    "properties": {
+     "total": {
+      "type": "integer",
+      "title": "Total"
+     },
+     "by_status": {
+      "additionalProperties": {
+       "type": "integer"
+      },
+      "type": "object",
+      "title": "By Status"
+     },
+     "by_source": {
+      "additionalProperties": {
+       "type": "integer"
+      },
+      "type": "object",
+      "title": "By Source"
+     },
+     "by_category": {
+      "additionalProperties": {
+       "type": "integer"
+      },
+      "type": "object",
+      "title": "By Category"
+     },
+     "per_day": {
+      "items": {
+       "$ref": "#/components/schemas/DayCount"
+      },
+      "type": "array",
+      "title": "Per Day"
+     }
+    },
+    "type": "object",
+    "required": [
+     "total",
+     "by_status",
+     "by_source",
+     "by_category",
+     "per_day"
+    ],
+    "title": "TicketStats"
+   },
+   "TicketSummary": {
+    "properties": {
+     "id": {
+      "type": "string",
+      "title": "Id"
+     },
+     "status": {
+      "type": "string",
+      "enum": [
+       "new",
+       "proposed",
+       "done",
+       "dismissed"
+      ],
+      "title": "Status"
+     },
+     "source": {
+      "type": "string",
+      "enum": [
+       "chat_handoff",
+       "email",
+       "form"
+      ],
+      "title": "Source"
+     },
+     "category": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Category"
+     },
+     "customer_user_id": {
+      "type": "string",
+      "title": "Customer User Id",
+      "description": "Empty string when the user is not identified"
+     },
+     "email": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Email"
+     },
+     "subject": {
+      "type": "string",
+      "title": "Subject"
+     },
+     "created_at": {
+      "type": "string",
+      "title": "Created At"
+     },
+     "updated_at": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Updated At"
+     },
+     "confidence": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Confidence"
+     },
+     "top_action": {
+      "anyOf": [
+       {
+        "type": "string",
+        "enum": [
+         "grant_access",
+         "reply_only",
+         "store_instructions",
+         "refund_to_human",
+         "ask_user",
+         "no_reply"
+        ]
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Top Action"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "status",
+     "source",
+     "customer_user_id",
+     "subject",
+     "created_at"
+    ],
+    "title": "TicketSummary"
+   },
+   "TriageOption": {
+    "properties": {
+     "action": {
+      "type": "string",
+      "enum": [
+       "grant_access",
+       "reply_only",
+       "store_instructions",
+       "refund_to_human",
+       "ask_user",
+       "no_reply"
+      ],
+      "title": "Action"
+     },
+     "params": {
+      "$ref": "#/components/schemas/OptionParams"
+     },
+     "reply": {
+      "type": "string",
+      "title": "Reply",
+      "description": "Draft reply to the user, ready to send, under 120 words. Empty for no_reply."
+     },
+     "risk": {
+      "type": "string",
+      "enum": [
+       "low",
+       "medium",
+       "high"
+      ],
+      "title": "Risk"
+     },
+     "risk_reason": {
+      "type": "string",
+      "title": "Risk Reason",
+      "description": "One line: why this risk level (money, abuse, wrong diagnosis)."
+     }
+    },
+    "type": "object",
+    "required": [
+     "action",
+     "params",
+     "reply",
+     "risk",
+     "risk_reason"
+    ],
+    "title": "TriageOption"
+   },
+   "TriageStats": {
+    "properties": {
+     "triaged": {
+      "type": "integer",
+      "title": "Triaged"
+     },
+     "confidence_buckets": {
+      "additionalProperties": {
+       "type": "integer"
+      },
+      "type": "object",
+      "title": "Confidence Buckets"
+     },
+     "accepted_option": {
+      "additionalProperties": {
+       "type": "integer"
+      },
+      "type": "object",
+      "title": "Accepted Option"
+     },
+     "top_root_causes": {
+      "items": {
+       "$ref": "#/components/schemas/RootCauseCount"
+      },
+      "type": "array",
+      "title": "Top Root Causes"
+     }
+    },
+    "type": "object",
+    "required": [
+     "triaged",
+     "confidence_buckets",
+     "accepted_option",
+     "top_root_causes"
+    ],
+    "title": "TriageStats"
+   },
+   "TriageView": {
+    "properties": {
+     "customer_user_id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Customer User Id",
+      "description": "The Adapty customer user id, or null when not found"
+     },
+     "lookup": {
+      "type": "string",
+      "title": "Lookup",
+      "description": "How the user was identified or why not (e.g. 'id from chat', 'email not in index')"
+     },
+     "summary": {
+      "type": "string",
+      "title": "Summary",
+      "description": "One sentence: what the user wants"
+     },
+     "category": {
+      "type": "string",
+      "enum": [
+       "charged_after_trial",
+       "no_access_after_purchase",
+       "billing_issue",
+       "refund_request",
+       "cancel_how",
+       "price_complaint",
+       "other"
+      ],
+      "title": "Category"
+     },
+     "evidence": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "minItems": 1,
+      "title": "Evidence",
+      "description": "Facts used, each 'field: value' from the profile or history"
+     },
+     "root_cause": {
+      "type": "string",
+      "title": "Root Cause",
+      "description": "One sentence hypothesis of why this happened"
+     },
+     "confidence": {
+      "type": "number",
+      "maximum": 1.0,
+      "minimum": 0.0,
+      "title": "Confidence"
+     },
+     "options": {
+      "items": {
+       "$ref": "#/components/schemas/TriageOption"
+      },
+      "type": "array",
+      "maxItems": 3,
+      "minItems": 1,
+      "title": "Options",
+      "description": "Ranked, best first"
+     }
+    },
+    "type": "object",
+    "required": [
+     "customer_user_id",
+     "lookup",
+     "summary",
+     "category",
+     "evidence",
+     "root_cause",
+     "confidence",
+     "options"
+    ],
+    "title": "TriageView",
+    "description": "A Level 1 ticket as shown by the API: a v1 legacy proposal has a single option."
    },
    "UserItem": {
     "properties": {

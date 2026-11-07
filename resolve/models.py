@@ -155,6 +155,110 @@ class UserItem(BaseModel):
     product: str | None = None
 
 
+# --- API response shapes (docs/openapi.json is generated from these) ---------------------------------
+
+
+class ErrorDetail(BaseModel):
+    detail: str
+
+
+class TriageView(TriageTicket):
+    """A Level 1 ticket as shown by the API: a v1 legacy proposal has a single option."""
+
+    options: list[TriageOption] = Field(min_length=1, max_length=3, description="Ranked, best first")
+
+
+class TicketSummary(BaseModel):
+    id: str
+    status: Literal[*API_STATUSES]
+    source: Literal[*SOURCES]
+    category: str | None = None
+    customer_user_id: str = Field(description="Empty string when the user is not identified")
+    email: str | None = None
+    subject: str
+    created_at: str
+    updated_at: str | None = None
+    confidence: float | None = None
+    top_action: Literal[*ACTIONS] | None = None
+
+
+class Ticket(TicketSummary):
+    body: str
+    session_id: str | None = None
+    triage: TriageView | None = None
+    legacy: bool = Field(description="True when triage was built from a v1 proposal")
+    profile: dict | None = Field(None, description="Raw Adapty profile snapshot")
+    decision: dict | None = Field(None, description="Decision on accept; {rejected: true, note, reply} on reject")
+    action: dict | None = Field(None, description="Result of the executed action")
+    action_error: str | None = None
+    triage_error: str | None = None
+    conversation: list[ChatMessage] | None = None
+
+
+class LlmInfo(BaseModel):
+    selected: Literal["env", "openai", "anthropic"]
+    env_default: str
+    active: str | None = None
+    model: str | None = None
+    available: dict[str, bool]
+    demo: bool
+
+
+class DayCount(BaseModel):
+    day: str
+    n: int
+
+
+class TicketStats(BaseModel):
+    total: int
+    by_status: dict[str, int]
+    by_source: dict[str, int]
+    by_category: dict[str, int]
+    per_day: list[DayCount]
+
+
+class Level2Stats(BaseModel):
+    sessions: int
+    resolved: int
+    handed_off: int
+    open: int
+    handoff_reasons: dict[str, int]
+    grants: int
+    days_granted: int
+    blocked: dict[str, int]
+
+
+class RootCauseCount(BaseModel):
+    root_cause: str
+    n: int
+
+
+class TriageStats(BaseModel):
+    triaged: int
+    confidence_buckets: dict[str, int]
+    accepted_option: dict[str, int]
+    top_root_causes: list[RootCauseCount]
+
+
+class EvalSummary(BaseModel):
+    model: str | None = None
+    cases: int | None = None
+    category_correct: int | None = None
+    action_correct: int | None = None
+
+
+class Analytics(BaseModel):
+    tickets: TicketStats
+    level2: Level2Stats
+    triage: TriageStats
+    eval: EvalSummary | None = None
+
+
+class Health(BaseModel):
+    ok: bool
+    demo: bool
+
+
 class FeedbackCreated(BaseModel):
     ticket_id: str
 
