@@ -37,17 +37,34 @@ Keyless run from the committed snapshot:
 DEMO_MODE=1 python -m resolve
 ```
 
-Tests and the eval: *(to fill in)*
+The app seeds `data/tickets.json` into `data/resolve.sqlite` on first start. Opening a ticket fetches the live profile and runs the Level 2 agent once (cached on the ticket; at most 3 model calls per ticket). Approve runs the Adapty write; Dismiss does nothing in Adapty.
+
+Tests (no network, no keys) and the eval:
+
+```bash
+python -m pytest                      # Adapty client (success, 4xx, timeout), enum rejection, call cap, approve idempotency, generator shape, pages
+python scripts/eval.py                # category + action accuracy on data/eval.json; reuses cached proposals, paid for the rest
+python scripts/generate_tickets.py    # regenerate the 60 tickets from the seed repo's CSVs (deterministic)
+python scripts/snapshot.py            # rebuild data/demo.sqlite from the live DB
+```
+
+In `DEMO_MODE=1` the app copies `data/demo.sqlite` to a scratch file, serves cached profiles and proposals, and Approve changes local state only (the page says so). No key is read. Each restart resets to the snapshot.
 
 ## What is real and what is mocked
 
-- **Real:** the seeded Lumen account on Adapty; every `getProfile` and `grantAccessLevel` call; the A/B test draft created through the Adapty CLI; the agent's calls and its eval score.
-- **Synthetic:** the tickets and their wording (generated from the organisers' offline dataset; customer ids are real seeded profiles); the "reply sent" status (nothing is sent anywhere); the user → paywall mapping, which comes from the offline CSV rather than the live profile.
-- **Mocked or absent:** inbound channels (email, App Store reviews, in-app form).
+- **Real:** the seeded Lumen account on Adapty; every `getProfile`, `grantAccessLevel` and `updateProfile` call (the stamp `last_support_ticket=<ticket id>` on the profile); the A/B test draft created through the Adapty CLI (`adapty ab-tests create`, never started); the agent's calls and its eval score.
+- **Synthetic:** the tickets and their wording (generated from the organisers' offline dataset; customer ids are real seeded profiles; dates are shifted to the live profiles' clock); the "reply sent" status (nothing is sent anywhere); the user → paywall / A/B-arm mapping, which comes from the offline CSV rather than the live profile (the profile has no "paywall seen" field; the UI says so).
+- **Mocked or absent:** inbound channels (email, App Store reviews, in-app form). In `DEMO_MODE` nothing reaches Adapty or Anthropic.
+
+Two things we learned about the grant and kept visible rather than hiding: after `grantAccessLevel` the access level reads `store=adapty`, `store_product_id=adapty_server_side_product`, with `renewal_cancelled_at` set to the grant time, while the store subscription in `subscriptions[]` keeps renewing; and a lifetime access level has no `expires_at`, so the agent is not allowed to propose `grant_access` for it.
 
 ## Architecture
 
-*(to fill in: five lines)*
+1. `resolve/web.py`: FastAPI + Jinja + htmx, one `uvicorn` process, SQLite (`resolve/db.py`). Inbox → ticket page → insights page; every Adapty write is a button.
+2. `resolve/adapty.py`: the only client for the server-side API (`getProfile`, `grantAccessLevel`, `updateProfile`); compensation = `max(now, current expiry) + 7 days` of `premium`.
+3. `resolve/agent.py` (Level 2): Claude with structured output into a pydantic `Proposal` (closed enums for category and action, root cause, confidence, reply, evidence); output outside the enums is rejected and retried once, 3 calls per ticket at most, cached on the ticket.
+4. `resolve/workflow.py`: `new → triaged → proposed → approved → done` (+ `dismissed`); approve is one conditional UPDATE, so it never grants twice, and an Adapty failure returns the ticket to `proposed`.
+5. `resolve/insights.py` (Level 1): category × product and category × flow from all tickets, one cached model call for the hypothesis, `adapty ab-tests create` for the draft. `resolve/tickets.py`: enums and the ticket generator.
 
 ## Agent accuracy
 
@@ -55,7 +72,10 @@ Tests and the eval: *(to fill in)*
 
 ## What we would do next
 
-*(to fill in)*
+- Channels: email and App Store reviews in (reviews carry no identity, so they get a drafted public reply and feed Level 1 only).
+- Auto-approve for low-risk categories with a per-category confidence threshold, after the eval reaches 200 tickets.
+- Compensation per product (7 days is thin on an annual plan) and a second action: a win-back offer code.
+- Ask Adapty support what share of their own tickets are end users asking about charges and refunds; run one real app's inbox for a week.
 
 ## Team
 
