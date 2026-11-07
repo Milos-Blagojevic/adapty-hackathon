@@ -1,0 +1,11 @@
+fastapi==0.162.1
+uvicorn==0.54.0
+jinja2==3.1.6
+python-multipart==0.0.33
+requests==2.34.2
+anthropic==2.6.0
+pydantic==2.14.3
+python-dotenv==1.2.4
+pytest==9.2.0
+responses==0.26.3
+httpx==0.28.1

@@ -1,4 +1,73 @@
-# Adapty Hackathon Belgrade, 7–8 November 2026
+# Resolve: a support inbox for subscription apps, on Adapty
+
+Adapty Hackathon Belgrade, 7–8 November 2026. Work in progress; sections marked *(to fill in)* are completed before submission.
+
+## What it does
+
+An inbox where app users send purchase complaints ("charged after my trial", "paid but still locked", "refund", "how do I cancel"). For each ticket, the **Level 2** agent reads the user's live Adapty profile (access levels, subscriptions, trial / renewal / billing-issue / refund timestamps, custom attributes), classifies the complaint, names the root cause, proposes one action from a fixed menu and drafts the reply. The owner approves with one click, and the approved action runs in Adapty: `grantAccessLevel` compensates the user with 7 days of `premium`. **Level 1** groups all tickets by category, product and the paywall the user saw, and drafts an A/B test on that placement in Adapty. The agent never acts on its own; every Adapty write is a click.
+
+## Who it is for
+
+The owner or support person of a small subscription app (1–3 people, no support tooling), where purchase questions are most of support and nobody aggregates them back into the paywall.
+
+## How to run
+
+Python 3.11+.
+
+```bash
+git clone https://github.com/Milos-Blagojevic/adapty-hackathon.git && cd adapty-hackathon
+python3 -m venv .venv && source .venv/bin/activate      # or: uv venv .venv
+pip install -r requirements.txt
+cp .env.example .env                                     # fill in the keys (see below)
+python -m resolve                                        # http://127.0.0.1:8000
+```
+
+Keys (`.env`, git-ignored; the judges get them in the submission form, never in the repo):
+
+| Key | Used for |
+|---|---|
+| `ADAPTY_SECRET_KEY` | Adapty server-side API: `getProfile`, `grantAccessLevel` on the seeded Lumen app |
+| `ANTHROPIC_API_KEY` | The Level 2 ticket agent and Level 1 insights |
+
+The A/B draft uses the Adapty CLI (`npm i -g adapty`, `adapty auth login`).
+
+Keyless run from the committed snapshot:
+
+```bash
+DEMO_MODE=1 python -m resolve
+```
+
+Tests and the eval: *(to fill in)*
+
+## What is real and what is mocked
+
+- **Real:** the seeded Lumen account on Adapty; every `getProfile` and `grantAccessLevel` call; the A/B test draft created through the Adapty CLI; the agent's calls and its eval score.
+- **Synthetic:** the tickets and their wording (generated from the organisers' offline dataset; customer ids are real seeded profiles); the "reply sent" status (nothing is sent anywhere); the user → paywall mapping, which comes from the offline CSV rather than the live profile.
+- **Mocked or absent:** inbound channels (email, App Store reviews, in-app form).
+
+## Architecture
+
+*(to fill in: five lines)*
+
+## Agent accuracy
+
+*(to fill in: category and action accuracy on the 20-ticket hand-labelled eval set)*
+
+## What we would do next
+
+*(to fill in)*
+
+## Team
+
+*(to fill in: who did what)*
+
+## Pre-existing material (rule 1 disclosure)
+
+The pre-event README below and `.gitignore`; the scope document (text only, no code) written before the event; the organisers' seed data (`adapty-seed-data-hack`). No code existed before kickoff.
+
+---
+
+# Pre-event notes
 
 Team repo. Created empty before the event, as the rules ask; all code is written during the hackathon.
 
@@ -6,10 +75,6 @@ Team repo. Created empty before the event, as the rules ask; all code is written
 - Guidelines and rules: https://app.notion.com/p/adapty/Adapty-Hackathon-Belgrade-Before-you-start-4101ca4355c381e2ae2df84ce84b37fc
 - Demo data (the organisers' seeder, not vendored here): https://github.com/kpotehin/adapty-seed-data-hack
 - Team check-in form (once per team): https://docs.google.com/forms/d/e/1FAIpQLSdVWJmF_5uBFtEioTUzXunFvP7WFPkpVENxcWgtL2vMUDW05A/viewform
-
-## Pre-existing material (rule 1 disclosure)
-
-This README and `.gitignore`. Nothing else.
 
 ## Before Saturday (the organisers' checklist)
 

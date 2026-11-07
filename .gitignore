@@ -1,6 +1,7 @@
 # secrets
 .env
 .env.*
+!.env.example
 *.key
 adapty_secret*
 
@@ -22,3 +23,6 @@ web-build/
 .idea/
 .vscode/
 *.swp
+
+# resolve
+data/resolve.sqlite*
