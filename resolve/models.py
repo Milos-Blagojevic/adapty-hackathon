@@ -253,11 +253,38 @@ class EvalSummary(BaseModel):
     action_correct: int | None = None
 
 
+class TimelinePoint(BaseModel):
+    t: str = Field(description="Bucket start: 'YYYY-MM-DDTHH:00:00Z' (hourly) or 'YYYY-MM-DD' (daily)")
+    agent: int = Field(description="Chats Level 2 kept (not handed off)")
+    handed_off: int = Field(description="Chats handed to a person")
+    closed_by_people: int = Field(description="Tickets a person closed in Level 1")
+    feedback: int = Field(description="Other feedback that came in (form, email)")
+    grant_days: int
+
+
+class Timeline(BaseModel):
+    bucket: Literal["hour", "day"]
+    points: list[TimelinePoint]
+    agent_share: float | None = Field(None, description="Share of chats Level 2 kept, 0..1")
+
+
+class OpenTask(BaseModel):
+    kind: Literal["chat", "triage", "review"]
+    id: str
+    title: str
+    user: str
+    since: str | None = None
+    age_s: int | None = None
+    note: str
+
+
 class Analytics(BaseModel):
     tickets: TicketStats
     level2: Level2Stats
     triage: TriageStats
     eval: EvalSummary | None = None
+    timeline: Timeline
+    open_tasks: list[OpenTask]
 
 
 class Health(BaseModel):

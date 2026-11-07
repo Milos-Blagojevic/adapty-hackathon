@@ -877,13 +877,25 @@
         "type": "null"
        }
       ]
+     },
+     "timeline": {
+      "$ref": "#/components/schemas/Timeline"
+     },
+     "open_tasks": {
+      "items": {
+       "$ref": "#/components/schemas/OpenTask"
+      },
+      "type": "array",
+      "title": "Open Tasks"
      }
     },
     "type": "object",
     "required": [
      "tickets",
      "level2",
-     "triage"
+     "triage",
+     "timeline",
+     "open_tasks"
     ],
     "title": "Analytics"
    },
@@ -1518,6 +1530,66 @@
     ],
     "title": "LlmInfo"
    },
+   "OpenTask": {
+    "properties": {
+     "kind": {
+      "type": "string",
+      "enum": [
+       "chat",
+       "triage",
+       "review"
+      ],
+      "title": "Kind"
+     },
+     "id": {
+      "type": "string",
+      "title": "Id"
+     },
+     "title": {
+      "type": "string",
+      "title": "Title"
+     },
+     "user": {
+      "type": "string",
+      "title": "User"
+     },
+     "since": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Since"
+     },
+     "age_s": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Age S"
+     },
+     "note": {
+      "type": "string",
+      "title": "Note"
+     }
+    },
+    "type": "object",
+    "required": [
+     "kind",
+     "id",
+     "title",
+     "user",
+     "note"
+    ],
+    "title": "OpenTask"
+   },
    "OptionEdits": {
     "properties": {
      "action": {
@@ -2134,6 +2206,86 @@
      "created_at"
     ],
     "title": "TicketSummary"
+   },
+   "Timeline": {
+    "properties": {
+     "bucket": {
+      "type": "string",
+      "enum": [
+       "hour",
+       "day"
+      ],
+      "title": "Bucket"
+     },
+     "points": {
+      "items": {
+       "$ref": "#/components/schemas/TimelinePoint"
+      },
+      "type": "array",
+      "title": "Points"
+     },
+     "agent_share": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Agent Share",
+      "description": "Share of chats Level 2 kept, 0..1"
+     }
+    },
+    "type": "object",
+    "required": [
+     "bucket",
+     "points"
+    ],
+    "title": "Timeline"
+   },
+   "TimelinePoint": {
+    "properties": {
+     "t": {
+      "type": "string",
+      "title": "T",
+      "description": "Bucket start: 'YYYY-MM-DDTHH:00:00Z' (hourly) or 'YYYY-MM-DD' (daily)"
+     },
+     "agent": {
+      "type": "integer",
+      "title": "Agent",
+      "description": "Chats Level 2 kept (not handed off)"
+     },
+     "handed_off": {
+      "type": "integer",
+      "title": "Handed Off",
+      "description": "Chats handed to a person"
+     },
+     "closed_by_people": {
+      "type": "integer",
+      "title": "Closed By People",
+      "description": "Tickets a person closed in Level 1"
+     },
+     "feedback": {
+      "type": "integer",
+      "title": "Feedback",
+      "description": "Other feedback that came in (form, email)"
+     },
+     "grant_days": {
+      "type": "integer",
+      "title": "Grant Days"
+     }
+    },
+    "type": "object",
+    "required": [
+     "t",
+     "agent",
+     "handed_off",
+     "closed_by_people",
+     "feedback",
+     "grant_days"
+    ],
+    "title": "TimelinePoint"
    },
    "TriageOption": {
     "properties": {

@@ -112,3 +112,29 @@ def test_rejections_count_as_rejected(conn):
     accepted = analytics.compute(conn)["triage"]["accepted_option"]
     assert accepted["rejected"] == 2
     assert (accepted["1"], accepted["2"], accepted["edited"]) == (1, 1, 1), "rejections are not counted as options"
+
+
+def test_timeline_and_open_tasks(tmp_path):
+    from datetime import datetime, timezone
+
+    from resolve import analytics, db
+    from tests.fakes_v2 import new_db
+
+    conn = new_db(tmp_path, seed=False, name="tl.sqlite")
+    now = datetime(2026, 11, 8, 12, 0, tzinfo=timezone.utc)
+    for sid, outcome in (("a", "resolved"), ("b", "open"), ("c", "handed_off")):
+        db.ensure_conversation(conn, sid, "u1")
+        db.set_outcome(conn, sid, outcome)
+        conn.execute("UPDATE conversations SET created_at = '2026-11-08T10:15:00Z', updated_at = '2026-11-08T11:00:00Z' WHERE session_id = ?", (sid,))
+    db.append_message(conn, "b", "user", "paid but locked")
+    tid = db.insert_feedback(conn, "hello", source="form", customer_user_id="u2")
+    conn.execute("UPDATE tickets SET created_at = '2026-11-08T09:30:00Z' WHERE id = ?", (tid,))
+    conn.commit()
+    tl = analytics.timeline(conn, now)
+    assert tl["bucket"] == "hour" and tl["agent_share"] == round(2 / 3, 3)
+    by_t = {p["t"]: p for p in tl["points"]}
+    assert by_t["2026-11-08T10:00:00Z"]["agent"] == 2 and by_t["2026-11-08T10:00:00Z"]["handed_off"] == 1
+    assert by_t["2026-11-08T09:00:00Z"]["feedback"] == 1
+    tasks = analytics.open_tasks(conn, now)
+    assert {(t["kind"], t["id"]) for t in tasks} == {("chat", "b"), ("triage", tid)}
+    assert next(t for t in tasks if t["kind"] == "chat")["title"] == "paid but locked"
