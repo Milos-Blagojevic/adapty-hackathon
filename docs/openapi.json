@@ -2322,6 +2322,13 @@
       "type": "string",
       "title": "Risk Reason",
       "description": "One line: why this risk level (money, abuse, wrong diagnosis)."
+     },
+     "emoji": {
+      "type": "string",
+      "maxLength": 8,
+      "title": "Emoji",
+      "description": "One emoji, sincere, that says what this answer means for the user (\ud83d\udc4d we give something, \u274c we say no or end something, \ud83d\ude4f we apologise, \u2753 we ask, \ud83e\uddfe we explain, \ud83d\udd01 restore).",
+      "default": ""
      }
     },
     "type": "object",

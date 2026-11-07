@@ -63,6 +63,7 @@ class TriageOption(BaseModel):
     reply: str = Field(description="Draft reply to the user, ready to send, under 120 words. Empty for no_reply.")
     risk: Literal["low", "medium", "high"]
     risk_reason: str = Field(description="One line: why this risk level (money, abuse, wrong diagnosis).")
+    emoji: str = Field("", max_length=8, description="One emoji, sincere, that says what this answer means for the user (👍 we give something, ❌ we say no or end something, 🙏 we apologise, ❓ we ask, 🧾 we explain, 🔁 restore).")
 
 
 class TriageTicket(BaseModel):

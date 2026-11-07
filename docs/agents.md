@@ -234,3 +234,7 @@ While the session is `handed_off`, each user message still gets a model reply, b
 ### Reopen (binding)
 
 `POST /api/tickets/{id}/reopen {note?}` → only from `done`/`dismissed` (else 409): status `proposed` if the ticket has a triage or v1 proposal, else `new`; the earlier `{at, from_status, decision, action, note}` is appended to `history` (Ticket field); decision/action/reply_sent_at are cleared. Nothing is undone in Adapty: an earlier grant stays.
+
+### Options: three equal answers with an emoji (binding)
+
+Level 1 aims for 3 equally strong options (2 are still accepted), the first is the agent's pick but the UI shows them with equal weight. Each option has `emoji`: one sincere emoji for what the answer means to the user (👍 give, ❌ refuse/cancel, 🙏 apologise, ❓ ask, 🧾 explain a charge, 🔁 restore, 💸 store refund). Old tickets without it: the UI falls back by action (`triage.LEGACY_EMOJI`).
