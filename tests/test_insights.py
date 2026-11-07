@@ -4,12 +4,9 @@ import sys
 from pathlib import Path
 
 import pytest
-from fastapi.testclient import TestClient
 
 from resolve import config, db, insights
 from resolve.insights import DraftError, Insight, Runner, draft_ab_test
-from resolve.web import build_services_from_env, create_app
-from tests.fakes import ACTIVE_WEEKLY, FakeAnthropic, profile, proposal, ticket_row, tickets_file
 
 STUB = '''#!{python}
 import json, sys
@@ -86,27 +83,6 @@ def insight(**overrides) -> Insight:
     return Insight.model_validate(base)
 
 
-def test_insights_run_and_draft_routes(tmp_path, stub_cli):
-    script, log = stub_cli
-    seed = tickets_file(tmp_path, [ticket_row()])
-    fake = FakeAnthropic([insight()])
-    app = create_app(tmp_path / "i.sqlite", demo=False, anthropic_client=fake, model="m", seed_file=seed, ab_runner=Runner(binary=str(script)))
-    conn = app.state.services.conn
-    db.update_ticket(conn, "t-001", profile_json=json.dumps(profile(access_levels=[ACTIVE_WEEKLY])), proposal_json=proposal().model_dump_json(), category="charged_after_trial", status="proposed")
-    client = TestClient(app)
-
-    ran = client.post("/insights/run")
-    assert "12 saw Onboarding - Weekly first" in ran.text and "1 model call, cached" in ran.text
-    assert len(fake.calls) == 1
-    assert db.get_insights(conn)["placement"] == "onboarding"
-
-    drafted = client.post("/insights/ab-draft", data={"placement_id": "onboarding", "hypothesis": "Disclose the trial end"})
-    assert "test-123" in drafted.text and "Onboarding - Weekly first 50%" in drafted.text
-    assert db.list_ab_drafts(conn)[0]["test_id"] == "test-123"
-    refused = client.post("/insights/ab-draft", data={"placement_id": "win_back"})
-    assert "two arms" in refused.text and len(db.list_ab_drafts(conn)) == 1
-
-
 def test_insight_rejects_unknown_placement():
     import pydantic
 
@@ -122,6 +98,9 @@ def test_build_services_copies_the_snapshot_in_demo_mode(tmp_path, monkeypatch):
     monkeypatch.setattr(config, "DEMO_DB_PATH", snapshot)
     monkeypatch.delenv("ADAPTY_SECRET_KEY", raising=False)
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
-    db_path, demo, adapty_client, anthropic_client, model, runner = build_services_from_env()  # no MissingKey without keys
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    from resolve.web import build_services_from_env
+
+    db_path, demo, *clients = build_services_from_env()  # no MissingKey without keys
     assert demo is True and db_path == tmp_path / "data" / "demo-run.sqlite" and db_path.exists()
-    assert (adapty_client, anthropic_client, model, runner) == (None, None, None, None)
+    assert all(c is None for c in clients), "demo mode builds no Adapty, LLM or CLI client"

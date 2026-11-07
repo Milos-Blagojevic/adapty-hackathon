@@ -1,14 +1,10 @@
-"""Fakes shared by the workflow, agent and web tests. No network."""
+"""Fakes shared by the tests (v1 and v2). No network. v2 LLM helpers live in tests/fakes_v2.py."""
 
 from __future__ import annotations
 
 import json
-from types import SimpleNamespace
-
-import pydantic
 
 from resolve import adapty
-from resolve.agent import Proposal
 
 PROFILE_URL = adapty.BASE_URL + adapty.PROFILE_PATH
 GRANT_URL = adapty.BASE_URL + adapty.GRANT_PATH
@@ -42,7 +38,8 @@ ACTIVE_WEEKLY = {
 LIFETIME = dict(ACTIVE_WEEKLY, store="app_store", store_product_id="lumen.lifetime", expires_at=None)
 
 
-def proposal(**overrides) -> Proposal:
+def legacy_proposal(**overrides) -> dict:
+    """A v1 `proposal_json` (as stored in data/demo.sqlite): shown as a one-option ticket in v2."""
     base = {
         "category": "charged_after_trial",
         "root_cause": "The weekly trial converted on Oct 30 and the user missed the date.",
@@ -52,33 +49,7 @@ def proposal(**overrides) -> Proposal:
         "evidence": ["subscriptions[0].offer: free_trial"],
     }
     base.update(overrides)
-    return Proposal.model_validate(base)
-
-
-def validation_error() -> pydantic.ValidationError:
-    try:
-        Proposal.model_validate({"category": "nope", "root_cause": "", "confidence": 0.5, "action": "explain", "reply": "", "evidence": ["x"]})
-    except pydantic.ValidationError as exc:
-        return exc
-    raise AssertionError("expected a validation error")
-
-
-class FakeAnthropic:
-    """Scripted `messages.parse`: each call pops the next output (a Proposal, an Insight or an exception)."""
-
-    def __init__(self, outputs):
-        self.outputs = list(outputs)
-        self.calls: list[dict] = []
-        self.messages = self
-
-    def parse(self, **kwargs):
-        self.calls.append(kwargs)
-        if not self.outputs:
-            raise AssertionError("FakeAnthropic: more calls than scripted outputs")
-        out = self.outputs.pop(0)
-        if isinstance(out, Exception):
-            raise out
-        return SimpleNamespace(parsed_output=out, content=[SimpleNamespace(text=json.dumps(out.model_dump()))])
+    return base
 
 
 def tickets_file(tmp_path, tickets):
