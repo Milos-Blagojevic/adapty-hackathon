@@ -74,3 +74,22 @@ def test_age():
     assert age("2026-11-07T11:30:00Z", now) == "30m"
     assert age("2026-11-07T01:00:00Z", now) == "11h"
     assert age("2026-11-01T12:00:00Z", now) == "6d"
+
+
+def test_insights_groups_by_agent_category_and_store_product():
+    from resolve.insights import group_tickets, product_of
+
+    granted = profile(access_levels=[dict(ACTIVE_WEEKLY, store="adapty", store_product_id="adapty_server_side_product")], subscriptions=[{"store_product_id": "lumen_weekly"}])
+    assert product_of({"profile": granted}) == "weekly"
+    assert product_of({"profile": profile()}) == "none"
+    assert product_of({"profile": None}) == "unknown"
+    tickets = [
+        dict(ticket_row(), category="charged_after_trial", profile=granted),
+        dict(ticket_row(id="t-002"), category="charged_after_trial", profile=profile(access_levels=[ACTIVE_WEEKLY])),
+        dict(ticket_row(id="t-003"), category=None, profile=None),
+    ]
+    groups = group_tickets(tickets)
+    assert (groups["triaged"], groups["untriaged"]) == (2, 1)
+    assert groups["by_category"] == [{"category": "charged_after_trial", "count": 2}]
+    assert groups["by_category_product"]["charged_after_trial"] == {"weekly": 2}
+    assert (groups["top_category"], groups["top_flow"], groups["top_placement"]) == ("charged_after_trial", "onb_weekly", "onboarding")

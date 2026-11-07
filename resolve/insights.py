@@ -65,22 +65,29 @@ def flow_title(flow: str | None) -> str:
     return FLOW_TITLES.get(flow or "", flow or "unknown")
 
 
+GRANT_PRODUCT = "adapty_server_side_product"
+
+
 def product_of(ticket: dict) -> str:
-    """The product behind the complaint: the premium access level's product, else the last subscription's, else none."""
+    """The store product behind the complaint: the subscription's, else the access level's, else none.
+
+    A granted access level reports `adapty_server_side_product`, so the subscription wins; "granted"
+    appears only when the profile has nothing but the grant.
+    """
     profile = ticket.get("profile")
     if not profile:
         return "unknown"
-    for level in profile.get("access_levels", []):
-        if level.get("store_product_id"):
-            return _product_name(level["store_product_id"])
     subs = profile.get("subscriptions") or profile.get("non_subscriptions") or []
     if subs:
         return _product_name(subs[-1].get("store_product_id", ""))
+    for level in profile.get("access_levels", []):
+        if level.get("store_product_id"):
+            return _product_name(level["store_product_id"])
     return "none"
 
 
 def _product_name(store_product_id: str) -> str:
-    if store_product_id == "adapty_server_side_product":
+    if store_product_id == GRANT_PRODUCT:
         return "granted"
     name = store_product_id.replace("lumen.", "").replace("lumen_", "")
     return name.split(":")[0] or "unknown"
