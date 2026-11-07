@@ -1,0 +1,25 @@
+{
+  "_about": "20 hand-labelled tickets from data/tickets.json. Labels were written by a person reading the ticket and the live profile, never by the model under test. `note` marks a judgment call the owner reviewed.",
+  "cases": [
+    {"ticket_id": "demo-1", "category": "charged_after_trial", "action": "grant_access"},
+    {"ticket_id": "demo-2", "category": "no_access_after_purchase", "action": "grant_access"},
+    {"ticket_id": "demo-3", "category": "billing_issue", "action": "explain"},
+    {"ticket_id": "t-012", "category": "charged_after_trial", "action": "grant_access"},
+    {"ticket_id": "t-019", "category": "charged_after_trial", "action": "grant_access"},
+    {"ticket_id": "t-026", "category": "charged_after_trial", "action": "grant_access"},
+    {"ticket_id": "t-008", "category": "charged_after_trial", "action": "grant_access", "note": "demands money back; policy is to offer compensation first, the store handles refunds"},
+    {"ticket_id": "t-035", "category": "charged_after_trial", "action": "grant_access", "note": "annual trial converted at MX$539.99; 7 days is thin compensation, but the category rule holds"},
+    {"ticket_id": "t-046", "category": "charged_after_trial", "action": "grant_access"},
+    {"ticket_id": "t-009", "category": "no_access_after_purchase", "action": "grant_access", "note": "Pro annual: the profile has `pro`, not `premium`; the grant still adds 7 days of premium"},
+    {"ticket_id": "t-042", "category": "no_access_after_purchase", "action": "grant_access"},
+    {"ticket_id": "t-005", "category": "billing_issue", "action": "explain"},
+    {"ticket_id": "t-043", "category": "billing_issue", "action": "explain"},
+    {"ticket_id": "t-001", "category": "refund_request", "action": "escalate_refund"},
+    {"ticket_id": "t-025", "category": "refund_request", "action": "escalate_refund"},
+    {"ticket_id": "t-051", "category": "refund_request", "action": "escalate_refund", "note": "already asked the App Store; nothing to grant, flag and reply"},
+    {"ticket_id": "t-045", "category": "cancel_how", "action": "explain"},
+    {"ticket_id": "t-052", "category": "cancel_how", "action": "explain"},
+    {"ticket_id": "t-036", "category": "price_complaint", "action": "explain"},
+    {"ticket_id": "t-010", "category": "other", "action": "explain", "note": "crash report: reply and route to engineering; no_action is for spam or already-resolved"}
+  ]
+}
