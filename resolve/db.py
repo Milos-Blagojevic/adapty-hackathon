@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
+import threading
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -62,16 +63,55 @@ def now_iso() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-def connect(path: Path) -> sqlite3.Connection:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(path, check_same_thread=False)
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA journal_mode=WAL")
-    conn.executescript(SCHEMA)
-    return conn
+class Database:
+    """One SQLite file, one connection per thread.
+
+    FastAPI runs sync routes in a threadpool; a single `sqlite3` connection shared across threads
+    raised `InterfaceError` and returned phantom rows under concurrent requests. Each thread gets
+    its own connection lazily; the schema is created once. Supports the `with conn:` transaction
+    protocol and `execute`/`executemany`, which is all this module uses.
+    """
+
+    def __init__(self, path: Path):
+        self.path = Path(path)
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        self._local = threading.local()
+        with self._connection() as conn:
+            conn.execute("PRAGMA journal_mode=WAL")
+            conn.executescript(SCHEMA)
+
+    def _connection(self) -> sqlite3.Connection:
+        conn = getattr(self._local, "conn", None)
+        if conn is None:
+            conn = sqlite3.connect(self.path, timeout=10)
+            conn.row_factory = sqlite3.Row
+            self._local.conn = conn
+        return conn
+
+    def execute(self, sql: str, parameters=()) -> sqlite3.Cursor:
+        return self._connection().execute(sql, parameters)
+
+    def executemany(self, sql: str, parameters) -> sqlite3.Cursor:
+        return self._connection().executemany(sql, parameters)
+
+    def __enter__(self) -> sqlite3.Connection:
+        return self._connection().__enter__()
+
+    def __exit__(self, *exc) -> None:
+        self._connection().__exit__(*exc)
+
+    def close(self) -> None:
+        conn = getattr(self._local, "conn", None)
+        if conn is not None:
+            conn.close()
+            self._local.conn = None
 
 
-def seed(conn: sqlite3.Connection, tickets_json: Path) -> int:
+def connect(path: Path) -> Database:
+    return Database(path)
+
+
+def seed(conn: Database, tickets_json: Path) -> int:
     """Load the seed file when the table is empty. Returns the number of rows inserted."""
     if conn.execute("SELECT COUNT(*) FROM tickets").fetchone()[0]:
         return 0
@@ -97,11 +137,11 @@ def _row(row: sqlite3.Row | None) -> dict | None:
     return ticket
 
 
-def get_ticket(conn: sqlite3.Connection, ticket_id: str) -> dict | None:
+def get_ticket(conn: Database, ticket_id: str) -> dict | None:
     return _row(conn.execute("SELECT * FROM tickets WHERE id = ?", (ticket_id,)).fetchone())
 
 
-def list_tickets(conn: sqlite3.Connection, status: str | None = None) -> list[dict]:
+def list_tickets(conn: Database, status: str | None = None) -> list[dict]:
     if status:
         rows = conn.execute("SELECT * FROM tickets WHERE status = ? ORDER BY created_at DESC", (status,))
     else:
@@ -109,11 +149,16 @@ def list_tickets(conn: sqlite3.Connection, status: str | None = None) -> list[di
     return [_row(r) for r in rows]
 
 
-def status_counts(conn: sqlite3.Connection) -> dict[str, int]:
+def status_counts(conn: Database) -> dict[str, int]:
     return {r["status"]: r["n"] for r in conn.execute("SELECT status, COUNT(*) AS n FROM tickets GROUP BY status")}
 
 
-def update_ticket(conn: sqlite3.Connection, ticket_id: str, **fields) -> None:
+def update_ticket(conn: Database, ticket_id: str, only_status: tuple[str, ...] | None = None, **fields) -> bool:
+    """Write `fields`; with `only_status`, only while the ticket is still in one of those statuses.
+
+    Returns whether a row changed. The conditional form is what keeps a slow Level 2 run from
+    overwriting a ticket the owner approved or dismissed in the meantime.
+    """
     unknown = set(fields) - set(TICKET_COLUMNS)
     if unknown:
         raise ValueError(f"unknown ticket columns: {sorted(unknown)}")
@@ -122,11 +167,18 @@ def update_ticket(conn: sqlite3.Connection, ticket_id: str, **fields) -> None:
             raise ValueError(f"pass {key}_json, not {key}")
     fields["updated_at"] = now_iso()
     assignments = ", ".join(f"{key} = :{key}" for key in fields)
+    where = "id = :id"
+    params = dict(fields, id=ticket_id)
+    if only_status:
+        placeholders = ", ".join(f":s{i}" for i in range(len(only_status)))
+        where += f" AND status IN ({placeholders})"
+        params.update({f"s{i}": status for i, status in enumerate(only_status)})
     with conn:
-        conn.execute(f"UPDATE tickets SET {assignments} WHERE id = :id", dict(fields, id=ticket_id))
+        cursor = conn.execute(f"UPDATE tickets SET {assignments} WHERE {where}", params)
+    return cursor.rowcount == 1
 
 
-def set_status_if(conn: sqlite3.Connection, ticket_id: str, expected: str, new: str) -> bool:
+def set_status_if(conn: Database, ticket_id: str, expected: str, new: str) -> bool:
     """Atomic status transition; False when the ticket is not in `expected` (the approve-twice guard)."""
     with conn:
         cursor = conn.execute(
@@ -136,7 +188,20 @@ def set_status_if(conn: sqlite3.Connection, ticket_id: str, expected: str, new: 
     return cursor.rowcount == 1
 
 
-def save_insights(conn: sqlite3.Connection, insights: dict) -> None:
+def reserve_model_call(conn: Database, ticket_id: str, cap: int) -> bool:
+    """Take one model call from the ticket's budget atomically; False when the cap is reached.
+
+    Counted before the call, so two concurrent runs cannot both spend the last call.
+    """
+    with conn:
+        cursor = conn.execute(
+            "UPDATE tickets SET model_calls = model_calls + 1, updated_at = ? WHERE id = ? AND model_calls < ?",
+            (now_iso(), ticket_id, cap),
+        )
+    return cursor.rowcount == 1
+
+
+def save_insights(conn: Database, insights: dict) -> None:
     with conn:
         conn.execute(
             "INSERT INTO insights (id, insights_json, created_at) VALUES (1, ?, ?) "
@@ -145,14 +210,14 @@ def save_insights(conn: sqlite3.Connection, insights: dict) -> None:
         )
 
 
-def get_insights(conn: sqlite3.Connection) -> dict | None:
+def get_insights(conn: Database) -> dict | None:
     row = conn.execute("SELECT insights_json, created_at FROM insights WHERE id = 1").fetchone()
     if row is None:
         return None
     return dict(json.loads(row["insights_json"]), created_at=row["created_at"])
 
 
-def save_ab_draft(conn: sqlite3.Connection, placement_id: str, test_id: str, title: str, draft: dict) -> None:
+def save_ab_draft(conn: Database, placement_id: str, test_id: str, title: str, draft: dict) -> None:
     with conn:
         conn.execute(
             "INSERT INTO ab_drafts (placement_id, test_id, title, draft_json, created_at) VALUES (?, ?, ?, ?, ?)",
@@ -160,6 +225,6 @@ def save_ab_draft(conn: sqlite3.Connection, placement_id: str, test_id: str, tit
         )
 
 
-def list_ab_drafts(conn: sqlite3.Connection) -> list[dict]:
+def list_ab_drafts(conn: Database) -> list[dict]:
     rows = conn.execute("SELECT * FROM ab_drafts ORDER BY id DESC")
     return [dict(r, draft=json.loads(r["draft_json"])) for r in rows]

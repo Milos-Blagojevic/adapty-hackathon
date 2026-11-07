@@ -118,3 +118,81 @@ def test_dismiss_from_any_open_state(conn):
     assert workflow.dismiss(services, "t-001")["status"] == "dismissed"
     db.update_ticket(conn, "t-002", status="done")
     assert workflow.dismiss(services, "t-002")["status"] == "done"
+
+
+def test_late_rerun_cannot_revive_an_approved_ticket(http, conn):
+    """Verifier finding: Approve clicked while a Re-run is in flight must not yield a second Approve button."""
+    http.get(PROFILE_URL, json={"data": profile(access_levels=[ACTIVE_WEEKLY])})
+    http.post(GRANT_URL, json={"data": profile(access_levels=[dict(ACTIVE_WEEKLY, store="adapty", expires_at="2026-11-20T05:08:30+00:00")])})
+    http.patch(PROFILE_URL, json={"data": profile(access_levels=[ACTIVE_WEEKLY])})
+    services = live(conn, [proposal()])
+    workflow.open_ticket(services, "t-001")
+    workflow.propose(services, "t-001")
+
+    class ApproveMidCall(FakeAnthropic):
+        def parse(self, **kwargs):
+            workflow.approve(services, "t-001")  # the owner clicks while the model is thinking
+            return super().parse(**kwargs)
+
+    services.anthropic = ApproveMidCall([proposal(action="explain")])
+    after = workflow.propose(services, "t-001", force=True)
+    assert after["status"] == "done"
+    assert after["proposal"]["action"] == "grant_access", "the late proposal did not overwrite the approved one"
+    assert workflow.approve(services, "t-001")["status"] == "done"
+    assert len([c for c in http.calls if c.request.method == "POST"]) == 1
+
+
+def test_concurrent_runs_share_the_call_cap(http, conn):
+    import threading
+
+    http.get(PROFILE_URL, json={"data": profile(access_levels=[ACTIVE_WEEKLY])})
+    import time
+
+    made = []
+
+    class Slow(FakeAnthropic):
+        def parse(self, **kwargs):
+            made.append(1)
+            time.sleep(0.3)  # keep the runs overlapping
+            return super().parse(**kwargs)
+
+    services = live(conn, [])
+    services.anthropic = Slow([proposal() for _ in range(8)])
+    workflow.open_ticket(services, "t-001")
+    threads = [threading.Thread(target=workflow.propose, args=(services, "t-001", True)) for _ in range(4)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join(timeout=10)
+    ticket = db.get_ticket(conn, "t-001")
+    assert len(made) <= 3 and ticket["model_calls"] == len(made), "no run spends beyond MAX_CALLS, and the count is exact"
+    assert ticket["status"] == "proposed"
+
+
+def test_stamp_failure_keeps_the_grant_and_marks_done(http, conn):
+    http.get(PROFILE_URL, json={"data": profile(access_levels=[ACTIVE_WEEKLY])})
+    http.post(GRANT_URL, json={"data": profile(access_levels=[dict(ACTIVE_WEEKLY, store="adapty", expires_at="2026-11-20T05:08:30+00:00")])})
+    http.patch(PROFILE_URL, status=500, json={"errors": [], "error_code": "boom", "status_code": 500})
+    services = live(conn, [proposal()])
+    workflow.open_ticket(services, "t-001")
+    workflow.propose(services, "t-001")
+    ticket = workflow.approve(services, "t-001")
+    assert ticket["status"] == "done"
+    assert ticket["action"]["expires_at"] == "2026-11-20T05:08:30Z"
+    assert "500" in ticket["action"]["stamp_error"] and "stamped" not in ticket["action"]
+
+
+def test_unexpected_error_during_approve_returns_ticket_to_proposed(http, conn):
+    http.get(PROFILE_URL, json={"data": profile(access_levels=[ACTIVE_WEEKLY])})
+    services = live(conn, [proposal()])
+    workflow.open_ticket(services, "t-001")
+    workflow.propose(services, "t-001")
+
+    class Broken(Client):
+        def get_profile(self, customer_user_id):
+            raise RuntimeError("disk on fire")
+
+    services.adapty = Broken("sk")
+    with pytest.raises(RuntimeError):
+        workflow.approve(services, "t-001")
+    assert db.get_ticket(conn, "t-001")["status"] == "proposed"

@@ -205,6 +205,7 @@ def build_services_from_env() -> tuple[Path, bool, Client | None, anthropic.Anth
     """What `python -m resolve` wires up: the snapshot copy in demo mode, the real clients otherwise."""
     if config.DEMO_MODE:
         runtime = config.ROOT / "data" / "demo-run.sqlite"
+        runtime.parent.mkdir(parents=True, exist_ok=True)
         for suffix in ("", "-wal", "-shm"):
             Path(str(runtime) + suffix).unlink(missing_ok=True)
         shutil.copyfile(config.DEMO_DB_PATH, runtime)

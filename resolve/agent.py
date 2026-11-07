@@ -11,7 +11,7 @@ from __future__ import annotations
 import json
 import logging
 from datetime import datetime, timezone
-from typing import Literal
+from typing import Callable, Literal
 
 import anthropic
 import pydantic
@@ -188,18 +188,41 @@ def resolve_model(client: anthropic.Anthropic) -> str:
     raise AgentError("no Opus model in the models list; set ANTHROPIC_MODEL")
 
 
-def propose(client: anthropic.Anthropic, model: str, ticket: dict, profile: dict, calls_used: int, now: datetime | None = None) -> tuple[Proposal, int]:
+def budget(cap: int = MAX_CALLS) -> Callable[[], bool]:
+    """A local call reservation for scripts that do not go through the DB (the eval runner)."""
+    remaining = [cap]
+
+    def reserve() -> bool:
+        if remaining[0] <= 0:
+            return False
+        remaining[0] -= 1
+        return True
+
+    return reserve
+
+
+def propose(
+    client: anthropic.Anthropic,
+    model: str,
+    ticket: dict,
+    profile: dict,
+    reserve: Callable[[], bool],
+    now: datetime | None = None,
+) -> tuple[Proposal, int]:
     """Returns (proposal, calls made). Raises AgentError when the cap is hit or the output stays invalid.
 
-    At most two calls per run (the second carries the rejection reason), never beyond MAX_CALLS per ticket.
+    `reserve()` is asked before every model call and must take one call from the ticket's budget
+    atomically (`db.reserve_model_call`); False means the cap is reached. At most two calls per
+    run, the second carrying the rejection reason.
     """
-    budget = MAX_CALLS - calls_used
-    if budget <= 0:
-        raise AgentError(f"call cap reached ({MAX_CALLS} model calls for this ticket)")
     prompt = ticket_message(ticket, profile, now)
     calls = 0
     last_error = None
-    while calls < min(budget, 2):
+    while calls < 2:
+        if not reserve():
+            if calls == 0:
+                raise AgentError(f"call cap reached ({MAX_CALLS} model calls for this ticket)")
+            break
         calls += 1
         content = prompt if last_error is None else f"{prompt}\n\nA previous proposal was rejected: {last_error}. Return a corrected proposal."
         try:

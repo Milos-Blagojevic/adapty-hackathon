@@ -12,7 +12,6 @@ marked done unless Adapty said yes.
 from __future__ import annotations
 
 import json
-import sqlite3
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
@@ -27,7 +26,7 @@ OPEN_STATUSES = ("new", "triaged", "proposed")
 
 @dataclass
 class Services:
-    conn: sqlite3.Connection
+    conn: db.Database
     demo: bool
     adapty: Client | None = None
     anthropic: anthropic.Anthropic | None = None
@@ -77,19 +76,22 @@ def propose(services: Services, ticket_id: str, force: bool = False) -> dict:
     if services.anthropic is None or not services.model:
         db.update_ticket(services.conn, ticket_id, proposal_error="ANTHROPIC_API_KEY is not set")
         return _ticket(services, ticket_id)
+    reserve = lambda: db.reserve_model_call(services.conn, ticket_id, agent.MAX_CALLS)  # noqa: E731
     try:
-        proposal, calls = agent.propose(services.anthropic, services.model, ticket, ticket["profile"], ticket["model_calls"])
+        proposal, _ = agent.propose(services.anthropic, services.model, ticket, ticket["profile"], reserve)
     except agent.AgentError as exc:
-        db.update_ticket(services.conn, ticket_id, proposal_error=str(exc), model_calls=ticket["model_calls"] + exc.calls)
+        db.update_ticket(services.conn, ticket_id, only_status=OPEN_STATUSES, proposal_error=str(exc))
         return _ticket(services, ticket_id)
+    # Only while the ticket is still open: a slow run must not revive a ticket the owner approved
+    # or dismissed in the meantime (that would put a second Approve button on a granted ticket).
     db.update_ticket(
         services.conn,
         ticket_id,
+        only_status=OPEN_STATUSES,
         proposal_json=proposal.model_dump_json(),
         proposal_at=db.now_iso(),
         proposal_error=None,
         category=proposal.category,
-        model_calls=ticket["model_calls"] + calls,
         status="proposed",
     )
     return _ticket(services, ticket_id)
@@ -136,6 +138,10 @@ def approve(services: Services, ticket_id: str) -> dict:
         db.set_status_if(services.conn, ticket_id, "approved", "proposed")
         db.update_ticket(services.conn, ticket_id, action_error=str(exc))
         return _ticket(services, ticket_id)
+    except Exception:
+        # Anything unexpected before the grant is recorded: never leave the ticket stuck in `approved`.
+        db.set_status_if(services.conn, ticket_id, "approved", "proposed")
+        raise
     _finish(services, ticket_id, action, proposal, profile)
     return _ticket(services, ticket_id)
 

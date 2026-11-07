@@ -39,7 +39,7 @@ def test_ticket_message_carries_text_and_profile_but_not_the_generator_rule():
 
 def test_invalid_output_gets_one_retry_with_the_reason():
     client = FakeAnthropic([proposal(action="grant_access"), proposal(action="explain")])
-    result, calls = agent.propose(client, "m", ticket_row(), profile(access_levels=[LIFETIME]), calls_used=0, now=NOW)
+    result, calls = agent.propose(client, "m", ticket_row(), profile(access_levels=[LIFETIME]), agent.budget(), now=NOW)
     assert (result.action, calls) == ("explain", 2)
     assert "rejected" in client.calls[1]["messages"][0]["content"]
     assert client.calls[0]["messages"][0]["content"] == ticket_message(ticket_row(), profile(access_levels=[LIFETIME]), NOW)
@@ -48,13 +48,27 @@ def test_invalid_output_gets_one_retry_with_the_reason():
 def test_schema_errors_count_against_the_cap():
     client = FakeAnthropic([validation_error(), validation_error()])
     with pytest.raises(AgentError) as exc:
-        agent.propose(client, "m", ticket_row(), profile(), calls_used=0, now=NOW)
+        agent.propose(client, "m", ticket_row(), profile(), agent.budget(), now=NOW)
     assert exc.value.calls == 2
     client = FakeAnthropic([validation_error()])
     with pytest.raises(AgentError) as exc:
-        agent.propose(client, "m", ticket_row(), profile(), calls_used=2, now=NOW)
+        agent.propose(client, "m", ticket_row(), profile(), agent.budget(1), now=NOW)
     assert exc.value.calls == 1
     client = FakeAnthropic([])
     with pytest.raises(AgentError, match="cap reached"):
-        agent.propose(client, "m", ticket_row(), profile(), calls_used=MAX_CALLS, now=NOW)
+        agent.propose(client, "m", ticket_row(), profile(), agent.budget(0), now=NOW)
     assert client.calls == []
+
+
+def test_truncated_output_is_retried_and_reported():
+    from types import SimpleNamespace
+
+    class Truncating(FakeAnthropic):
+        def parse(self, **kwargs):
+            self.calls.append(kwargs)
+            return SimpleNamespace(parsed_output=None, stop_reason="max_tokens", content=[])
+
+    client = Truncating([])
+    with pytest.raises(AgentError, match="truncated") as exc:
+        agent.propose(client, "m", ticket_row(), profile(), agent.budget(), now=NOW)
+    assert exc.value.calls == 2 and len(client.calls) == 2

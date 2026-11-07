@@ -2,9 +2,11 @@
 
     python scripts/snapshot.py [--db data/resolve.sqlite] [--out data/demo.sqlite]
 
-Copies the live DB with SQLite's backup API (WAL included), then puts the demo tickets back to
-`proposed` so the happy path (open → approve) can be clicked in demo mode. Cached profiles and
-proposals stay as they are; the demo-mode Approve changes local state only.
+A plain copy of the live DB with SQLite's backup API (WAL included): statuses, cached profiles,
+proposals, actions, insights and drafts exactly as they are. Nothing is rewound: a ticket approved
+live stays `done` with its real grant, because its cached profile already shows that grant and a
+rewound status would contradict it. The keyless happy path is a demo ticket that was never
+approved live (demo-2, demo-3): proposed, with a pre-grant profile.
 """
 
 from __future__ import annotations
@@ -35,13 +37,9 @@ def main() -> int:
     source.backup(target)
     source.close()
     target.execute("PRAGMA journal_mode=DELETE")
-    with target:
-        target.execute(
-            "UPDATE tickets SET status = 'proposed', action_json = NULL, action_at = NULL, action_error = NULL, reply_sent_at = NULL, updated_at = ? "
-            "WHERE demo = 1 AND proposal_json IS NOT NULL",
-            (db.now_iso(),),
-        )
-        target.execute("UPDATE tickets SET status = 'triaged', updated_at = ? WHERE demo = 1 AND proposal_json IS NULL AND profile_json IS NOT NULL", (db.now_iso(),))
+    demo = [(r[0], r[1]) for r in target.execute("SELECT id, status FROM tickets WHERE demo = 1 ORDER BY id")]
+    if not any(status == "proposed" for _, status in demo):
+        print(f"warning: no demo ticket is `proposed` ({demo}); the keyless happy path has nothing to approve")
     counts = {r[0]: r[1] for r in target.execute("SELECT status, COUNT(*) FROM tickets GROUP BY status")}
     proposals = target.execute("SELECT COUNT(*) FROM tickets WHERE proposal_json IS NOT NULL").fetchone()[0]
     profiles = target.execute("SELECT COUNT(*) FROM tickets WHERE profile_json IS NOT NULL").fetchone()[0]

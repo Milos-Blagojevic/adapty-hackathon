@@ -57,7 +57,7 @@ def main() -> int:
         else:
             source = "fresh"
             try:
-                proposal, made = agent.propose(client, model, ticket, profile, calls_used=0)
+                proposal, made = agent.propose(client, model, ticket, profile, agent.budget(2))
                 calls += made
             except agent.AgentError as exc:
                 calls += exc.calls

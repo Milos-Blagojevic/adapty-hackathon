@@ -14,7 +14,7 @@ from generate_tickets import DEMO_TICKETS  # noqa: E402
 OFFLINE = config.SEED_REPO / "data" / "offline"
 NOW = datetime(2026, 11, 7, 15, 0, tzinfo=timezone.utc)
 
-pytestmark = pytest.mark.skipif(not OFFLINE.exists(), reason="seed repo not present")
+needs_seed_repo = pytest.mark.skipif(not OFFLINE.exists(), reason="seed repo not present")
 
 
 def test_enums_are_the_scope_lists():
@@ -29,6 +29,7 @@ def test_customer_id_round_trip():
     assert offline_user_id(CUSTOMER_PREFIX + "00549") == "u00549"
 
 
+@needs_seed_repo
 def test_generated_tickets_shape():
     tickets = generate(OFFLINE / "users.csv.gz", OFFLINE / "transactions.csv.gz", DEMO_TICKETS, now=NOW, seed=7)
     assert len(tickets) == 60
@@ -47,6 +48,7 @@ def test_generated_tickets_shape():
     assert tickets == sorted(tickets, key=lambda t: t.created_at)
 
 
+@needs_seed_repo
 def test_generation_is_deterministic():
     a = generate(OFFLINE / "users.csv.gz", OFFLINE / "transactions.csv.gz", DEMO_TICKETS, now=NOW, seed=7)
     b = generate(OFFLINE / "users.csv.gz", OFFLINE / "transactions.csv.gz", DEMO_TICKETS, now=NOW, seed=7)

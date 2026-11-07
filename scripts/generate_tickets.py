@@ -1,15 +1,22 @@
 """Generate data/tickets.json: three hand-written demo tickets plus generated ones (60 in total).
 
-    python scripts/generate_tickets.py [--seed 7] [--out data/tickets.json]
+    python scripts/generate_tickets.py [--seed 7] [--now 2026-11-07T15:00:00Z] [--out data/tickets.json] [--force]
 
 Reads the offline CSVs from the seed repo (`SEED_REPO`, default ~/hackathon/adapty-seed-data-hack).
 No network, no keys. Dates in the text are on the live profile's clock (see `tickets.LIVE_SHIFT`).
+
+Deterministic for a given seed and `--now` (the clock decides which events count as recent and
+how old each ticket is). The committed file was generated on Sat 7 Nov with the wall clock, before
+`--now` existed; regenerating replaces ticket ids and text, so `data/eval.json` must be relabelled
+(tests/test_tickets.py enforces it) and the live DB's cached proposals no longer match. The script
+therefore refuses to overwrite an existing file without `--force`.
 """
 
 from __future__ import annotations
 
 import argparse
 import json
+from datetime import datetime
 import sys
 from collections import Counter
 from pathlib import Path
@@ -68,11 +75,17 @@ DEMO_TICKETS = [
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--seed", type=int, default=7)
+    parser.add_argument("--now", default="2026-11-07T15:00:00Z", help="the clock the generator runs on (ISO 8601 UTC)")
     parser.add_argument("--out", type=Path, default=config.ROOT / "data" / "tickets.json")
+    parser.add_argument("--force", action="store_true", help="overwrite an existing file (invalidates eval labels and cached proposals)")
     args = parser.parse_args()
+    if args.out.exists() and not args.force:
+        print(f"{args.out} exists; pass --force to replace it (then relabel data/eval.json and re-run the batch)")
+        return 1
 
+    now = datetime.fromisoformat(args.now.replace("Z", "+00:00"))
     offline = config.SEED_REPO / "data" / "offline"
-    tickets = generate(offline / "users.csv.gz", offline / "transactions.csv.gz", DEMO_TICKETS, seed=args.seed)
+    tickets = generate(offline / "users.csv.gz", offline / "transactions.csv.gz", DEMO_TICKETS, now=now, seed=args.seed)
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps([t.as_dict() for t in tickets], indent=2, ensure_ascii=False) + "\n")
 
