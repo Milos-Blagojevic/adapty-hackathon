@@ -1,0 +1,193 @@
+{
+  "summary": {
+    "model": "claude-opus-5-5",
+    "cases": 20,
+    "scored": 20,
+    "category_correct": 18,
+    "action_correct": 16,
+    "both_correct": 16,
+    "model_calls": 0
+  },
+  "rows": [
+    {
+      "ticket_id": "demo-1",
+      "expected_category": "charged_after_trial",
+      "got_category": "charged_after_trial",
+      "expected_action": "grant_access",
+      "got_action": "grant_access",
+      "confidence": 0.85,
+      "source": "cached"
+    },
+    {
+      "ticket_id": "demo-2",
+      "expected_category": "no_access_after_purchase",
+      "got_category": "no_access_after_purchase",
+      "expected_action": "grant_access",
+      "got_action": "grant_access",
+      "confidence": 0.85,
+      "source": "cached"
+    },
+    {
+      "ticket_id": "demo-3",
+      "expected_category": "billing_issue",
+      "got_category": "billing_issue",
+      "expected_action": "explain",
+      "got_action": "explain",
+      "confidence": 0.9,
+      "source": "cached"
+    },
+    {
+      "ticket_id": "t-017",
+      "expected_category": "charged_after_trial",
+      "got_category": "charged_after_trial",
+      "expected_action": "grant_access",
+      "got_action": "explain",
+      "confidence": 0.6,
+      "source": "cached"
+    },
+    {
+      "ticket_id": "t-019",
+      "expected_category": "charged_after_trial",
+      "got_category": "refund_request",
+      "expected_action": "grant_access",
+      "got_action": "escalate_refund",
+      "confidence": 0.7,
+      "source": "cached"
+    },
+    {
+      "ticket_id": "t-028",
+      "expected_category": "charged_after_trial",
+      "got_category": "charged_after_trial",
+      "expected_action": "grant_access",
+      "got_action": "grant_access",
+      "confidence": 0.8,
+      "source": "cached"
+    },
+    {
+      "ticket_id": "t-008",
+      "expected_category": "charged_after_trial",
+      "got_category": "refund_request",
+      "expected_action": "grant_access",
+      "got_action": "escalate_refund",
+      "confidence": 0.75,
+      "source": "cached"
+    },
+    {
+      "ticket_id": "t-027",
+      "expected_category": "charged_after_trial",
+      "got_category": "charged_after_trial",
+      "expected_action": "grant_access",
+      "got_action": "grant_access",
+      "confidence": 0.88,
+      "source": "cached"
+    },
+    {
+      "ticket_id": "t-045",
+      "expected_category": "charged_after_trial",
+      "got_category": "charged_after_trial",
+      "expected_action": "grant_access",
+      "got_action": "escalate_refund",
+      "confidence": 0.7,
+      "source": "cached"
+    },
+    {
+      "ticket_id": "t-011",
+      "expected_category": "no_access_after_purchase",
+      "got_category": "no_access_after_purchase",
+      "expected_action": "grant_access",
+      "got_action": "grant_access",
+      "confidence": 0.8,
+      "source": "cached"
+    },
+    {
+      "ticket_id": "t-043",
+      "expected_category": "no_access_after_purchase",
+      "got_category": "no_access_after_purchase",
+      "expected_action": "grant_access",
+      "got_action": "grant_access",
+      "confidence": 0.88,
+      "source": "cached"
+    },
+    {
+      "ticket_id": "t-005",
+      "expected_category": "billing_issue",
+      "got_category": "billing_issue",
+      "expected_action": "explain",
+      "got_action": "explain",
+      "confidence": 0.9,
+      "source": "cached"
+    },
+    {
+      "ticket_id": "t-044",
+      "expected_category": "billing_issue",
+      "got_category": "billing_issue",
+      "expected_action": "explain",
+      "got_action": "explain",
+      "confidence": 0.9,
+      "source": "cached"
+    },
+    {
+      "ticket_id": "t-035",
+      "expected_category": "refund_request",
+      "got_category": "refund_request",
+      "expected_action": "escalate_refund",
+      "got_action": "escalate_refund",
+      "confidence": 0.9,
+      "source": "cached"
+    },
+    {
+      "ticket_id": "t-048",
+      "expected_category": "refund_request",
+      "got_category": "refund_request",
+      "expected_action": "escalate_refund",
+      "got_action": "escalate_refund",
+      "confidence": 0.75,
+      "source": "cached"
+    },
+    {
+      "ticket_id": "t-052",
+      "expected_category": "refund_request",
+      "got_category": "refund_request",
+      "expected_action": "escalate_refund",
+      "got_action": "escalate_refund",
+      "confidence": 0.8,
+      "source": "cached"
+    },
+    {
+      "ticket_id": "t-030",
+      "expected_category": "cancel_how",
+      "got_category": "cancel_how",
+      "expected_action": "explain",
+      "got_action": "explain",
+      "confidence": 0.95,
+      "source": "cached"
+    },
+    {
+      "ticket_id": "t-053",
+      "expected_category": "cancel_how",
+      "got_category": "cancel_how",
+      "expected_action": "explain",
+      "got_action": "explain",
+      "confidence": 0.92,
+      "source": "cached"
+    },
+    {
+      "ticket_id": "t-042",
+      "expected_category": "price_complaint",
+      "got_category": "price_complaint",
+      "expected_action": "explain",
+      "got_action": "explain",
+      "confidence": 0.85,
+      "source": "cached"
+    },
+    {
+      "ticket_id": "t-012",
+      "expected_category": "other",
+      "got_category": "other",
+      "expected_action": "explain",
+      "got_action": "explain",
+      "confidence": 0.9,
+      "source": "cached"
+    }
+  ]
+}
