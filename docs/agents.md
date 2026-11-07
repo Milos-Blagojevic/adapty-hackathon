@@ -226,3 +226,7 @@ Decisions: accept stores `decision_json = Decision.model_dump()`; reject always 
 ### LLM provider switch (binding)
 
 `AgentConfig.llm_provider`: `env` (default: `LLM_PROVIDER` from `.env`; `auto` = openai when `OPENAI_API_KEY` + `OPENAI_MODEL` are set, else anthropic when `ANTHROPIC_API_KEY` is set) | `openai` | `anthropic`. `PUT /api/config` with a new provider rebuilds the client for both agents; a provider without keys → 422, nothing saved. `GET /api/llm` → `{selected, env_default, active, model, available: {openai, anthropic}, demo}` (never key values). OpenAI-compatible extras from `.env`: `OPENAI_BASE_URL`, `OPENAI_EXTRA_BODY` (JSON, e.g. DeepSeek `{"thinking": {"type": "disabled"}}`), `OPENAI_STRICT_TOOLS` (1/0), `OPENAI_MAX_TOKENS`.
+
+### After a handoff (binding, replaces "after handoff no model call")
+
+While the session is `handed_off`, each user message still gets a model reply, but only with tools `get_profile`, `store_instructions`, `cancel_handoff {note: str}`; any other tool call is logged as not run ("not run: a teammate has the conversation"); no second ticket. New messages are visible to the teammate through the ticket's conversation. `cancel_handoff` dismisses the ticket if it is still new/triaged/proposed (`decision_json = {"rejected": true, "note": "user cancelled the handoff: …", "reply": null}`) and sets the outcome back to `open`. Demo mode / no LLM: fixed reply `HANDED_OFF_REPLY`.

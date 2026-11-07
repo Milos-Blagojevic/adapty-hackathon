@@ -76,13 +76,25 @@ class MarkResolvedArgs(BaseModel):
     note: str
 
 
+class CancelHandoffArgs(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    note: str
+
+
 ARGS = {
     "get_profile": GetProfileArgs,
     "grant_access": GrantArgs,
     "store_instructions": StoreInstructionsArgs,
     "handoff": HandoffArgs,
     "mark_resolved": MarkResolvedArgs,
+    "cancel_handoff": CancelHandoffArgs,
 }
+
+# While a teammate has the conversation: answers only, no account actions, no second handoff.
+AFTER_HANDOFF_TOOLS = ("get_profile", "store_instructions", "cancel_handoff")
+AFTER_HANDOFF_PROMPT = """
+
+A teammate already has this conversation (ticket {ticket_id}) and will reply here. Until then you may still answer questions from the account and give store steps, but you take no account actions: no free access, no new handoff. New messages are visible to the teammate. If the user clearly says they no longer need a human (they want to continue with you, or the problem is gone), call cancel_handoff with a one-line note, then continue normally in the next message."""
 
 
 def tool_specs(cfg: AgentConfig) -> list[llm.ToolSpec]:
@@ -112,6 +124,14 @@ HANDOFF_RULE_TEXT = {
     "profile_mismatch": "profile_mismatch: what the user says contradicts the account (a purchase, plan or charge that is not there), or the account is not found.",
     "repeat_after_grant": "repeat_after_grant: the user complains again after we already gave them free days (grants_by_us_last_30d above 0).",
 }
+
+
+def after_handoff_specs() -> list[llm.ToolSpec]:
+    return [
+        llm.ToolSpec("get_profile", "Load this user's account: plans, purchases, charges, dates, access.", GetProfileArgs),
+        llm.ToolSpec("store_instructions", "Get the exact steps for the user to restore purchases, cancel, or request a refund in the App Store or Google Play.", StoreInstructionsArgs),
+        llm.ToolSpec("cancel_handoff", "The user no longer needs a human: withdraw the handoff. `note`: one line why.", CancelHandoffArgs),
+    ]
 
 
 def system_prompt(cfg: AgentConfig) -> str:
@@ -236,16 +256,14 @@ def chat(services, customer_user_id: str, session_id: str, message: str) -> Chat
     # The session's customer is fixed at its first message; a different id in a later request is ignored.
     customer = conversation["customer_user_id"]
 
-    if conversation["outcome"] == "handed_off":
-        db.append_message(conn, session_id, "user", message)
-        db.append_message(conn, session_id, "agent", HANDED_OFF_REPLY)
-        return ChatResult(reply=HANDED_OFF_REPLY, handed_off=True, ticket_id=conversation["ticket_id"])
-
+    after_handoff = conversation["outcome"] == "handed_off"
     db.append_message(conn, session_id, "user", message)
     turn = _Turn(services, cfg, customer, session_id)
     history = db.list_messages(conn, session_id)
 
-    if sum(1 for m in history if m["role"] == "user") > cfg.max_turns:
+    if after_handoff and (services.demo or services.llm is None):
+        return _finish(turn, HANDED_OFF_REPLY)
+    if not after_handoff and sum(1 for m in history if m["role"] == "user") > cfg.max_turns:
         _handoff(turn, "other", "conversation too long")
         return _finish(turn, TOO_LONG_REPLY)
 
@@ -259,6 +277,9 @@ def chat(services, customer_user_id: str, session_id: str, message: str) -> Chat
     ]
     system = system_prompt(cfg)
     tools = tool_specs(cfg)
+    if after_handoff:
+        system += AFTER_HANDOFF_PROMPT.format(ticket_id=conversation["ticket_id"])
+        tools = after_handoff_specs()
     text = None
     failed = None
     try:
@@ -275,6 +296,8 @@ def chat(services, customer_user_id: str, session_id: str, message: str) -> Chat
             for call in step.tool_calls:
                 if last_call:
                     content, is_error = _not_run(turn, call, "not run: model call limit for this message")
+                elif after_handoff and call.name not in AFTER_HANDOFF_TOOLS:
+                    content, is_error = _not_run(turn, call, "not run: a teammate has the conversation")
                 elif turn.ticket_id is not None:
                     content, is_error = _not_run(turn, call, "not run: the conversation was handed off")
                 else:
@@ -290,6 +313,8 @@ def chat(services, customer_user_id: str, session_id: str, message: str) -> Chat
         return _finish(turn, AUTO_HANDOFF_REPLY)
     if not failed and text and text.strip():
         return _finish(turn, text)
+    if after_handoff:
+        return _finish(turn, HANDED_OFF_REPLY)  # the teammate already has it; no second ticket
     # No usable reply: the user still gets an answer, and a human gets the conversation.
     if turn.ticket_id is not None:
         return _finish(turn, HANDED_OFF_REPLY)
@@ -401,12 +426,26 @@ def _mark_resolved(turn: _Turn, call: llm.ToolCall, args: MarkResolvedArgs) -> t
     return "marked resolved", False
 
 
+def _cancel_handoff(turn: _Turn, call: llm.ToolCall, args: CancelHandoffArgs) -> tuple[str, bool]:
+    """Withdraw the handoff: the ticket is dismissed if nobody acted on it yet; the chat goes back to open."""
+    conn = turn.services.conn
+    ticket_id = db.get_conversation(conn, turn.session_id)["ticket_id"]
+    dismissed = False
+    if ticket_id:
+        decision = {"rejected": True, "note": f"user cancelled the handoff: {args.note}", "reply": None}
+        dismissed = db.update_ticket(conn, ticket_id, only_status=("new", "triaged", "proposed"), status="dismissed", decision_json=json.dumps(decision))
+    db.set_outcome(conn, turn.session_id, "open")
+    turn.record(call.name, call.args, True, None, {"ticket_id": ticket_id, "ticket_dismissed": dismissed})
+    return "handoff withdrawn; continue helping the user yourself.", False
+
+
 HANDLERS = {
     "get_profile": _get_profile,
     "grant_access": _grant_access,
     "store_instructions": _store_instructions,
     "handoff": _handoff_tool,
     "mark_resolved": _mark_resolved,
+    "cancel_handoff": _cancel_handoff,
 }
 
 

@@ -308,15 +308,47 @@ def test_handoff_creates_a_chat_ticket(http, conn):
     assert action(result, "handoff")[0].allowed is True
 
 
-def test_after_handoff_the_next_message_makes_no_model_call(http, conn):
+def test_after_handoff_the_agent_still_answers_without_account_actions(http, conn):
+    """Spec change (UX): after a handoff the model keeps answering, offered only get_profile,
+    store_instructions and cancel_handoff; any other tool is not run; no second ticket."""
     mock_profile(http, paid_profile())
-    fake = FakeLLM([call("handoff", reason="asks_for_human", summary="wants a person"), say("A person will reply."), say("unused"), say("unused")])
+    fake = FakeLLM([
+        call("handoff", reason="asks_for_human", summary="wants a person"), say("A person will reply."),
+        call("grant_access", days=3, reason="sneaky"), say("A teammate will help with that."),
+    ])
     first, _ = chat(conn, fake, message="I want a human")
-    made = len(fake.calls)
-    second, _ = chat(conn, fake, message="hello?")
-    assert len(fake.calls) == made
-    assert isinstance(second, ChatResult) and second.reply
+    tickets = len(db.list_tickets(conn))
+    second, _ = chat(conn, fake, message="give me 3 days")
+    assert set(fake.calls[-1]["tools"]) == {"get_profile", "store_instructions", "cancel_handoff"}
+    assert second.reply == "A teammate will help with that."
+    assert second.handed_off is True and second.ticket_id == first.ticket_id
+    grant = [a for a in second.actions if a.tool == "grant_access"]
+    assert grant and grant[0].allowed is False
+    assert not [c for c in http.calls if c.request.method == "POST"]
+    assert len(db.list_tickets(conn)) == tickets
     assert db.get_conversation(conn, SESSION)["outcome"] == "handed_off"
+
+
+def test_cancel_handoff_dismisses_the_open_ticket_and_reopens_the_chat(http, conn):
+    mock_profile(http, paid_profile())
+    fake = FakeLLM([
+        call("handoff", reason="asks_for_human", summary="wants a person"), say("A person will reply."),
+        call("cancel_handoff", note="wants to continue with the assistant"), say("Sure, I am here. What is wrong?"),
+    ])
+    first, _ = chat(conn, fake, message="I want a human")
+    second, _ = chat(conn, fake, message="no, I want the agent")
+    assert second.handed_off is False and second.ticket_id is None
+    assert db.get_conversation(conn, SESSION)["outcome"] == "open"
+    ticket = db.get_ticket(conn, first.ticket_id)
+    assert ticket["status"] == "dismissed" and ticket["decision"]["rejected"] is True
+
+
+def test_after_handoff_demo_or_no_llm_gives_the_fixed_reply(http, conn):
+    mock_profile(http, paid_profile())
+    fake = FakeLLM([call("handoff", reason="asks_for_human", summary="x"), say("ok")])
+    chat(conn, fake, message="human please")
+    second = frontline.chat(services(conn, None), CUID, SESSION, "hello?")
+    assert second.reply == frontline.HANDED_OFF_REPLY and second.handed_off is True
 
 
 def test_more_than_max_turns_user_messages_hands_off(http, conn):
