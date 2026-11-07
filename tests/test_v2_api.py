@@ -360,3 +360,22 @@ def test_reopen_endpoint(tmp_path):
     assert r.status_code == 200 and r.json()["status"] in ("new", "proposed")
     assert r.json()["history"][0]["from_status"] == "dismissed" and r.json()["history"][0]["note"] == "again"
     assert c.post("/api/tickets/t-001/reopen").status_code == 409
+
+
+def test_full_text_search_over_conversation_and_triage(tmp_path):
+    from fastapi.testclient import TestClient
+
+    from resolve import db, web
+    from resolve.adapty import Client
+    from resolve.llm import FakeLLM
+    from tests.fakes_v2 import new_db
+
+    conn = new_db(tmp_path, name="s.sqlite")
+    tid = db.insert_feedback(conn, "Handoff", source="chat_handoff", customer_user_id="u1", session_id="s9")
+    db.ensure_conversation(conn, "s9", "u1")
+    db.append_message(conn, "s9", "agent", "Спасибо, всё хорошо! Чем помочь?")
+    c = TestClient(web.create_app(tmp_path / "s.sqlite", demo=True, adapty_client=Client("sk"), llm_client=FakeLLM([]), seed_file=tmp_path / "none.json"))
+    hits = c.get("/api/tickets", params={"q": "спасибо"}).json()
+    assert [h["id"] for h in hits] == [tid] and "Спасибо" in hits[0]["snippet"]
+    assert c.get("/api/tickets", params={"q": "спасибо nothing-like-this"}).json() == []
+    assert "snippet" not in c.get("/api/tickets").json()[0] or c.get("/api/tickets").json()[0]["snippet"] is None

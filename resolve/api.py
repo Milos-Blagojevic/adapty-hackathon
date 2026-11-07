@@ -90,6 +90,31 @@ def ticket_summary(ticket: dict) -> dict:
     }
 
 
+def search_snippet(conn: db.Database, ticket: dict, q: str) -> str | None:
+    """Full-text match over everything a support person reads on the ticket; returns ~120 chars around the
+    first hit, or None. Case-insensitive for any script (casefold), every word must appear somewhere."""
+    view, _ = _triage_view(ticket)
+    parts = [ticket["subject"], ticket["body"], ticket["customer_user_id"], ticket.get("email") or "", ticket.get("category") or ""]
+    if view:
+        parts += [view.get("summary", ""), view.get("root_cause", ""), *view.get("evidence", [])]
+        parts += [o.get("reply", "") for o in view.get("options", [])]
+    if ticket.get("decision"):
+        parts.append(ticket["decision"].get("reply") or ticket["decision"].get("note") or "")
+    if ticket.get("session_id"):
+        parts += [m["content"] for m in db.list_messages(conn, ticket["session_id"])]
+    words = [w for w in q.casefold().split() if w]
+    haystack = [p for p in parts if p]
+    if not all(any(w in p.casefold() for p in haystack) for w in words):
+        return None
+    for p in haystack:
+        i = p.casefold().find(words[0])
+        if i >= 0:
+            start = max(0, i - 50)
+            text = " ".join(p[start : i + 70].split())
+            return ("…" if start else "") + text + ("…" if i + 70 < len(p) else "")
+    return None
+
+
 def ticket_full(conn: db.Database, ticket: dict) -> dict:
     view, legacy = _triage_view(ticket)
     conversation = db.list_messages(conn, ticket["session_id"]) if ticket["session_id"] else None
@@ -159,15 +184,22 @@ def build_router(services) -> APIRouter:
         status: Literal[*API_STATUSES] | None = None,
         source: Literal[*SOURCES] | None = None,
         category: Literal[*CATEGORIES] | None = None,
+        q: str | None = None,
     ):
-        rows = db.list_tickets(conn)
-        return [
-            ticket_summary(t)
-            for t in rows
+        rows = [
+            t for t in db.list_tickets(conn)
             if (status is None or DB_TO_API_STATUS[t["status"]] == status)
             and (source is None or t["source"] == source)
             and (category is None or t["category"] == category)
         ]
+        if not (q or "").strip():
+            return [ticket_summary(t) for t in rows]
+        out = []
+        for t in rows:
+            snippet = search_snippet(conn, t, q)
+            if snippet is not None:
+                out.append({**ticket_summary(t), "snippet": snippet})
+        return out
 
     @router.get("/api/tickets/{ticket_id}", response_model=Ticket, tags=["inbox"], responses=E404)
     def ticket(ticket_id: str):

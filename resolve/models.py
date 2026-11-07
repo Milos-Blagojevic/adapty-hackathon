@@ -184,6 +184,7 @@ class TicketSummary(BaseModel):
     updated_at: str | None = None
     confidence: float | None = None
     top_action: Literal[*ACTIONS] | None = None
+    snippet: str | None = Field(None, description="Only with ?q=: the text around the first match")
 
 
 class Ticket(TicketSummary):
