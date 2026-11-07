@@ -17,9 +17,13 @@ from resolve.models import (
     SOURCES,
     AgentConfig,
     ChatRequest,
+    ChatResult,
+    ChatSession,
     Decision,
+    FeedbackCreated,
     FeedbackRequest,
     Rejection,
+    UserItem,
 )
 from resolve.tickets import CATEGORIES
 
@@ -105,7 +109,7 @@ def build_router(services) -> APIRouter:
             raise HTTPException(404, f"no ticket {ticket_id}")
         return ticket
 
-    @router.post("/chat")
+    @router.post("/chat", response_model=ChatResult, tags=["mobile"], summary="Send one user message to the Level 2 agent")
     def chat(body: ChatRequest, background: BackgroundTasks):
         before = db.get_conversation(conn, body.session_id)
         before_ticket = before["ticket_id"] if before else None
@@ -114,7 +118,7 @@ def build_router(services) -> APIRouter:
             background.add_task(triage.run, services, result.ticket_id)
         return result.model_dump()
 
-    @router.get("/api/chat/{session_id}")
+    @router.get("/api/chat/{session_id}", response_model=ChatSession, tags=["mobile"], summary="Conversation, tool-call log and outcome (404 if unknown)")
     def chat_history(session_id: str):
         conversation = db.get_conversation(conn, session_id)
         if conversation is None:
@@ -132,7 +136,7 @@ def build_router(services) -> APIRouter:
             "events": events,
         }
 
-    @router.post("/feedback")
+    @router.post("/feedback", response_model=FeedbackCreated, tags=["mobile"], summary="Feedback outside the chat; triage runs in the background")
     def feedback(body: FeedbackRequest, background: BackgroundTasks):
         ticket_id = db.insert_feedback(
             conn, body.text, source=body.source, customer_user_id=body.customer_user_id, email=body.email, subject=body.subject
@@ -213,7 +217,7 @@ def build_router(services) -> APIRouter:
     def get_analytics():
         return analytics.compute(conn)
 
-    @router.get("/api/users")
+    @router.get("/api/users", response_model=list[UserItem], tags=["mobile"], summary="Seeded demo users for a user picker")
     def users():
         ids = {r[0] for r in conn.execute("SELECT customer_user_id FROM tickets WHERE customer_user_id != ''")}
         ids |= {r[0] for r in conn.execute("SELECT customer_user_id FROM conversations WHERE customer_user_id != ''")}

@@ -123,6 +123,42 @@ class ChatResult(BaseModel):
     ticket_id: str | None = None
 
 
+class ChatMessage(BaseModel):
+    role: Literal["user", "agent", "support"]
+    content: str
+    ts: str
+
+
+class ChatEvent(BaseModel):
+    ts: str
+    tool: str
+    args: dict
+    allowed: bool
+    blocked_reason: str | None = None
+    result: dict | str | None = None
+
+
+class ChatSession(BaseModel):
+    """GET /api/chat/{session_id}: poll this to show a support reply that arrives after a handoff."""
+
+    session_id: str
+    customer_user_id: str
+    outcome: Literal[*OUTCOMES]
+    ticket_id: str | None = None
+    messages: list[ChatMessage]
+    events: list[ChatEvent]
+
+
+class UserItem(BaseModel):
+    customer_user_id: str
+    badge: Literal["active", "expired", "lifetime", "none", "unknown"]
+    product: str | None = None
+
+
+class FeedbackCreated(BaseModel):
+    ticket_id: str
+
+
 class FeedbackRequest(BaseModel):
     text: str
     source: Literal[*SOURCES] = "form"

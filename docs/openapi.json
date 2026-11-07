@@ -1,0 +1,1253 @@
+{
+ "openapi": "3.1.0",
+ "info": {
+  "title": "Resolve JSON API",
+  "version": "2",
+  "description": "Contract for the mobile app and any UI. Mobile needs the 'mobile' tag: POST /chat, GET /api/chat/{session_id} (poll for support replies after a handoff), GET /api/users, POST /feedback. Default dev server: http://<laptop-LAN-IP>:8010."
+ },
+ "paths": {
+  "/chat": {
+   "post": {
+    "tags": [
+     "mobile"
+    ],
+    "summary": "Send one user message to the Level 2 agent",
+    "operationId": "chat_chat_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/ChatRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ChatResult"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/chat/{session_id}": {
+   "get": {
+    "tags": [
+     "mobile"
+    ],
+    "summary": "Conversation, tool-call log and outcome (404 if unknown)",
+    "operationId": "chat_history_api_chat__session_id__get",
+    "parameters": [
+     {
+      "name": "session_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Session Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ChatSession"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/feedback": {
+   "post": {
+    "tags": [
+     "mobile"
+    ],
+    "summary": "Feedback outside the chat; triage runs in the background",
+    "operationId": "feedback_feedback_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/FeedbackRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/FeedbackCreated"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/tickets": {
+   "get": {
+    "summary": "Tickets",
+    "operationId": "tickets_api_tickets_get",
+    "parameters": [
+     {
+      "name": "status",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "enum": [
+          "new",
+          "proposed",
+          "done",
+          "dismissed"
+         ],
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Status"
+      }
+     },
+     {
+      "name": "source",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "enum": [
+          "chat_handoff",
+          "email",
+          "form"
+         ],
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Source"
+      }
+     },
+     {
+      "name": "category",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "enum": [
+          "charged_after_trial",
+          "no_access_after_purchase",
+          "billing_issue",
+          "refund_request",
+          "cancel_how",
+          "price_complaint",
+          "other"
+         ],
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Category"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/tickets/{ticket_id}": {
+   "get": {
+    "summary": "Ticket",
+    "operationId": "ticket_api_tickets__ticket_id__get",
+    "parameters": [
+     {
+      "name": "ticket_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Ticket Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/tickets/{ticket_id}/triage": {
+   "post": {
+    "summary": "Run Triage",
+    "operationId": "run_triage_api_tickets__ticket_id__triage_post",
+    "parameters": [
+     {
+      "name": "ticket_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Ticket Id"
+      }
+     },
+     {
+      "name": "force",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "boolean",
+       "default": false,
+       "title": "Force"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/tickets/{ticket_id}/accept": {
+   "post": {
+    "summary": "Accept",
+    "operationId": "accept_api_tickets__ticket_id__accept_post",
+    "parameters": [
+     {
+      "name": "ticket_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Ticket Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/Decision"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/tickets/{ticket_id}/reject": {
+   "post": {
+    "summary": "Reject",
+    "operationId": "reject_api_tickets__ticket_id__reject_post",
+    "parameters": [
+     {
+      "name": "ticket_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Ticket Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/Rejection"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/config": {
+   "get": {
+    "summary": "Get Config",
+    "operationId": "get_config_api_config_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     }
+    }
+   },
+   "put": {
+    "summary": "Put Config",
+    "operationId": "put_config_api_config_put",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/AgentConfig"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/llm": {
+   "get": {
+    "summary": "Get Llm",
+    "operationId": "get_llm_api_llm_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/analytics": {
+   "get": {
+    "summary": "Get Analytics",
+    "operationId": "get_analytics_api_analytics_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/users": {
+   "get": {
+    "tags": [
+     "mobile"
+    ],
+    "summary": "Seeded demo users for a user picker",
+    "operationId": "users_api_users_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/UserItem"
+         },
+         "type": "array",
+         "title": "Response Users Api Users Get"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/healthz": {
+   "get": {
+    "summary": "Healthz",
+    "operationId": "healthz_healthz_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     }
+    }
+   }
+  }
+ },
+ "components": {
+  "schemas": {
+   "ActionLog": {
+    "properties": {
+     "tool": {
+      "type": "string",
+      "title": "Tool"
+     },
+     "args": {
+      "additionalProperties": true,
+      "type": "object",
+      "title": "Args"
+     },
+     "allowed": {
+      "type": "boolean",
+      "title": "Allowed"
+     },
+     "blocked_reason": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Blocked Reason"
+     },
+     "result": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Result"
+     }
+    },
+    "type": "object",
+    "required": [
+     "tool",
+     "args",
+     "allowed"
+    ],
+    "title": "ActionLog"
+   },
+   "AgentConfig": {
+    "properties": {
+     "app_name": {
+      "type": "string",
+      "title": "App Name",
+      "default": "Lumen"
+     },
+     "tone": {
+      "type": "string",
+      "title": "Tone",
+      "default": "warm, short, plain English"
+     },
+     "tools": {
+      "additionalProperties": {
+       "type": "boolean"
+      },
+      "type": "object",
+      "title": "Tools"
+     },
+     "grant": {
+      "$ref": "#/components/schemas/GrantLimits"
+     },
+     "always_handoff": {
+      "items": {
+       "type": "string",
+       "enum": [
+        "refund",
+        "chargeback",
+        "threat",
+        "asks_for_human",
+        "profile_mismatch",
+        "repeat_after_grant"
+       ]
+      },
+      "type": "array",
+      "title": "Always Handoff"
+     },
+     "max_turns": {
+      "type": "integer",
+      "maximum": 50.0,
+      "minimum": 1.0,
+      "title": "Max Turns",
+      "default": 8
+     },
+     "llm_provider": {
+      "type": "string",
+      "enum": [
+       "env",
+       "openai",
+       "anthropic"
+      ],
+      "title": "Llm Provider",
+      "default": "env"
+     }
+    },
+    "type": "object",
+    "title": "AgentConfig"
+   },
+   "Body_ab_draft_insights_ab_draft_post": {
+    "properties": {
+     "placement_id": {
+      "type": "string",
+      "title": "Placement Id"
+     },
+     "hypothesis": {
+      "type": "string",
+      "title": "Hypothesis",
+      "default": ""
+     }
+    },
+    "type": "object",
+    "required": [
+     "placement_id"
+    ],
+    "title": "Body_ab_draft_insights_ab_draft_post"
+   },
+   "Body_accept_tickets__ticket_id__accept_post": {
+    "properties": {
+     "option": {
+      "type": "integer",
+      "title": "Option",
+      "default": 0
+     },
+     "action": {
+      "type": "string",
+      "title": "Action",
+      "default": ""
+     },
+     "reply": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Reply"
+     },
+     "days": {
+      "type": "string",
+      "title": "Days",
+      "default": ""
+     },
+     "kind": {
+      "type": "string",
+      "title": "Kind",
+      "default": ""
+     },
+     "store": {
+      "type": "string",
+      "title": "Store",
+      "default": ""
+     },
+     "question": {
+      "type": "string",
+      "title": "Question",
+      "default": ""
+     }
+    },
+    "type": "object",
+    "title": "Body_accept_tickets__ticket_id__accept_post"
+   },
+   "Body_propose_tickets__ticket_id__propose_post": {
+    "properties": {
+     "force": {
+      "type": "string",
+      "title": "Force",
+      "default": ""
+     }
+    },
+    "type": "object",
+    "title": "Body_propose_tickets__ticket_id__propose_post"
+   },
+   "Body_reject_tickets__ticket_id__reject_post": {
+    "properties": {
+     "note": {
+      "type": "string",
+      "title": "Note",
+      "default": ""
+     },
+     "reply": {
+      "type": "string",
+      "title": "Reply",
+      "default": ""
+     }
+    },
+    "type": "object",
+    "title": "Body_reject_tickets__ticket_id__reject_post"
+   },
+   "ChatEvent": {
+    "properties": {
+     "ts": {
+      "type": "string",
+      "title": "Ts"
+     },
+     "tool": {
+      "type": "string",
+      "title": "Tool"
+     },
+     "args": {
+      "additionalProperties": true,
+      "type": "object",
+      "title": "Args"
+     },
+     "allowed": {
+      "type": "boolean",
+      "title": "Allowed"
+     },
+     "blocked_reason": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Blocked Reason"
+     },
+     "result": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Result"
+     }
+    },
+    "type": "object",
+    "required": [
+     "ts",
+     "tool",
+     "args",
+     "allowed"
+    ],
+    "title": "ChatEvent"
+   },
+   "ChatMessage": {
+    "properties": {
+     "role": {
+      "type": "string",
+      "enum": [
+       "user",
+       "agent",
+       "support"
+      ],
+      "title": "Role"
+     },
+     "content": {
+      "type": "string",
+      "title": "Content"
+     },
+     "ts": {
+      "type": "string",
+      "title": "Ts"
+     }
+    },
+    "type": "object",
+    "required": [
+     "role",
+     "content",
+     "ts"
+    ],
+    "title": "ChatMessage"
+   },
+   "ChatRequest": {
+    "properties": {
+     "customer_user_id": {
+      "type": "string",
+      "title": "Customer User Id"
+     },
+     "session_id": {
+      "type": "string",
+      "title": "Session Id"
+     },
+     "message": {
+      "type": "string",
+      "title": "Message"
+     }
+    },
+    "type": "object",
+    "required": [
+     "customer_user_id",
+     "session_id",
+     "message"
+    ],
+    "title": "ChatRequest"
+   },
+   "ChatResult": {
+    "properties": {
+     "reply": {
+      "type": "string",
+      "title": "Reply"
+     },
+     "actions": {
+      "items": {
+       "$ref": "#/components/schemas/ActionLog"
+      },
+      "type": "array",
+      "title": "Actions"
+     },
+     "handed_off": {
+      "type": "boolean",
+      "title": "Handed Off",
+      "default": false
+     },
+     "ticket_id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Ticket Id"
+     }
+    },
+    "type": "object",
+    "required": [
+     "reply"
+    ],
+    "title": "ChatResult"
+   },
+   "ChatSession": {
+    "properties": {
+     "session_id": {
+      "type": "string",
+      "title": "Session Id"
+     },
+     "customer_user_id": {
+      "type": "string",
+      "title": "Customer User Id"
+     },
+     "outcome": {
+      "type": "string",
+      "enum": [
+       "open",
+       "resolved",
+       "handed_off"
+      ],
+      "title": "Outcome"
+     },
+     "ticket_id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Ticket Id"
+     },
+     "messages": {
+      "items": {
+       "$ref": "#/components/schemas/ChatMessage"
+      },
+      "type": "array",
+      "title": "Messages"
+     },
+     "events": {
+      "items": {
+       "$ref": "#/components/schemas/ChatEvent"
+      },
+      "type": "array",
+      "title": "Events"
+     }
+    },
+    "type": "object",
+    "required": [
+     "session_id",
+     "customer_user_id",
+     "outcome",
+     "messages",
+     "events"
+    ],
+    "title": "ChatSession",
+    "description": "GET /api/chat/{session_id}: poll this to show a support reply that arrives after a handoff."
+   },
+   "Decision": {
+    "properties": {
+     "option": {
+      "type": "integer",
+      "maximum": 2.0,
+      "minimum": 0.0,
+      "title": "Option"
+     },
+     "edits": {
+      "$ref": "#/components/schemas/OptionEdits"
+     }
+    },
+    "type": "object",
+    "required": [
+     "option"
+    ],
+    "title": "Decision"
+   },
+   "FeedbackCreated": {
+    "properties": {
+     "ticket_id": {
+      "type": "string",
+      "title": "Ticket Id"
+     }
+    },
+    "type": "object",
+    "required": [
+     "ticket_id"
+    ],
+    "title": "FeedbackCreated"
+   },
+   "FeedbackRequest": {
+    "properties": {
+     "text": {
+      "type": "string",
+      "title": "Text"
+     },
+     "source": {
+      "type": "string",
+      "enum": [
+       "chat_handoff",
+       "email",
+       "form"
+      ],
+      "title": "Source",
+      "default": "form"
+     },
+     "customer_user_id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Customer User Id"
+     },
+     "email": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Email"
+     },
+     "subject": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Subject"
+     }
+    },
+    "type": "object",
+    "required": [
+     "text"
+    ],
+    "title": "FeedbackRequest"
+   },
+   "GrantLimits": {
+    "properties": {
+     "access_level": {
+      "type": "string",
+      "title": "Access Level",
+      "default": "premium"
+     },
+     "max_days": {
+      "type": "integer",
+      "maximum": 365.0,
+      "minimum": 1.0,
+      "title": "Max Days",
+      "default": 7
+     },
+     "max_grants_per_user_30d": {
+      "type": "integer",
+      "maximum": 10.0,
+      "minimum": 0.0,
+      "title": "Max Grants Per User 30D",
+      "default": 1
+     },
+     "require_paid": {
+      "type": "boolean",
+      "title": "Require Paid",
+      "default": true
+     }
+    },
+    "type": "object",
+    "title": "GrantLimits"
+   },
+   "HTTPValidationError": {
+    "properties": {
+     "detail": {
+      "items": {
+       "$ref": "#/components/schemas/ValidationError"
+      },
+      "type": "array",
+      "title": "Detail"
+     }
+    },
+    "type": "object",
+    "title": "HTTPValidationError"
+   },
+   "OptionEdits": {
+    "properties": {
+     "action": {
+      "anyOf": [
+       {
+        "type": "string",
+        "enum": [
+         "grant_access",
+         "reply_only",
+         "store_instructions",
+         "refund_to_human",
+         "ask_user",
+         "no_reply"
+        ]
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Action"
+     },
+     "reply": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Reply"
+     },
+     "days": {
+      "anyOf": [
+       {
+        "type": "integer",
+        "maximum": 365.0,
+        "minimum": 1.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Days"
+     },
+     "kind": {
+      "anyOf": [
+       {
+        "type": "string",
+        "enum": [
+         "restore",
+         "cancel",
+         "refund_request"
+        ]
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Kind"
+     },
+     "store": {
+      "anyOf": [
+       {
+        "type": "string",
+        "enum": [
+         "app_store",
+         "play_store"
+        ]
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Store"
+     },
+     "question": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Question"
+     }
+    },
+    "type": "object",
+    "title": "OptionEdits",
+    "description": "What the support person may change before accepting. Any field left None keeps the option's value."
+   },
+   "Rejection": {
+    "properties": {
+     "note": {
+      "type": "string",
+      "title": "Note",
+      "default": ""
+     },
+     "reply": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Reply"
+     }
+    },
+    "type": "object",
+    "title": "Rejection"
+   },
+   "UserItem": {
+    "properties": {
+     "customer_user_id": {
+      "type": "string",
+      "title": "Customer User Id"
+     },
+     "badge": {
+      "type": "string",
+      "enum": [
+       "active",
+       "expired",
+       "lifetime",
+       "none",
+       "unknown"
+      ],
+      "title": "Badge"
+     },
+     "product": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Product"
+     }
+    },
+    "type": "object",
+    "required": [
+     "customer_user_id",
+     "badge"
+    ],
+    "title": "UserItem"
+   },
+   "ValidationError": {
+    "properties": {
+     "loc": {
+      "items": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "integer"
+        }
+       ]
+      },
+      "type": "array",
+      "title": "Location"
+     },
+     "msg": {
+      "type": "string",
+      "title": "Message"
+     },
+     "type": {
+      "type": "string",
+      "title": "Error Type"
+     },
+     "input": {
+      "title": "Input"
+     },
+     "ctx": {
+      "type": "object",
+      "title": "Context"
+     }
+    },
+    "type": "object",
+    "required": [
+     "loc",
+     "msg",
+     "type"
+    ],
+    "title": "ValidationError"
+   }
+  }
+ }
+}
