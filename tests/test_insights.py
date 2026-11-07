@@ -1,5 +1,4 @@
 import json
-import os
 import stat
 import sys
 from pathlib import Path
@@ -121,7 +120,8 @@ def test_build_services_copies_the_snapshot_in_demo_mode(tmp_path, monkeypatch):
     monkeypatch.setattr(config, "DEMO_MODE", True)
     monkeypatch.setattr(config, "ROOT", tmp_path)
     monkeypatch.setattr(config, "DEMO_DB_PATH", snapshot)
-    db_path, demo, adapty_client, anthropic_client, model, runner = build_services_from_env()
+    monkeypatch.delenv("ADAPTY_SECRET_KEY", raising=False)
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    db_path, demo, adapty_client, anthropic_client, model, runner = build_services_from_env()  # no MissingKey without keys
     assert demo is True and db_path == tmp_path / "data" / "demo-run.sqlite" and db_path.exists()
     assert (adapty_client, anthropic_client, model, runner) == (None, None, None, None)
-    assert os.environ.get("ADAPTY_SECRET_KEY") is None or True  # keys are never read in this branch

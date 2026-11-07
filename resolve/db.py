@@ -169,7 +169,9 @@ def update_ticket(conn: Database, ticket_id: str, only_status: tuple[str, ...] |
     assignments = ", ".join(f"{key} = :{key}" for key in fields)
     where = "id = :id"
     params = dict(fields, id=ticket_id)
-    if only_status:
+    if only_status is not None:
+        if not only_status:
+            raise ValueError("only_status must name at least one status")
         placeholders = ", ".join(f":s{i}" for i in range(len(only_status)))
         where += f" AND status IN ({placeholders})"
         params.update({f"s{i}": status for i, status in enumerate(only_status)})

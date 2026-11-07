@@ -88,3 +88,11 @@ def test_update_profile_sends_custom_attributes(http):
     http.patch(PROFILE_URL, json=profile())
     Client("sk").update_profile("lumen_1_00001", {"last_support_ticket": "demo-1"})
     assert http.calls[0].request.body == b'{"custom_attributes": [{"key": "last_support_ticket", "value": "demo-1"}]}'
+
+
+@pytest.mark.parametrize("body", [{"errors": None, "error_code": "odd", "status_code": 500}, {"errors": "nope"}, [1, 2], "plain text"])
+def test_any_error_body_becomes_adapty_error(http, body):
+    http.get(PROFILE_URL, status=500, json=body)
+    with pytest.raises(AdaptyError) as exc:
+        Client("sk").get_profile("x")
+    assert exc.value.status == 500 and str(exc.value)

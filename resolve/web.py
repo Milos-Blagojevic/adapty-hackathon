@@ -3,13 +3,12 @@
 from __future__ import annotations
 
 import shutil
-import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
 
 import anthropic
 from fastapi import FastAPI, Form, HTTPException, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 

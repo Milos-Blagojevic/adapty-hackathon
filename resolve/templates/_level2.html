@@ -63,15 +63,15 @@
 
   <div class="actions">
     {% if ticket.status == 'proposed' %}
-      <button class="primary" hx-post="/tickets/{{ ticket.id }}/approve" hx-target="#level2" hx-swap="outerHTML" hx-disabled-elt="this">
+      <button class="primary" hx-post="/tickets/{{ ticket.id }}/approve" hx-target="#level2" hx-swap="outerHTML" hx-disabled-elt="#level2 button">
         Approve{% if p.action == 'grant_access' %} · grant {{ compensation_days }} days{% endif %}
       </button>
     {% endif %}
     {% if open and ticket.profile and not demo and ticket.model_calls < max_calls %}
-      <button hx-post="/tickets/{{ ticket.id }}/propose" hx-vals='{"force": "1"}' hx-target="#level2" hx-swap="outerHTML" hx-disabled-elt="this">{% if p %}Re-run agent{% else %}Run agent{% endif %}</button>
+      <button hx-post="/tickets/{{ ticket.id }}/propose" hx-vals='{"force": "1"}' hx-target="#level2" hx-swap="outerHTML" hx-disabled-elt="#level2 button">{% if p %}Re-run agent{% else %}Run agent{% endif %}</button>
     {% endif %}
     {% if ticket.status not in ('done', 'dismissed') %}
-      <button class="quiet" hx-post="/tickets/{{ ticket.id }}/dismiss" hx-target="#level2" hx-swap="outerHTML">Dismiss</button>
+      <button class="quiet" hx-post="/tickets/{{ ticket.id }}/dismiss" hx-target="#level2" hx-swap="outerHTML" hx-disabled-elt="#level2 button">Dismiss</button>
     {% endif %}
     {% if ticket.status == 'dismissed' %}<span class="muted">Dismissed. Nothing happened in Adapty.</span>{% endif %}
   </div>

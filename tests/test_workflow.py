@@ -196,3 +196,29 @@ def test_unexpected_error_during_approve_returns_ticket_to_proposed(http, conn):
     with pytest.raises(RuntimeError):
         workflow.approve(services, "t-001")
     assert db.get_ticket(conn, "t-001")["status"] == "proposed"
+
+
+def test_post_grant_failure_in_stamp_never_reopens_the_ticket(http, conn):
+    """Round-2 finding: a non-Adapty exception after a successful grant must not restore the Approve button."""
+    http.get(PROFILE_URL, json={"data": profile(access_levels=[ACTIVE_WEEKLY])})
+    http.post(GRANT_URL, json={"data": profile(access_levels=[dict(ACTIVE_WEEKLY, store="adapty", expires_at="2026-11-20T05:08:30+00:00")])})
+    http.patch(PROFILE_URL, status=500, json={"errors": None, "error_code": "odd", "status_code": 500})
+    services = live(conn, [proposal()])
+    workflow.open_ticket(services, "t-001")
+    workflow.propose(services, "t-001")
+    ticket = workflow.approve(services, "t-001")
+    assert ticket["status"] == "done" and ticket["action"]["expires_at"] == "2026-11-20T05:08:30Z"
+    assert "500" in ticket["action"]["stamp_error"]
+    workflow.approve(services, "t-001")
+    assert len([c for c in http.calls if c.request.method == "POST"]) == 1
+
+
+def test_open_does_not_untriage_a_dismissed_ticket_and_dismiss_waits_for_approve(http, conn):
+    http.get(PROFILE_URL, json={"data": profile(access_levels=[ACTIVE_WEEKLY])})
+    services = live(conn, [])
+    db.update_ticket(conn, "t-001", status="dismissed")
+    assert workflow.open_ticket(services, "t-001")["status"] == "dismissed"
+    db.update_ticket(conn, "t-002", status="approved")
+    assert workflow.dismiss(services, "t-002")["status"] == "approved"
+    with pytest.raises(ValueError):
+        db.update_ticket(conn, "t-002", only_status=(), status="new")

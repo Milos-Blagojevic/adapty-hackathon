@@ -51,12 +51,10 @@ def open_ticket(services: Services, ticket_id: str, refresh: bool = True) -> dic
         return ticket
     try:
         profile = services.adapty.get_profile(ticket["customer_user_id"])
-        fields = {"profile_json": json.dumps(profile), "profile_fetched_at": db.now_iso(), "profile_error": None}
+        db.update_ticket(services.conn, ticket_id, profile_json=json.dumps(profile), profile_fetched_at=db.now_iso(), profile_error=None)
+        db.set_status_if(services.conn, ticket_id, "new", "triaged")
     except AdaptyError as exc:
-        fields = {"profile_error": str(exc)}
-    if ticket["status"] == "new" and "profile_json" in fields:
-        fields["status"] = "triaged"
-    db.update_ticket(services.conn, ticket_id, **fields)
+        db.update_ticket(services.conn, ticket_id, profile_error=str(exc))
     return _ticket(services, ticket_id)
 
 
@@ -112,6 +110,7 @@ def approve(services: Services, ticket_id: str) -> dict:
         _finish(services, ticket_id, action, proposal)
         return _ticket(services, ticket_id)
     customer = ticket["customer_user_id"]
+    granted: dict | None = None
     try:
         if proposal["action"] == "grant_access":
             fresh = services.adapty.get_profile(customer)
@@ -124,25 +123,25 @@ def approve(services: Services, ticket_id: str) -> dict:
                 access_level=config.ACCESS_LEVEL,
                 days=config.COMPENSATION_DAYS,
                 expires_at=format_datetime(expires_at),
-                profile_id=granted.get("profile_id"),
+                profile_id=granted.get("profile_id") if isinstance(granted, dict) else None,
             )
-            profile = granted
-        else:
-            profile = None
-        try:
-            profile = services.adapty.update_profile(customer, {STAMP_KEY: ticket_id})
-            action["stamped"] = {STAMP_KEY: ticket_id}
-        except AdaptyError as exc:
-            action["stamp_error"] = str(exc)
     except AdaptyError as exc:
         db.set_status_if(services.conn, ticket_id, "approved", "proposed")
         db.update_ticket(services.conn, ticket_id, action_error=str(exc))
         return _ticket(services, ticket_id)
     except Exception:
-        # Anything unexpected before the grant is recorded: never leave the ticket stuck in `approved`.
+        # Unexpected failure before any grant: never leave the ticket stuck in `approved`.
         db.set_status_if(services.conn, ticket_id, "approved", "proposed")
         raise
-    _finish(services, ticket_id, action, proposal, profile)
+    # From here on the grant (if any) happened in Adapty: whatever the stamp does, the ticket is done
+    # and the action is recorded, so a second Approve is impossible.
+    profile = granted
+    try:
+        profile = services.adapty.update_profile(customer, {STAMP_KEY: ticket_id})
+        action["stamped"] = {STAMP_KEY: ticket_id}
+    except Exception as exc:  # noqa: BLE001 - an AdaptyError or anything else: recorded, never fatal
+        action["stamp_error"] = str(exc) if isinstance(exc, AdaptyError) else f"{exc.__class__.__name__}: {exc}"
+    _finish(services, ticket_id, action, proposal, profile if isinstance(profile, dict) else None)
     return _ticket(services, ticket_id)
 
 
@@ -162,8 +161,7 @@ def _finish(services: Services, ticket_id: str, action: dict, proposal: dict, pr
 
 
 def dismiss(services: Services, ticket_id: str) -> dict:
-    ticket = _ticket(services, ticket_id)
-    if ticket["status"] in ("done", "dismissed"):
-        return ticket
-    db.update_ticket(services.conn, ticket_id, status="dismissed")
+    """Dismiss an open ticket. Not while an approve is in flight, and never after done or dismissed."""
+    _ticket(services, ticket_id)
+    db.update_ticket(services.conn, ticket_id, only_status=OPEN_STATUSES, status="dismissed")
     return _ticket(services, ticket_id)

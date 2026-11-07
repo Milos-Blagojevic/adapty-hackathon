@@ -85,14 +85,18 @@ class Client:
 
 
 def _error(response: requests.Response) -> AdaptyError:
+    """Turn any non-2xx into AdaptyError, whatever shape the body has (`errors: null`, a string, HTML)."""
+    code, message = None, None
     try:
         body = response.json()
-        code = body.get("error_code")
-        messages = [m for item in body.get("errors", []) for m in item.get("errors", [])]
-        message = "; ".join(messages) or response.reason
-    except (ValueError, AttributeError):
-        code, message = None, response.text[:200] or response.reason
-    return AdaptyError(message, status=response.status_code, code=code)
+        if isinstance(body, dict):
+            code = body.get("error_code")
+            items = body.get("errors") or []
+            messages = [str(m) for item in items if isinstance(item, dict) for m in (item.get("errors") or [])]
+            message = "; ".join(messages) or None
+    except ValueError:
+        pass
+    return AdaptyError(message or response.text[:200] or response.reason or "request failed", status=response.status_code, code=code)
 
 
 # --- Profile helpers (pure; used by the agent, the approve flow and the templates) ---
