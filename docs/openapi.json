@@ -503,6 +503,85 @@
     }
    }
   },
+  "/api/tickets/{ticket_id}/reopen": {
+   "post": {
+    "tags": [
+     "inbox"
+    ],
+    "summary": "Send a closed ticket back to Incoming; Adapty changes are not undone",
+    "operationId": "reopen_api_tickets__ticket_id__reopen_post",
+    "parameters": [
+     {
+      "name": "ticket_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Ticket Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "anyOf": [
+         {
+          "$ref": "#/components/schemas/Reopen"
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "title": "Body"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Ticket"
+        }
+       }
+      }
+     },
+     "404": {
+      "description": "Unknown id",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorDetail"
+        }
+       }
+      }
+     },
+     "409": {
+      "description": "Wrong ticket status for this call",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorDetail"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/api/config": {
    "get": {
     "tags": [
@@ -1600,6 +1679,17 @@
     "type": "object",
     "title": "Rejection"
    },
+   "Reopen": {
+    "properties": {
+     "note": {
+      "type": "string",
+      "title": "Note",
+      "default": ""
+     }
+    },
+    "type": "object",
+    "title": "Reopen"
+   },
    "RootCauseCount": {
     "properties": {
      "root_cause": {
@@ -1823,6 +1913,15 @@
        }
       ],
       "title": "Conversation"
+     },
+     "history": {
+      "items": {
+       "additionalProperties": true,
+       "type": "object"
+      },
+      "type": "array",
+      "title": "History",
+      "description": "Earlier closes of a reopened ticket: {at, from_status, decision, action, note}"
      }
     },
     "type": "object",
