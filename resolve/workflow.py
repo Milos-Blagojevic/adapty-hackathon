@@ -1,26 +1,25 @@
-"""The ticket state machine: open (profile), propose (Level 2), approve (the Adapty write), dismiss.
+"""The ticket state machine: open (profile), propose (Level 1 triage), accept / reject (the person's call), dismiss.
 
-Statuses: new → triaged (profile fetched) → proposed (proposal cached) → approved (owner clicked;
-the write is in flight) → done (write succeeded, reply marked sent), plus dismissed.
+Statuses: new → triaged (profile fetched) → proposed (triage ticket cached) → approved (the person
+accepted an option; the action is in flight) → done (action succeeded, reply marked sent), plus
+dismissed (rejected with nothing to send).
 
-Approve is idempotent: the proposed → approved transition is a single conditional UPDATE, so a
+Accept is idempotent: the proposed → approved transition is a single conditional UPDATE, so a
 second click, a double submit or a stale tab finds the ticket no longer `proposed` and does
 nothing. An Adapty failure records the error and returns the ticket to `proposed`; nothing is
-marked done unless Adapty said yes.
+marked done unless Adapty said yes. The only Adapty writes go through `actions.execute`.
 """
 
 from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from datetime import datetime, timezone
 
-import anthropic
+from resolve import actions, db, policy, triage
+from resolve.adapty import AdaptyError, Client
+from resolve.llm import LLM
+from resolve.models import Decision, Rejection
 
-from resolve import agent, config, db
-from resolve.adapty import AdaptyError, Client, compensation_expiry, format_datetime
-
-STAMP_KEY = "last_support_ticket"
 OPEN_STATUSES = ("new", "triaged", "proposed")
 
 
@@ -29,8 +28,7 @@ class Services:
     conn: db.Database
     demo: bool
     adapty: Client | None = None
-    anthropic: anthropic.Anthropic | None = None
-    model: str | None = None
+    llm: LLM | None = None
 
 
 class NotFound(Exception):
@@ -44,10 +42,19 @@ def _ticket(services: Services, ticket_id: str) -> dict:
     return ticket
 
 
+def triage_of(ticket: dict) -> dict | None:
+    """The ticket's triage (v2), or its v1 proposal as a one-option legacy ticket, or None."""
+    if ticket.get("triage"):
+        return ticket["triage"]
+    if ticket.get("proposal"):
+        return triage.legacy_to_ticket(ticket["proposal"])
+    return None
+
+
 def open_ticket(services: Services, ticket_id: str, refresh: bool = True) -> dict:
     """Fetch the live profile (live mode) and move a new ticket to triaged. Never raises on Adapty errors."""
     ticket = _ticket(services, ticket_id)
-    if services.demo or not refresh or services.adapty is None:
+    if services.demo or not refresh or services.adapty is None or not ticket["customer_user_id"]:
         return ticket
     try:
         profile = services.adapty.get_profile(ticket["customer_user_id"])
@@ -59,72 +66,52 @@ def open_ticket(services: Services, ticket_id: str, refresh: bool = True) -> dic
 
 
 def propose(services: Services, ticket_id: str, force: bool = False) -> dict:
-    """Run Level 2 unless a proposal is cached. Stores the proposal or the error; never raises AgentError."""
+    """Run Level 1 unless a ticket is cached. Stores the triage or `triage_error`; never raises on model errors."""
+    _ticket(services, ticket_id)
+    return triage.run(services, ticket_id, force=force)
+
+
+def final_option(services: Services, option: dict, decision: Decision) -> dict:
+    """The option with the person's edits applied; grant days default to the option's, else the config max."""
+    edits = decision.edits
+    params = dict(option["params"])
+    for key in ("days", "kind", "store", "question"):
+        if getattr(edits, key) is not None:
+            params[key] = getattr(edits, key)
+    final = {
+        "action": edits.action or option["action"],
+        "params": params,
+        "reply": option["reply"] if edits.reply is None else edits.reply,
+    }
+    if final["action"] == "grant_access":
+        days = params.get("days") or policy.load_config(services.conn).grant.max_days
+        if not 1 <= days <= 365:
+            raise ValueError(f"days must be between 1 and 365, got {days}")
+        params["days"] = days
+    return final
+
+
+def accept(services: Services, ticket_id: str, decision: Decision) -> dict:
+    """Run one option (with edits). Only a `proposed` ticket can be accepted, exactly once.
+
+    Raises ValueError when the option index is out of range or the edits make no sense.
+    """
     ticket = _ticket(services, ticket_id)
-    if ticket["proposal"] and not force:
+    if ticket["status"] != "proposed":
         return ticket
-    if services.demo:
-        db.update_ticket(services.conn, ticket_id, proposal_error="Demo mode: proposals come from the snapshot; nothing to run")
-        return _ticket(services, ticket_id)
-    if ticket["status"] not in OPEN_STATUSES:
-        return ticket
-    if not ticket["profile"]:
-        db.update_ticket(services.conn, ticket_id, proposal_error="No profile yet; refresh the profile first")
-        return _ticket(services, ticket_id)
-    if services.anthropic is None or not services.model:
-        db.update_ticket(services.conn, ticket_id, proposal_error="ANTHROPIC_API_KEY is not set")
-        return _ticket(services, ticket_id)
-    reserve = lambda: db.reserve_model_call(services.conn, ticket_id, agent.MAX_CALLS)  # noqa: E731
-    try:
-        proposal, _ = agent.propose(services.anthropic, services.model, ticket, ticket["profile"], reserve)
-    except agent.AgentError as exc:
-        db.update_ticket(services.conn, ticket_id, only_status=OPEN_STATUSES, proposal_error=str(exc))
-        return _ticket(services, ticket_id)
-    # Only while the ticket is still open: a slow run must not revive a ticket the owner approved
-    # or dismissed in the meantime (that would put a second Approve button on a granted ticket).
-    db.update_ticket(
-        services.conn,
-        ticket_id,
-        only_status=OPEN_STATUSES,
-        proposal_json=proposal.model_dump_json(),
-        proposal_at=db.now_iso(),
-        proposal_error=None,
-        category=proposal.category,
-        status="proposed",
-    )
-    return _ticket(services, ticket_id)
-
-
-
-def approve(services: Services, ticket_id: str) -> dict:
-    """Execute the proposed action. Only a `proposed` ticket can be approved, exactly once."""
-    ticket = _ticket(services, ticket_id)
-    if not db.set_status_if(services.conn, ticket_id, "proposed", "approved"):
-        return ticket
-    proposal = ticket["proposal"]
-    now = datetime.now(timezone.utc)
-    action: dict = {"type": proposal["action"], "approved_at": format_datetime(now)}
-    if services.demo or services.adapty is None:
-        action["demo"] = True
-        action["note"] = "Demo mode: no Adapty call was made; only the local ticket changed."
-        _finish(services, ticket_id, action, proposal)
-        return _ticket(services, ticket_id)
+    proposed = triage_of(ticket)
+    if proposed is None:
+        raise ValueError("the ticket has no options to accept")
+    if decision.option >= len(proposed["options"]):
+        raise ValueError(f"option {decision.option} does not exist; the ticket has {len(proposed['options'])}")
+    final = final_option(services, proposed["options"][decision.option], decision)
     customer = ticket["customer_user_id"]
-    granted: dict | None = None
+    if final["action"] == "grant_access" and not customer:
+        raise ValueError("grant_access needs an identified customer")
+    if not db.set_status_if(services.conn, ticket_id, "proposed", "approved"):
+        return _ticket(services, ticket_id)
     try:
-        if proposal["action"] == "grant_access":
-            fresh = services.adapty.get_profile(customer)
-            try:
-                expires_at = compensation_expiry(fresh, config.ACCESS_LEVEL, config.COMPENSATION_DAYS, now)
-            except ValueError as exc:
-                raise AdaptyError(str(exc), code="lifetime") from None
-            granted = services.adapty.grant_access_level(customer, config.ACCESS_LEVEL, expires_at)
-            action.update(
-                access_level=config.ACCESS_LEVEL,
-                days=config.COMPENSATION_DAYS,
-                expires_at=format_datetime(expires_at),
-                profile_id=granted.get("profile_id") if isinstance(granted, dict) else None,
-            )
+        result = actions.execute(services, customer, final["action"], final["params"], source="l1", ref=ticket_id)
     except AdaptyError as exc:
         db.set_status_if(services.conn, ticket_id, "approved", "proposed")
         db.update_ticket(services.conn, ticket_id, action_error=str(exc))
@@ -133,35 +120,54 @@ def approve(services: Services, ticket_id: str) -> dict:
         # Unexpected failure before any grant: never leave the ticket stuck in `approved`.
         db.set_status_if(services.conn, ticket_id, "approved", "proposed")
         raise
-    # From here on the grant (if any) happened in Adapty: whatever the stamp does, the ticket is done
-    # and the action is recorded, so a second Approve is impossible.
-    profile = granted
-    try:
-        profile = services.adapty.update_profile(customer, {STAMP_KEY: ticket_id})
-        action["stamped"] = {STAMP_KEY: ticket_id}
-    except Exception as exc:  # noqa: BLE001 - an AdaptyError or anything else: recorded, never fatal
-        action["stamp_error"] = str(exc) if isinstance(exc, AdaptyError) else f"{exc.__class__.__name__}: {exc}"
-    _finish(services, ticket_id, action, proposal, profile if isinstance(profile, dict) else None)
-    return _ticket(services, ticket_id)
-
-
-def _finish(services: Services, ticket_id: str, action: dict, proposal: dict, profile: dict | None = None) -> None:
+    # From here on the action happened: the ticket is done and the action recorded, so a second
+    # Accept is impossible.
+    action = dict(result, option=decision.option, final=final, approved_at=db.now_iso())
+    if action.get("demo"):
+        action["note"] = "Demo mode: no Adapty call was made; only the local ticket changed."
     fields = {
         "action_json": json.dumps(action),
         "action_at": db.now_iso(),
         "action_error": None,
+        "decision_json": json.dumps(decision.model_dump()),
         "status": "done",
     }
-    if proposal["action"] != "no_action":
+    if final["action"] != "no_reply" and final["reply"].strip():
         fields["reply_sent_at"] = db.now_iso()
-    if profile is not None:
-        fields["profile_json"] = json.dumps(profile)
-        fields["profile_fetched_at"] = db.now_iso()
+        _post_reply(services, ticket, final["reply"])
     db.update_ticket(services.conn, ticket_id, **fields)
+    return _ticket(services, ticket_id)
+
+
+def approve(services: Services, ticket_id: str) -> dict:
+    """The old pages' Approve: accept the best option as is."""
+    return accept(services, ticket_id, Decision(option=0))
+
+
+def reject(services: Services, ticket_id: str, rejection: Rejection) -> dict:
+    """Reject all options: with a reply → done (reply marked sent), without → dismissed. No Adapty call.
+
+    Allowed while the ticket is open (new, triaged, proposed), so a manual reply works when triage
+    failed; never while an accept is in flight, and never after done or dismissed.
+    """
+    ticket = _ticket(services, ticket_id)
+    reply = (rejection.reply or "").strip()
+    fields = {"decision_json": json.dumps(dict(rejection.model_dump(), rejected=True)), "status": "done" if reply else "dismissed"}
+    if reply:
+        fields["reply_sent_at"] = db.now_iso()
+    if db.update_ticket(services.conn, ticket_id, only_status=OPEN_STATUSES, **fields) and reply:
+        _post_reply(services, ticket, reply)
+    return _ticket(services, ticket_id)
+
+
+def _post_reply(services: Services, ticket: dict, reply: str) -> None:
+    """A ticket from a chat handoff: the reply shows up in that chat. Nothing is sent anywhere else."""
+    if ticket.get("session_id"):
+        db.append_message(services.conn, ticket["session_id"], "support", reply)
 
 
 def dismiss(services: Services, ticket_id: str) -> dict:
-    """Dismiss an open ticket. Not while an approve is in flight, and never after done or dismissed."""
+    """Dismiss an open ticket. Not while an accept is in flight, and never after done or dismissed."""
     _ticket(services, ticket_id)
     db.update_ticket(services.conn, ticket_id, only_status=OPEN_STATUSES, status="dismissed")
     return _ticket(services, ticket_id)

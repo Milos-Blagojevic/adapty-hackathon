@@ -74,7 +74,7 @@
 
     <h3>Compensation</h3>
     <p class="small">
-      {% if summary.compensation.available %}{{ compensation_days }} days of {{ access_level }} would run until <b>{{ summary.compensation.would_expire_at|fmt_date }}</b>.
+      {% if summary.compensation.available %}{{ summary.compensation.days }} days of {{ summary.compensation.access_level }} would run until <b>{{ summary.compensation.would_expire_at|fmt_date }}</b>.
       {% else %}Not available: {{ summary.compensation.reason_unavailable }}.{% endif %}
     </p>
   {% endif %}

@@ -19,7 +19,7 @@
         <a href="/tickets/{{ t.id }}" class="subject">{{ t.subject }}</a>
         <div class="muted small">{{ t.id }}{% if t.demo %} · demo{% endif %} · {{ t.body[:110] }}{% if t.body|length > 110 %}…{% endif %}</div>
       </td>
-      <td class="mono">{{ t.customer_user_id }}</td>
+      <td class="mono">{{ t.customer_user_id or t.email or "unknown" }}</td>
       <td>{% if t.category %}<span class="badge cat {{ t.category }}">{{ category_labels[t.category] }}</span>{% else %}<span class="muted">—</span>{% endif %}</td>
       <td><span class="badge st {{ t.status }}">{{ t.status }}</span></td>
       <td class="num" title="{{ t.created_at|fmt_date }}">{{ t.created_at|age }}</td>
