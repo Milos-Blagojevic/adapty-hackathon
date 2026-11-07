@@ -1,0 +1,120 @@
+{
+ "tickets": {
+  "total": 74,
+  "by_status": {
+   "new": 9,
+   "proposed": 21,
+   "done": 37,
+   "dismissed": 7
+  },
+  "by_source": {
+   "form": 58,
+   "email": 9,
+   "chat_handoff": 7
+  },
+  "by_category": {
+   "charged_after_trial": 19,
+   "no_access_after_purchase": 15,
+   "billing_issue": 12,
+   "refund_request": 10,
+   "cancel_how": 9,
+   "price_complaint": 5,
+   "other": 4
+  },
+  "per_day": [
+   {
+    "day": "2026-11-01",
+    "n": 6
+   },
+   {
+    "day": "2026-11-02",
+    "n": 9
+   },
+   {
+    "day": "2026-11-03",
+    "n": 11
+   },
+   {
+    "day": "2026-11-04",
+    "n": 8
+   },
+   {
+    "day": "2026-11-05",
+    "n": 14
+   },
+   {
+    "day": "2026-11-06",
+    "n": 12
+   },
+   {
+    "day": "2026-11-07",
+    "n": 14
+   }
+  ]
+ },
+ "level2": {
+  "sessions": 31,
+  "resolved": 19,
+  "handed_off": 7,
+  "open": 5,
+  "handoff_reasons": {
+   "refund": 3,
+   "repeat_after_grant": 2,
+   "asks_for_human": 1,
+   "chargeback": 1
+  },
+  "grants": 11,
+  "days_granted": 52,
+  "blocked": {
+   "grant_limit_30d": 4,
+   "over_max_days": 3,
+   "not_paid": 2,
+   "lifetime": 1,
+   "already_granted_this_session": 1
+  }
+ },
+ "triage": {
+  "triaged": 65,
+  "confidence_buckets": {
+   "0-0.5": 4,
+   "0.5-0.7": 9,
+   "0.7-0.9": 31,
+   "0.9-1": 21
+  },
+  "accepted_option": {
+   "1": 26,
+   "2": 5,
+   "3": 1,
+   "edited": 6,
+   "rejected": 7
+  },
+  "top_root_causes": [
+   {
+    "root_cause": "Weekly trial converted and the user missed the date",
+    "n": 14
+   },
+   {
+    "root_cause": "Purchase recorded but premium access level missing",
+    "n": 11
+   },
+   {
+    "root_cause": "Store renewal payment failed (billing retry / grace period)",
+    "n": 9
+   },
+   {
+    "root_cause": "User can't find where to cancel in the store",
+    "n": 8
+   },
+   {
+    "root_cause": "Refund requested for an App Store purchase",
+    "n": 6
+   }
+  ]
+ },
+ "eval": {
+  "model": "gpt-5.1",
+  "cases": 26,
+  "category_correct": 23,
+  "action_correct": 21
+ }
+}
