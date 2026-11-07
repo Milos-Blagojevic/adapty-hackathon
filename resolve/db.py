@@ -101,6 +101,7 @@ class Database:
         self._connection().__exit__(*exc)
 
     def close(self) -> None:
+        """Close the calling thread's connection only; other threads' connections close when they end."""
         conn = getattr(self._local, "conn", None)
         if conn is not None:
             conn.close()

@@ -90,9 +90,20 @@ def test_update_profile_sends_custom_attributes(http):
     assert http.calls[0].request.body == b'{"custom_attributes": [{"key": "last_support_ticket", "value": "demo-1"}]}'
 
 
-@pytest.mark.parametrize("body", [{"errors": None, "error_code": "odd", "status_code": 500}, {"errors": "nope"}, [1, 2], "plain text"])
+@pytest.mark.parametrize(
+    "body",
+    [{"errors": None, "error_code": "odd", "status_code": 500}, {"errors": "nope"}, {"errors": 5}, {"errors": True}, {"errors": [{"errors": 5}]}, {"errors": [None]}, [1, 2], "plain text"],
+)
 def test_any_error_body_becomes_adapty_error(http, body):
     http.get(PROFILE_URL, status=500, json=body)
     with pytest.raises(AdaptyError) as exc:
         Client("sk").get_profile("x")
     assert exc.value.status == 500 and str(exc.value)
+
+
+def test_grant_2xx_with_unreadable_body_counts_as_granted(http):
+    http.post(GRANT_URL, body="<html>ok</html>", status=200, content_type="text/html")
+    assert Client("sk").grant_access_level("lumen_1_00001", "premium", NOW) == {}
+    http.replace(http.POST, GRANT_URL, status=500, body="<html>down</html>")
+    with pytest.raises(AdaptyError):
+        Client("sk").grant_access_level("lumen_1_00001", "premium", NOW)

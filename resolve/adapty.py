@@ -53,13 +53,22 @@ class Client:
         expires_at: datetime | None,
         starts_at: datetime | None = None,
     ) -> dict:
-        """Grant `access_level_id` until `expires_at` (None = lifetime). Returns the updated profile."""
+        """Grant `access_level_id` until `expires_at` (None = lifetime). Returns the updated profile.
+
+        A 2xx with an unreadable body still means the grant applied: it returns `{}` rather than
+        raising, so the caller never treats a successful grant as a failure (and grants twice).
+        """
         body: dict = {"access_level_id": access_level_id}
         if expires_at is not None:
             body["expires_at"] = format_datetime(expires_at)
         if starts_at is not None:
             body["starts_at"] = format_datetime(starts_at)
-        return self._request("POST", GRANT_PATH, customer_user_id, json=body)
+        try:
+            return self._request("POST", GRANT_PATH, customer_user_id, json=body) or {}
+        except AdaptyError as exc:
+            if exc.code == "bad_response":
+                return {}
+            raise
 
     def update_profile(self, customer_user_id: str, custom_attributes: dict[str, str | float]) -> dict:
         """Set custom attributes (merged by key; ≤30 chars key, ≤50 chars value). Returns the updated profile."""
@@ -85,17 +94,20 @@ class Client:
 
 
 def _error(response: requests.Response) -> AdaptyError:
-    """Turn any non-2xx into AdaptyError, whatever shape the body has (`errors: null`, a string, HTML)."""
+    """Turn any non-2xx into AdaptyError, whatever shape the body has (`errors: null`, a number, a string, HTML)."""
     code, message = None, None
     try:
         body = response.json()
-        if isinstance(body, dict):
-            code = body.get("error_code")
-            items = body.get("errors") or []
-            messages = [str(m) for item in items if isinstance(item, dict) for m in (item.get("errors") or [])]
-            message = "; ".join(messages) or None
     except ValueError:
-        pass
+        body = None
+    if isinstance(body, dict):
+        code = body.get("error_code") if isinstance(body.get("error_code"), str) else None
+        items = body.get("errors")
+        messages = []
+        for item in items if isinstance(items, list) else []:
+            inner = item.get("errors") if isinstance(item, dict) else None
+            messages.extend(str(m) for m in (inner if isinstance(inner, list) else []))
+        message = "; ".join(messages) or None
     return AdaptyError(message or response.text[:200] or response.reason or "request failed", status=response.status_code, code=code)
 
 
