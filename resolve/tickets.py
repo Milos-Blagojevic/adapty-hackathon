@@ -12,7 +12,7 @@ from __future__ import annotations
 import csv
 import gzip
 import random
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -68,9 +68,17 @@ class Ticket:
     created_at: str  # ISO 8601, UTC
     demo: bool
     rule: str  # the generator rule (one of CATEGORIES); for the eval and sanity checks, never shown to the agent
+    context: dict = field(default_factory=dict)  # offline CSV columns: placement, flow, ab_test, country, platform, acquisition_channel
 
     def as_dict(self) -> dict:
         return asdict(self)
+
+
+CONTEXT_COLUMNS = ("placement", "flow", "ab_test", "country", "platform", "acquisition_channel")
+
+
+def user_context(user: dict) -> dict:
+    return {column: user[column] for column in CONTEXT_COLUMNS}
 
 
 def customer_user_id(offline_user_id: str) -> str:
@@ -291,6 +299,8 @@ def generate(
     tickets.sort(key=lambda t: t.created_at)
     for index, ticket in enumerate((t for t in tickets if not t.demo), 1):
         ticket.id = f"t-{index:03d}"
+    for ticket in tickets:
+        ticket.context = user_context(users[offline_user_id(ticket.customer_user_id)])
     return tickets
 
 

@@ -82,3 +82,9 @@ def test_compensation_refuses_lifetime():
     lifetime = profile([{"access_level_id": "premium", "expires_at": None}])["data"]
     with pytest.raises(ValueError):
         compensation_expiry(lifetime, "premium", 7, NOW)
+
+
+def test_update_profile_sends_custom_attributes(http):
+    http.patch(PROFILE_URL, json=profile())
+    Client("sk").update_profile("lumen_1_00001", {"last_support_ticket": "demo-1"})
+    assert http.calls[0].request.body == b'{"custom_attributes": [{"key": "last_support_ticket", "value": "demo-1"}]}'

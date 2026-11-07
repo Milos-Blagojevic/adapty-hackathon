@@ -61,6 +61,11 @@ class Client:
             body["starts_at"] = format_datetime(starts_at)
         return self._request("POST", GRANT_PATH, customer_user_id, json=body)
 
+    def update_profile(self, customer_user_id: str, custom_attributes: dict[str, str | float]) -> dict:
+        """Set custom attributes (merged by key; ≤30 chars key, ≤50 chars value). Returns the updated profile."""
+        body = {"custom_attributes": [{"key": key, "value": value} for key, value in custom_attributes.items()]}
+        return self._request("PATCH", PROFILE_PATH, customer_user_id, json=body)
+
     def _request(self, method: str, path: str, customer_user_id: str, json: dict | None = None) -> dict:
         headers = dict(self._headers, **{"adapty-customer-user-id": customer_user_id})
         try:

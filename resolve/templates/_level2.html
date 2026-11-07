@@ -1,0 +1,82 @@
+{% set p = ticket.proposal %}
+{% set a = ticket.action %}
+{% set open = ticket.status in ('new', 'triaged', 'proposed') %}
+<section id="level2" class="card level2">
+  <div class="cardhead">
+    <h2>Level 2 · Agent proposal</h2>
+    <span class="muted small">{{ ticket.model_calls }}/{{ max_calls }} model calls</span>
+  </div>
+
+  {% if ticket.proposal_error %}<p class="error">{{ ticket.proposal_error }}</p>{% endif %}
+  {% if ticket.action_error %}<p class="error">Adapty refused the action, the ticket stays <b>proposed</b>: {{ ticket.action_error }}</p>{% endif %}
+
+  {% if not p %}
+    {% if ticket.profile and not ticket.proposal_error and open and not demo %}
+      <div class="thinking" hx-post="/tickets/{{ ticket.id }}/propose" hx-trigger="load" hx-target="#level2" hx-swap="outerHTML">
+        <span class="spinner"></span> Reading the profile and the complaint…
+      </div>
+    {% elif not ticket.profile %}
+      <p class="muted">No Adapty profile yet{% if ticket.profile_error %}: {{ ticket.profile_error }}{% endif %}.</p>
+    {% elif demo %}
+      <p class="muted">No cached proposal for this ticket in the demo snapshot.</p>
+    {% endif %}
+  {% else %}
+    <div class="proposal">
+      <div class="line">
+        <span class="badge cat {{ p.category }}">{{ category_labels[p.category] }}</span>
+        <span class="conf" title="confidence"><i style="width: {{ (p.confidence * 100)|round|int }}%"></i></span>
+        <span class="muted small">{{ (p.confidence * 100)|round|int }}% confident</span>
+      </div>
+      <dl class="kv">
+        <dt>Root cause</dt><dd>{{ p.root_cause }}</dd>
+        <dt>Proposed action</dt>
+        <dd>
+          <span class="badge act {{ p.action }}">{{ p.action }}</span> {{ action_labels[p.action] }}
+          {% if p.action == 'grant_access' and summary and ticket.status != 'done' %}
+            {% if summary.compensation.available %}<span class="muted">→ {{ access_level }} until {{ summary.compensation.would_expire_at|fmt_date }}</span>
+            {% else %}<span class="error">not available: {{ summary.compensation.reason_unavailable }}</span>{% endif %}
+          {% endif %}
+        </dd>
+        <dt>Draft reply</dt><dd><pre class="reply">{{ p.reply }}</pre></dd>
+        <dt>Evidence</dt><dd><ul class="evidence">{% for e in p.evidence %}<li class="mono">{{ e }}</li>{% endfor %}</ul></dd>
+      </dl>
+    </div>
+  {% endif %}
+
+  {% if a %}
+    <div class="done">
+      <h3>Done</h3>
+      <ul>
+        {% if a.type == 'grant_access' %}
+          {% if a.demo %}<li>Would grant {{ a.days or compensation_days }} days of {{ access_level }} in Adapty.</li>
+          {% else %}<li>Granted <b>{{ a.access_level }}</b> until <b>{{ a.expires_at|fmt_date }}</b> on profile <span class="mono">{{ a.profile_id }}</span>.</li>{% endif %}
+        {% elif a.type == 'escalate_refund' %}<li>Flagged for a store refund. No Adapty write.</li>
+        {% elif a.type == 'explain' %}<li>Reply only. No Adapty write.</li>
+        {% else %}<li>No action taken.</li>{% endif %}
+        {% if a.stamped %}<li>Stamped the profile: <span class="mono">last_support_ticket = {{ ticket.id }}</span>.</li>{% endif %}
+        {% if a.stamp_error %}<li class="error">Stamp failed (the grant stands): {{ a.stamp_error }}</li>{% endif %}
+        {% if ticket.reply_sent_at %}<li>Reply marked <b>sent</b> at {{ ticket.reply_sent_at|fmt_date }}. Nothing was actually sent.</li>{% endif %}
+        {% if a.note %}<li class="muted">{{ a.note }}</li>{% endif %}
+      </ul>
+    </div>
+  {% endif %}
+
+  <div class="actions">
+    {% if ticket.status == 'proposed' %}
+      <button class="primary" hx-post="/tickets/{{ ticket.id }}/approve" hx-target="#level2" hx-swap="outerHTML" hx-disabled-elt="this">
+        Approve{% if p.action == 'grant_access' %} · grant {{ compensation_days }} days{% endif %}
+      </button>
+    {% endif %}
+    {% if open and ticket.profile and not demo and ticket.model_calls < max_calls %}
+      <button hx-post="/tickets/{{ ticket.id }}/propose" hx-vals='{"force": "1"}' hx-target="#level2" hx-swap="outerHTML" hx-disabled-elt="this">{% if p %}Re-run agent{% else %}Run agent{% endif %}</button>
+    {% endif %}
+    {% if ticket.status not in ('done', 'dismissed') %}
+      <button class="quiet" hx-post="/tickets/{{ ticket.id }}/dismiss" hx-target="#level2" hx-swap="outerHTML">Dismiss</button>
+    {% endif %}
+    {% if ticket.status == 'dismissed' %}<span class="muted">Dismissed. Nothing happened in Adapty.</span>{% endif %}
+  </div>
+</section>
+{% if oob %}
+<span id="status" class="badge st {{ ticket.status }}" hx-swap-oob="true">{{ ticket.status }}</span>
+{% with oob_profile = true %}{% include "_profile.html" %}{% endwith %}
+{% endif %}
