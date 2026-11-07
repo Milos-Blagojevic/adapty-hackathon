@@ -1,7 +1,7 @@
 """Adapty server-side API v2: the only module that talks to api.adapty.io.
 
 Docs: https://adapty.io/docs/ss-authorization.md and
-https://adapty.io/docs/api-adapty/operations/{getProfile,grantAccessLevel}.md
+https://adapty.io/docs/api-adapty/operations/{getProfile,grantAccessLevel,updateProfile}.md
 
 Auth is `Authorization: Api-Key <secret>`; the user is addressed by the `adapty-customer-user-id`
 header. Responses wrap the profile in `{"data": {...}}`; errors come as
@@ -74,6 +74,15 @@ class Client:
         """Set custom attributes (merged by key; ≤30 chars key, ≤50 chars value). Returns the updated profile."""
         body = {"custom_attributes": [{"key": key, "value": value} for key, value in custom_attributes.items()]}
         return self._request("PATCH", PROFILE_PATH, customer_user_id, json=body)
+
+    def update_email(self, customer_user_id: str, email: str) -> dict:
+        """Set the profile's top-level `email` (updateProfile, `email`: nullable string, format email).
+
+        The docs list `installation_meta` as required in the body; the live API accepts a PATCH
+        without it (`update_profile` sends only `custom_attributes`, and the stamp lands). Returns
+        the updated profile; the server profile response does not include the email.
+        """
+        return self._request("PATCH", PROFILE_PATH, customer_user_id, json={"email": email})
 
     def _request(self, method: str, path: str, customer_user_id: str, json: dict | None = None) -> dict:
         headers = dict(self._headers, **{"adapty-customer-user-id": customer_user_id})
