@@ -10,14 +10,15 @@ Python 3.11+, FastAPI + Jinja + htmx, SQLite, one `uvicorn` process. Anthropic A
 |---|---|
 | `resolve/config.py` | Settings from the environment (`.env` via python-dotenv): keys, app id, access level, compensation days, `DEMO_MODE`, DB path |
 | `resolve/adapty.py` | The only module that talks to the Adapty server-side API: `get_profile`, `grant_access_level`, `update_profile`, the compensation expiry rule (`compensation_expiry`), `AdaptyError`. `requests` with a 15 s timeout, no retries |
-| `resolve/tickets.py` | Ticket model, statuses, categories, actions, the synthetic ticket generator from the offline CSVs |
-| `resolve/db.py` | SQLite schema, connection, seeding from `data/tickets.json` |
-| `resolve/agent.py` | Level 2: the `Proposal` pydantic model, prompt, Anthropic call, enum validation, cache on the ticket, call cap |
-| `resolve/insights.py` | Level 1: grouping (category × product, by placement/flow from the CSV mapping), hypothesis, A/B draft through the CLI |
-| `resolve/web.py` | FastAPI app, routes, htmx partials, templates in `resolve/templates/`, CSS in `resolve/static/` |
-| `scripts/` | `generate_tickets.py`, `adapty_check.py` (Gate 1 proof), `eval.py` (20-ticket eval runner), `snapshot.py` (DEMO_MODE snapshot) |
-| `data/` | `tickets.json` (seed tickets, 3 with `demo: true`), `eval.json` (hand-labelled), `demo.sqlite` (committed snapshot) |
-| `tests/` | pytest; no network, no keys |
+| `resolve/tickets.py` | The fixed enums (categories, actions, statuses), the `Ticket` record, the offline → live clock shift (`LIVE_SHIFT`), the synthetic ticket generator from the offline CSVs |
+| `resolve/db.py` | SQLite schema (tickets with cached profile / proposal / action, insights, ab_drafts), seeding from `data/tickets.json`, the conditional status update |
+| `resolve/agent.py` | Level 2: the `Proposal` pydantic model, the profile summary the model sees, the policy prompt with five examples, `messages.parse` structured output, policy validation, `MAX_CALLS` |
+| `resolve/workflow.py` | The ticket state machine: `open_ticket` (profile), `propose` (cached), `approve` (grant + `last_support_ticket` stamp, idempotent, Adapty errors return the ticket to `proposed`), `dismiss`; `Services` carries the clients |
+| `resolve/insights.py` | Level 1: `PLACEMENTS` (live ids read from the account), grouping (category × product, category × flow from the ticket's offline context), the `Insight` hypothesis call, `Runner` for the Adapty CLI, `draft_ab_test` |
+| `resolve/web.py` | FastAPI app factory `create_app`, routes, htmx partials, Jinja templates in `resolve/templates/`, CSS and vendored htmx in `resolve/static/`; `python -m resolve` is `__main__.py` |
+| `scripts/` | `generate_tickets.py` (the three hand-written demo tickets live here), `adapty_check.py` (Gate 1 proof), `eval.py` (20-ticket eval runner, paid), `snapshot.py` (DEMO_MODE snapshot) |
+| `data/` | `tickets.json` (60 seed tickets, 3 with `demo: true`), `eval.json` (hand-labelled cases), `eval_results.json`, `demo.sqlite` (committed snapshot); `resolve.sqlite` is the live DB (git-ignored) |
+| `tests/` | pytest; no network, no keys. `fakes.py` has the profile fixtures and the scripted Anthropic fake |
 
 ## Commands
 
