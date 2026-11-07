@@ -354,7 +354,8 @@ const S = {
   tab: null,
   list: "open", q: "", tickets: [], listErr: null, hits: null, searching: false, searchSeq: 0,
   ticketId: null, ticket: null, ticketErr: null,
-  editing: null, rejecting: false, feedbackOpen: false, busy: false, pollTries: 0, showProfile: false, showEvidence: false,
+  editing: null, rejecting: false, feedbackOpen: false,
+  pick: null, draft: null, own: { reply: "", note: "" }, sendErr: null, dismissing: false, ballot: false, justSent: false, busy: false, pollTries: 0, showProfile: false, showEvidence: false,
   config: null, cfgDraft: null, cfgErrors: [], cfgDirty: false, llm: null,
   users: null,
   chat: { cuid: "", sid: "", data: null, sending: false, debug: false },
@@ -403,7 +404,8 @@ async function updateNavCount() {
 // Incoming: a full-width list (#/incoming) and a ticket page (#/incoming/{id})
 // ====================================================================================================
 async function showIncoming(id, tabChanged) {
-  if (id !== S.ticketId) Object.assign(S, { editing: null, rejecting: false, pollTries: 0, showProfile: false, showEvidence: false });
+  if (id !== S.ticketId) Object.assign(S, { editing: null, rejecting: false, pollTries: 0, showProfile: false, showEvidence: false,
+    pick: null, draft: null, own: { reply: "", note: "" }, sendErr: null, dismissing: false, ballot: false, justSent: false });
   S.ticketId = id;
   if (id) S.feedbackOpen = false;
   if (tabChanged || !S.tickets.length) await loadTickets();
@@ -543,7 +545,7 @@ function ticketHtml() {
         <span class="when" title="${esc(t.id)}">${esc(fmt(t.created_at))}</span></div>
       ${messageHtml(t)}
       ${closed ? closedHtml(t) : `
-        ${t.action_error ? `<p class="error">The last action did not go through: ${esc(t.action_error)}</p>` : ""}
+        ${t.action_error && !t.triage ? `<p class="error">The last action did not go through: ${esc(t.action_error)}</p>` : ""}
         ${t.triage_error ? `<p class="error">Level 1 could not build this ticket: ${esc(t.triage_error)}</p>` : ""}
         ${t.triage ? foundHtml(t) + accountHtml(t) + optionsHtml(t) : pendingHtml(t)}`}
     </article>`;
@@ -650,62 +652,123 @@ function profileDetails(p) {
     </div>`;
 }
 
-// --- Suggested actions --------------------------------------------------------------------------------
+// --- Answers: the agent's options plus "Write your own", all of equal weight --------------------------
+// A click on an answer selects it, Edit / Write from scratch show on hover, the red stamp sends it.
+// After the send the answer folds into a letter; a click on the letter unfolds the ballot.
+const LEGACY_EMOJI = { grant_access: "👍", reply_only: "🙏", store_instructions: "🔁", refund_to_human: "💸", ask_user: "❓", no_reply: "❌" }; // = triage.LEGACY_EMOJI
+const OWN_EMOJI = "✍️";
+const emojiOf = (o) => o?.emoji || LEGACY_EMOJI[o?.action] || "💬";
+
 function actionName(o) {
   const p = o.params || {};
   const store = p.store ? ` · ${STORE_NAME[p.store] || human(p.store)}` : "";
   switch (o.action) {
     case "grant_access": return `Grant ${p.days ?? "?"} days of access`;
-    case "store_instructions": return `${{ restore: "Restore", cancel: "Cancel", refund_request: "Refund" }[p.kind] || "Store"} instructions${store}`;
+    case "store_instructions": return `${{ restore: "Restore", cancel: "Cancel", refund_request: "Refund" }[p.kind] || "Store"} steps${store}`;
     case "refund_to_human": return `Pass the refund to a person${store}`;
     case "ask_user": return "Ask the user";
-    case "reply_only": return "Reply only";
+    case "reply_only": return "Reply, no action";
     case "no_reply": return "Close without a reply";
   }
   return ACTION_LABEL[o.action] || human(o.action);
 }
 
+const ownIndex = (t) => t.triage.options.length;
+const canSend = (t) => S.pick != null && (S.pick !== ownIndex(t) || !!S.own.reply.trim());
+
 function optionsHtml(t) {
-  const can = t.status === "proposed";
-  return `<section class="sec"><h2>Suggested actions</h2>
-    <div class="opts">${t.triage.options.map((o, i) => optionHtml(o, i, can)).join("")}</div>
-    ${S.rejecting ? rejectHtml() : `<p class="after-opts"><button class="link" data-act="reject-open">None of these fit</button></p>`}
+  const opts = t.triage.options;
+  return `<section class="sec answers"><h2>Answers</h2>
+    <div class="ans-list" role="radiogroup" aria-label="Answers">${opts.map((o, i) => answerHtml(o, i)).join("")}${ownAnswerHtml(t)}</div>
+    ${stampHtml(t)}
   </section>`;
 }
 
-function optionHtml(o, i, can) {
-  const editing = can && S.editing === i;
-  const risk = o.risk ? ` <span class="risk r-${esc(o.risk)}" title="${esc(o.risk_reason)}">· ${esc(o.risk)} risk</span>` : "";
-  return `<div class="opt">
-    <span class="opt-n">${i + 1}</span>
-    <div class="opt-main">
-      <div class="opt-title">${esc(actionName(o))}${risk}</div>
+function answerHtml(o, i) {
+  const on = S.pick === i, editing = S.editing === i;
+  const risk = o.risk && o.risk !== "low" ? ` <span class="risk r-${esc(o.risk)}" title="${esc(o.risk_reason)}">· ${esc(o.risk)} risk</span>` : "";
+  return `<div class="ans ${on ? "on" : ""}" data-act="pick" data-i="${i}" role="radio" aria-checked="${on}" tabindex="0">
+    <span class="ans-emoji" aria-hidden="true">${esc(emojiOf(o))}</span>
+    <div class="ans-main">
+      <div class="ans-title">${esc(actionName(o))}${i === 0 ? ` <span class="ans-hint">· agent's pick</span>` : ""}${risk}</div>
       ${editing ? editHtml(o, i) : `
-        ${o.action === "ask_user" && o.params?.question ? `<div class="grey">Question: “${esc(o.params.question)}”</div>` : ""}
-        <div class="grey">${o.reply ? esc(o.reply) : "No reply to the user."}</div>`}
+        ${o.action === "ask_user" && o.params?.question ? `<div class="ans-text">Question: “${esc(o.params.question)}”</div>` : ""}
+        <div class="ans-text">${o.reply ? esc(o.reply) : "No reply to the user."}</div>`}
     </div>
-    ${can && !editing ? `<div class="opt-btns">
-      <button class="btn ${i === 0 ? "primary" : ""}" data-act="accept" data-i="${i}" ${S.busy ? "disabled" : ""}>Accept</button>
-      <button class="btn text" data-act="edit" data-i="${i}">Edit</button></div>` : ""}
+    <div class="ans-btns">${editing ? "" : `<button class="btn text" data-act="edit" data-i="${i}">Edit</button>`}</div>
+    <span class="ans-check">${SVG.check}</span>
   </div>`;
+}
+
+function ownAnswerHtml(t) {
+  const n = ownIndex(t), on = S.pick === n;
+  return `<div class="ans own-ans ${on ? "on" : ""}" data-act="pick" data-i="${n}" role="radio" aria-checked="${on}" tabindex="0">
+    <span class="ans-emoji" aria-hidden="true">${OWN_EMOJI}</span>
+    <div class="ans-main">
+      <div class="ans-title">Write your own</div>
+      ${on ? `<div class="edit" id="own" data-act="stay">
+          <textarea name="reply" rows="3" placeholder="Your reply to ${esc(who(t))}">${esc(S.own.reply)}</textarea>
+          <input type="text" name="note" placeholder="Internal note (optional)" value="${esc(S.own.note)}">
+        </div>` : `<div class="ans-text">Your own words to the user, sent as you write them.</div>`}
+    </div>
+    <div class="ans-btns">${on ? "" : `<button class="btn text" data-act="write" data-i="${n}">Write from scratch</button>`}</div>
+    <span class="ans-check">${SVG.check}</span>
+  </div>`;
+}
+
+function stampWhat(t) {
+  const n = ownIndex(t);
+  if (S.pick == null) return "Pick an answer above";
+  if (S.pick === n) return S.own.reply.trim() ? `Your own answer → ${esc(who(t))}` : "Write your answer, then stamp it";
+  return `${esc(actionName(t.triage.options[S.pick]))}${S.editing === S.pick ? " (edited)" : ""} → ${esc(who(t))}`;
+}
+
+function stampHtml(t) {
+  const err = S.sendErr || (t.action_error ? `The last action did not go through: ${esc(t.action_error)}` : "");
+  return `<div class="stamp-row">
+    <button class="stamp" data-act="send" ${canSend(t) && !S.busy ? "" : "disabled"}><span>${S.busy ? "…" : "Send"}</span></button>
+    <div class="stamp-side">
+      <div class="stamp-what" id="stamp-what">${stampWhat(t)}</div>
+      ${err ? `<p class="error">${err}</p>` : ""}
+      ${S.dismissing ? `<div class="edit dismiss" id="dis" data-act="stay">
+          <input type="text" name="note" placeholder="Why, internal note (optional)">
+          <div class="form-btns"><button class="btn" data-act="dismiss" ${S.busy ? "disabled" : ""}>Dismiss ticket</button>
+            <button class="btn text" data-act="dismiss-cancel">Cancel</button></div>
+        </div>` : `<button class="link quiet" data-act="dismiss-open">Close without a reply</button>`}
+    </div>
+  </div>`;
+}
+
+// Typing in the own answer enables the stamp without a re-render (the textarea keeps focus).
+function refreshStamp() {
+  const t = S.ticket;
+  if (!t?.triage || !$(".stamp")) return;
+  $(".stamp").disabled = !canSend(t) || S.busy;
+  $("#stamp-what").innerHTML = stampWhat(t);
 }
 
 function editHtml(o, i) {
   const p = o.params || {};
-  const sel = (name, values, cur, label = cap) => `<select name="${name}">${values.map((v) => `<option value="${v}" ${v === cur ? "selected" : ""}>${esc(label(v))}</option>`).join("")}</select>`;
-  const show = (acts) => (acts.includes(o.action) ? "" : "hidden");
-  return `<form class="edit" id="edit-${i}" onsubmit="return false">
+  const v = S.draft?.i === i ? S.draft : { action: o.action, days: p.days ?? 7, kind: p.kind || "restore", store: p.store || "app_store", question: p.question || "", reply: o.reply || "" };
+  const sel = (name, values, cur, label = cap) => `<select name="${name}">${values.map((x) => `<option value="${x}" ${x === cur ? "selected" : ""}>${esc(label(x))}</option>`).join("")}</select>`;
+  const show = (acts) => (acts.includes(v.action) ? "" : "hidden");
+  return `<form class="edit" id="edit-${i}" data-act="stay" onsubmit="return false">
     <div class="edit-row">
-      ${sel("action", ACTIONS, o.action, (v) => ACTION_LABEL[v])}
-      <label data-for="grant_access" ${show(["grant_access"])}><input type="number" name="days" min="1" max="365" value="${esc(p.days ?? 7)}" class="n64"> days</label>
-      <span data-for="store_instructions" ${show(["store_instructions"])}>${sel("kind", STORE_KINDS, p.kind || "restore")}</span>
-      <span data-for="store_instructions refund_to_human" ${show(["store_instructions", "refund_to_human"])}>${sel("store", STORES, p.store || "app_store", (v) => STORE_NAME[v])}</span>
+      ${sel("action", ACTIONS, v.action, (x) => ACTION_LABEL[x])}
+      <label data-for="grant_access" ${show(["grant_access"])}><input type="number" name="days" min="1" max="365" value="${esc(v.days)}" class="n64"> days</label>
+      <span data-for="store_instructions" ${show(["store_instructions"])}>${sel("kind", STORE_KINDS, v.kind)}</span>
+      <span data-for="store_instructions refund_to_human" ${show(["store_instructions", "refund_to_human"])}>${sel("store", STORES, v.store, (x) => STORE_NAME[x])}</span>
     </div>
-    <input type="text" name="question" placeholder="Question to the user" value="${esc(p.question || "")}" data-for="ask_user" ${show(["ask_user"])}>
-    <textarea name="reply" rows="3" placeholder="Reply to the user">${esc(o.reply)}</textarea>
-    <div class="form-btns"><button type="button" class="btn primary" data-act="accept-edit" data-i="${i}" ${S.busy ? "disabled" : ""}>Accept edited</button>
-      <button type="button" class="btn text" data-act="edit-cancel">Cancel</button></div>
+    <input type="text" name="question" placeholder="Question to the user" value="${esc(v.question)}" data-for="ask_user" ${show(["ask_user"])}>
+    <textarea name="reply" rows="3" placeholder="Reply to the user">${esc(v.reply)}</textarea>
+    <div><button type="button" class="link quiet" data-act="edit-cancel">Discard changes</button></div>
   </form>`;
+}
+
+// What is typed in an open editor, kept through re-renders (an error keeps the selection and the edits).
+function saveDraft(form) {
+  const f = form.elements;
+  S.draft = { i: Number(form.id.slice(5)), action: f.action.value, days: f.days.value, kind: f.kind.value, store: f.store.value, question: f.question.value, reply: f.reply.value };
 }
 
 function collectEdits(i) {
@@ -724,6 +787,38 @@ function collectEdits(i) {
   if (["store_instructions", "refund_to_human"].includes(action) && f.store.value !== p.store) edits.store = f.store.value;
   if (action === "ask_user" && f.question.value !== (p.question || "")) edits.question = f.question.value;
   return edits;
+}
+
+// The stamp: accept for an agent option (with edits when its editor is open), reject-with-reply for the own one.
+async function sendPicked() {
+  const t = S.ticket, i = S.pick, n = ownIndex(t);
+  const enc = encodeURIComponent(t.id);
+  const stamp = $(".stamp");
+  S.busy = true;
+  S.sendErr = null;
+  stamp.disabled = true;
+  stamp.classList.add("thump");
+  let r = null;
+  try {
+    r = i === n
+      ? await api("POST", `/api/tickets/${enc}/reject`, { note: S.own.note.trim(), reply: S.own.reply.trim() })
+      : await api("POST", `/api/tickets/${enc}/accept`, { option: i, edits: S.editing === i ? collectEdits(i) : {} });
+    if (!isClosed(r)) S.sendErr = r.action_error ? `Not sent: ${esc(r.action_error)}` : "Not sent: the ticket is still open.";
+  } catch (e) {
+    S.sendErr = errText(e);
+  }
+  S.busy = false;
+  if (S.sendErr) { // selection, edits and the own text stay
+    await loadTicket();
+    return renderIncoming();
+  }
+  view().querySelector(".answers")?.classList.add("folding");
+  view().querySelector(`.ans[data-i="${i}"]`)?.classList.add("fold");
+  await sleep(560);
+  Object.assign(S, { pick: null, editing: null, draft: null, own: { reply: "", note: "" }, ballot: false, justSent: true, dismissing: false });
+  await afterWrite();
+  setTimeout(() => (S.justSent = false), 800);
+  toast(i === n ? "Sent: your own answer" : `Sent: ${esc(actionName(r.action?.final || t.triage.options[i]))}`);
 }
 
 function pendingHtml(t) {
@@ -776,16 +871,51 @@ function closedLine(t) {
   return `${what} · ${fmt(t.action?.approved_at || t.updated_at)}`;
 }
 
+// The ballot of a decided ticket: every agent option, plus "Your own answer" when that was sent.
+// The chosen one carries what was really sent (action.final / edits), the others what the agent proposed.
+function ballotRows(t) {
+  const d = t.decision || {}, opts = t.triage?.options || [];
+  const rows = opts.map((o) => ({ emoji: emojiOf(o), title: actionName(o), text: o.reply, on: false }));
+  if (d.rejected && d.reply) rows.push({ emoji: OWN_EMOJI, title: "Your own answer", text: d.reply, on: true });
+  else if (rows[d.option]) {
+    const o = opts[d.option], f = finalOption(t) || o;
+    rows[d.option] = { emoji: f.action === o.action ? emojiOf(o) : emojiOf({ action: f.action }), title: actionName(f), text: f.reply, on: true, edited: realEdits(d).length > 0 };
+  }
+  return rows;
+}
+
+function letterHtml(t) {
+  const rows = ballotRows(t), c = rows.find((r) => r.on);
+  if (!c) return t.decision?.reply ? `<p class="grey closed-reply">Reply sent: “${esc(t.decision.reply)}”</p>` : "";
+  const when = fmt(t.action?.approved_at || t.updated_at);
+  const first = (c.text || "").split("\n")[0] || "No message to the user";
+  if (!S.ballot) {
+    return `<div class="letter ${S.justSent ? "arrive" : ""}" data-act="ballot" role="button" tabindex="0" title="Show the ballot">
+      <span class="letter-env" aria-hidden="true"><svg viewBox="0 0 44 32"><rect x="1.5" y="1.5" width="41" height="29" rx="3"/><path d="M2.5 3l19.5 15 19.5-15"/></svg><span class="letter-emoji">${esc(c.emoji)}</span></span>
+      <span class="letter-main"><b>Sent to ${esc(who(t))}</b><span class="grey"> – ${esc(first)}</span></span>
+      <span class="letter-time">${esc(when)}</span>
+      <span class="postmark" aria-hidden="true">Sent</span>
+    </div>`;
+  }
+  return `<div class="ballot" data-act="ballot" role="button" tabindex="0" title="Fold the ballot">
+    <div class="ballot-head"><b>Ballot</b><span class="grey">· ${rows.length} ${rows.length === 1 ? "candidate" : "candidates"} · sent to ${esc(who(t))}, ${esc(when)}</span><span class="ballot-fold">Fold</span></div>
+    ${rows.map((r) => `<div class="bal ${r.on ? "on" : "off"}">
+      <span class="bal-box">${r.on ? SVG.check : ""}</span>
+      <span class="ans-emoji" aria-hidden="true">${esc(r.emoji)}</span>
+      <div class="ans-main"><div class="ans-title">${esc(r.title)}${r.edited ? ` <span class="ans-hint">· edited</span>` : ""}${r.on ? ` <span class="ans-hint">· sent</span>` : ""}</div>
+        <div class="ans-text">${r.text ? esc(r.text) : "No message to the user."}</div></div>
+    </div>`).join("")}
+  </div>`;
+}
+
 function closedHtml(t) {
-  const d = t.decision || {};
-  const reply = "option" in d ? finalOption(t)?.reply : d.reply;
   const done = t.status === "done";
   return `<div class="closed">
       <span class="closed-ic ${t.status}">${done ? SVG.check : "–"}</span>
       <span class="closed-text"><b>${done ? "Ticket closed" : "Ticket dismissed"}</b><span class="grey"> · ${esc(closedLine(t))}</span></span>
       <a class="btn" href="#/reopen/${encodeURIComponent(t.id)}">Reopen</a>
     </div>
-    ${reply ? `<p class="grey closed-reply">Reply sent: “${esc(reply)}”</p>` : ""}`;
+    ${done ? letterHtml(t) : ""}`;
 }
 
 // --- New feedback (POST /feedback) ---------------------------------------------------------------------
@@ -831,11 +961,32 @@ async function incomingAction(act, el) {
       return renderList();
     case "refresh-incoming":
       return afterWrite();
+    case "pick":
+    case "write": {
+      const i = Number(el.dataset.i);
+      if (S.pick !== i) Object.assign(S, { pick: i, sendErr: null });
+      if (S.editing !== i) Object.assign(S, { editing: null, draft: null });
+      renderIncoming();
+      return $("#own textarea")?.focus();
+    }
     case "edit":
-      S.editing = Number(el.dataset.i);
-      return renderIncoming();
+      Object.assign(S, { pick: Number(el.dataset.i), editing: Number(el.dataset.i), draft: null, sendErr: null });
+      renderIncoming();
+      return $(`#edit-${S.editing} textarea`)?.focus();
     case "edit-cancel":
-      S.editing = null;
+      Object.assign(S, { editing: null, draft: null });
+      return renderIncoming();
+    case "send":
+      return sendPicked();
+    case "ballot":
+      S.ballot = !S.ballot;
+      return renderIncoming();
+    case "dismiss-open":
+      S.dismissing = true;
+      renderIncoming();
+      return $("#dis input")?.focus();
+    case "dismiss-cancel":
+      S.dismissing = false;
       return renderIncoming();
     case "profile-toggle":
       S.showProfile = !S.showProfile;
@@ -854,7 +1005,7 @@ async function incomingAction(act, el) {
       S.feedbackOpen = false;
       return renderIncoming();
   }
-  if (!["triage", "accept", "accept-edit", "reject", "feedback-send"].includes(act)) return;
+  if (!["triage", "reject", "dismiss", "feedback-send"].includes(act)) return;
   // Writes
   S.busy = true;
   view().querySelectorAll(".ticket .btn").forEach((b) => (b.disabled = true));
@@ -862,12 +1013,10 @@ async function incomingAction(act, el) {
     if (act === "triage") {
       await api("POST", `/api/tickets/${enc}/triage`);
       toast("Triage done");
-    } else if (act === "accept" || act === "accept-edit") {
-      const i = Number(el.dataset.i);
-      const edits = act === "accept-edit" ? collectEdits(i) : {};
-      await api("POST", `/api/tickets/${enc}/accept`, { option: i, edits });
-      S.editing = null;
-      toast(`Option ${i + 1} accepted`);
+    } else if (act === "dismiss") {
+      await api("POST", `/api/tickets/${enc}/reject`, { note: $("#dis").querySelector("input").value.trim(), reply: null });
+      Object.assign(S, { dismissing: false, pick: null, editing: null, draft: null });
+      toast("Ticket dismissed");
     } else if (act === "reject") {
       const f = $("#rej").elements;
       const reply = f.reply.value.trim();
@@ -1083,7 +1232,7 @@ function heroHtml(a) {
   return `<section class="an-hero">
     <div class="an-hero-head">
       <div class="an-fig">
-        <div class="an-eyebrow">AI vs people${span ? ` · ${esc(span)}` : ""}</div>
+        <div class="an-eyebrow"><span class="emo">🤖</span> AI vs people <span class="emo">🧑</span>${span ? ` · ${esc(span)}` : ""}</div>
         ${big}
       </div>
       <div class="an-kpis">
@@ -1140,6 +1289,18 @@ function niceTicks(max) {
   return ticks;
 }
 
+// A small 🤖 at the right end of the agent's area and a 🧑 at the end of the people's (handed + closed),
+// at the last of the given points where the band is thick enough to hold it.
+function flowEmoji(stack, Y, x, anchor, idx) {
+  const bands = [["🤖", () => 0, (s) => s[0]], ["🧑", (s) => s[0], (s) => s[s.length - 1]]];
+  return bands.map(([emo, lo, hi]) => {
+    const i = idx.find((k) => Y(lo(stack[k])) - Y(hi(stack[k])) >= 18);
+    if (i === undefined) return "";
+    const y = (Y(lo(stack[i])) + Y(hi(stack[i]))) / 2 + 5;
+    return `<text class="emo" x="${x(i).toFixed(1)}" y="${y.toFixed(1)}" text-anchor="${anchor}">${emo}</text>`;
+  }).join("");
+}
+
 function drawFlow() {
   const host = $("#an-flow");
   if (!host) return;
@@ -1178,6 +1339,7 @@ function drawFlow() {
       return `<rect class="col ${s.cls}" x="${x}" y="${yt.toFixed(1)}" width="${bw}" height="${Math.max(1, h).toFixed(1)}" rx="3"/>`;
     }).join("");
     if (pts[0].feedback) marks += `<line class="fb" x1="${x - 18}" x2="${x + bw + 18}" y1="${Y(pts[0].feedback)}" y2="${Y(pts[0].feedback)}"/>`;
+    marks += flowEmoji(stack, Y, () => x + bw + 6, "start", [0]);
   } else {
     const defs = FLOW.map((s) => `<linearGradient id="g-${s.cls}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" class="${s.cls}" stop-opacity="${s.k === "agent" ? 0.62 : 0.42}"/><stop offset="1" class="${s.cls}" stop-opacity="${s.k === "agent" ? 0.16 : 0.08}"/></linearGradient>`).join("");
     marks = `<defs>${defs}</defs>`;
@@ -1188,6 +1350,7 @@ function drawFlow() {
       marks += `<path class="area" fill="url(#g-${s.cls})" d="${areaPath(upper, lower)}"/><path class="edge ${s.cls}" d="${linePath(upper)}"/>`;
     });
     if (pts.some((p) => p.feedback)) marks += `<path class="fb" d="${linePath(pts.map((p, i) => [X(i), Y(Number(p.feedback) || 0)]))}"/>`;
+    marks += flowEmoji(stack, Y, (i) => X(i) - (i === n - 1 ? 6 : 0), "end", [...pts.keys()].reverse().slice(0, 4));
     if (n <= 6) { // few points: show where the real data sits
       marks += pts.map((p, i) => FLOW.map((s, j) => (p[s.k] ? `<circle class="pt ${s.cls}" cx="${X(i).toFixed(1)}" cy="${Y(stack[i][j]).toFixed(1)}" r="3"/>` : "")).join("")).join("");
     }
@@ -1244,7 +1407,7 @@ window.addEventListener("resize", () => {
 });
 
 // --- Row of small charts -------------------------------------------------------------------------------
-const cell = (title, big, unit, body) => `<div class="an-cell">
+const cell = (title, big, unit, body, tone = "") => `<div class="an-cell ${tone}">
     <h2>${esc(title)}</h2>
     <div class="an-num">${big}<span>${unit}</span></div>
     ${body}
@@ -1273,7 +1436,7 @@ function outcomeCell(l2) {
   const body = total ? `<div class="an-donut-wrap">${donut}${legend}</div>`
     : `<div class="an-donut-wrap is-empty">${donut}<p class="an-none">No chats yet — <a href="#/chat">try one in Chat</a></p></div>`;
   const share = pctOf(Number(l2.resolved) || 0, total);
-  return cell("Chat outcomes", share == null ? "—" : `${share}%`, "resolved by the agent", body);
+  return cell("Chat outcomes", share == null ? "—" : `${share}%`, "resolved by the agent", body, "t-violet");
 }
 
 function barRows(rows, cls, max) {
@@ -1288,7 +1451,7 @@ function barsCell(title, big, unit, obj, label, cls, empty) {
   const rows = all.slice(0, 5).map(([k, v]) => [label(k), v]);
   if (all.length > 5) rows.push(["Other", all.slice(5).reduce((x, [, v]) => x + v, 0)]);
   const body = rows.length ? barRows(rows, cls, rows[0][1]) : `<p class="an-none">${esc(empty)}</p>`;
-  return cell(title, nf(big || 0), unit, body);
+  return cell(title, nf(big || 0), unit, body, cls === "b-hand" ? "t-peach" : "t-mint");
 }
 
 function funnelCell(tri) {
@@ -1304,7 +1467,7 @@ function funnelCell(tri) {
         <span class="an-bar-t"><i class="${i < 2 ? "b-soft" : i === 5 ? "b-grey" : "b-agent"}" style="width:${max ? Math.max(v ? 2 : 0, (v / max) * 100).toFixed(1) : 0}%"></i></span>
         <b>${nf(v)}</b></div>`).join("")}</div>`;
   const share = pctOf(n1, decided);
-  return cell("Level 1 decisions", share == null ? "—" : `${share}%`, decided ? `first option accepted, of ${nf(decided)}` : "first option accepted", body);
+  return cell("Level 1 decisions", share == null ? "—" : `${share}%`, decided ? `first option accepted, of ${nf(decided)}` : "first option accepted", body, "t-sky");
 }
 
 // --- Agents at work: open tasks, live ages -------------------------------------------------------------
@@ -1671,6 +1834,9 @@ function markCfgDirty(el) {
 
 document.addEventListener("input", (ev) => {
   markCfgDirty(ev.target);
+  const ansEdit = ev.target.closest?.(".ans form.edit");
+  if (ansEdit) saveDraft(ansEdit);
+  if (ev.target.closest?.("#own")) { S.own[ev.target.name] = ev.target.value; refreshStamp(); }
   if (ev.target.id !== "q") return;
   S.q = ev.target.value;
   if (S.tab === "incoming" && (S.ticketId || S.feedbackOpen)) { // typing on a ticket page goes back to the list
@@ -1696,6 +1862,7 @@ document.addEventListener("change", (ev) => {
   if (form && el.name === "action") {
     form.querySelectorAll("[data-for]").forEach((f) => (f.hidden = !f.dataset.for.split(" ").includes(el.value)));
   }
+  if (form?.matches(".ans form.edit")) saveDraft(form);
 });
 
 document.addEventListener("keydown", (ev) => {
@@ -1703,6 +1870,12 @@ document.addEventListener("keydown", (ev) => {
   if (ev.key === "/" && S.tab === "incoming" && !/^(INPUT|TEXTAREA|SELECT)$/.test(ev.target.tagName)) {
     ev.preventDefault();
     $("#q")?.focus();
+    return;
+  }
+  // An answer, the letter and the ballot are buttons for the keyboard too
+  if ((ev.key === "Enter" || ev.key === " ") && ev.target.matches?.('.ans[data-act="pick"], .letter, .ballot')) {
+    ev.preventDefault();
+    ev.target.click();
     return;
   }
   if (ev.key !== "Enter") return;

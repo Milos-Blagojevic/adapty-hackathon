@@ -37,7 +37,8 @@
      },
      "reply": "Hi! We added 7 days of premium on Nov 5 for the trial charge, so your access now runs to Nov 20. We can't add more, but you can cancel any time in Google Play → Subscriptions and you won't be charged again.",
      "risk": "low",
-     "risk_reason": "No money or access change; consistent with the 30-day grant limit."
+     "risk_reason": "No money or access change; consistent with the 30-day grant limit.",
+     "emoji": "❌"
     },
     {
      "action": "store_instructions",
@@ -49,7 +50,8 @@
      },
      "reply": "You can cancel the weekly plan any time: Google Play → Profile → Payments & subscriptions → Subscriptions → Lumen → Cancel. Your premium stays until Nov 20.",
      "risk": "low",
-     "risk_reason": "Instructions only; helps if the real goal is to stop paying."
+     "risk_reason": "Instructions only; helps if the real goal is to stop paying.",
+     "emoji": "❌"
     },
     {
      "action": "grant_access",
@@ -61,7 +63,8 @@
      },
      "reply": "As a one-off, we've added 7 more days of premium to your account.",
      "risk": "high",
-     "risk_reason": "Second grant in 30 days for the same issue: grant farming pattern."
+     "risk_reason": "Second grant in 30 days for the same issue: grant farming pattern.",
+     "emoji": "👍"
     }
    ]
   },
@@ -192,7 +195,8 @@
      },
      "reply": "Thanks for your patience. Refunds for App Store purchases go through Apple; I've asked our billing team to support your request and we'll follow up within one business day.",
      "risk": "medium",
-     "risk_reason": "Money involved and a chargeback threat: a person should own it."
+     "risk_reason": "Money involved and a chargeback threat: a person should own it.",
+     "emoji": "🙏"
     },
     {
      "action": "store_instructions",
@@ -204,7 +208,8 @@
      },
      "reply": "You can request a refund directly from Apple: reportaproblem.apple.com → sign in → find Lumen Pro (annual) → I'd like to request a refund. Apple usually answers within 48 hours.",
      "risk": "low",
-     "risk_reason": "Correct route for App Store; no action on our side."
+     "risk_reason": "Correct route for App Store; no action on our side.",
+     "emoji": "💸"
     },
     {
      "action": "reply_only",
@@ -216,7 +221,8 @@
      },
      "reply": "I'm sorry the app wasn't a fit. App Store purchases can only be refunded by Apple; our support can't reverse the charge.",
      "risk": "medium",
-     "risk_reason": "Correct but may escalate the chargeback."
+     "risk_reason": "Correct but may escalate the chargeback.",
+     "emoji": "❌"
     }
    ]
   },
@@ -342,7 +348,8 @@
      },
      "reply": "Sorry about this! Your payment went through, but premium wasn't switched on. I've turned it on for you now, plus 7 extra days for the trouble. Restart the app and you're all set.",
      "risk": "low",
-     "risk_reason": "Paid active subscription, access level missing: grant matches the evidence."
+     "risk_reason": "Paid active subscription, access level missing: grant matches the evidence.",
+     "emoji": "👍"
     },
     {
      "action": "store_instructions",
@@ -354,7 +361,8 @@
      },
      "reply": "Please try Restore purchases once more: open Lumen → Settings → Restore purchases while signed in to the same Google account you paid with.",
      "risk": "medium",
-     "risk_reason": "Restore already failed per the user; likely another round-trip."
+     "risk_reason": "Restore already failed per the user; likely another round-trip.",
+     "emoji": "🔁"
     },
     {
      "action": "ask_user",
@@ -366,7 +374,8 @@
      },
      "reply": "Could you send us the order number from your Google Play receipt (starts with GPA.)? Then we'll fix it right away.",
      "risk": "low",
-     "risk_reason": "Safe, but slower; evidence is already clear."
+     "risk_reason": "Safe, but slower; evidence is already clear.",
+     "emoji": "❓"
     }
    ]
   },
@@ -454,7 +463,8 @@
      },
      "reply": "Hi Maria, sorry for the trouble! Could you open Lumen → Settings → About and send us the user ID shown there? Then we'll check your purchase right away.",
      "risk": "low",
-     "risk_reason": "No action without identifying the user."
+     "risk_reason": "No action without identifying the user.",
+     "emoji": "❓"
     },
     {
      "action": "store_instructions",
@@ -466,7 +476,8 @@
      },
      "reply": "Please try Lumen → Settings → Restore purchases while signed in with the Apple ID you paid with. If it still shows free, reply here.",
      "risk": "low",
-     "risk_reason": "Common fix for iOS; harmless."
+     "risk_reason": "Common fix for iOS; harmless.",
+     "emoji": "🔁"
     }
    ]
   },
@@ -514,7 +525,8 @@
      },
      "reply": "Sorry about that! I've switched premium on for your account and added 7 days for the trouble.",
      "risk": "low",
-     "risk_reason": "v1 proposal: grant_access."
+     "risk_reason": "v1 proposal: grant_access.",
+     "emoji": "👍"
     }
    ]
   },
@@ -649,7 +661,8 @@
      },
      "reply": "Google Play couldn't charge your card for the renewal. Open Google Play → Payments & subscriptions → Subscriptions → Lumen → Fix payment. Premium comes back as soon as the payment goes through.",
      "risk": "low",
-     "risk_reason": "Fixes the actual cause; no grant needed."
+     "risk_reason": "Fixes the actual cause; no grant needed.",
+     "emoji": "🔁"
     },
     {
      "action": "grant_access",
@@ -661,7 +674,8 @@
      },
      "reply": "While you update your payment in Google Play, I've given you 3 days of premium so you're not locked out.",
      "risk": "medium",
-     "risk_reason": "Bridge grant; the user is in grace period and still paying."
+     "risk_reason": "Bridge grant; the user is in grace period and still paying.",
+     "emoji": "👍"
     },
     {
      "action": "reply_only",
@@ -673,7 +687,8 @@
      },
      "reply": "This message comes from Google Play: the last renewal payment didn't go through. Please check the card saved in Google Play.",
      "risk": "low",
-     "risk_reason": "Explains, but gives no steps."
+     "risk_reason": "Explains, but gives no steps.",
+     "emoji": "🧾"
     }
    ]
   },
@@ -777,7 +792,8 @@
      },
      "reply": "Sorry for the confusion about the trial length! I've added 7 days of premium to your account. You can cancel any time in Google Play → Subscriptions.",
      "risk": "low",
-     "risk_reason": "First grant, paid user, within limits."
+     "risk_reason": "First grant, paid user, within limits.",
+     "emoji": "👍"
     },
     {
      "action": "reply_only",
@@ -789,7 +805,8 @@
      },
      "reply": "The trial on the weekly plan is 3 days; it's shown on the paywall before you subscribe. You can cancel any time in Google Play.",
      "risk": "medium",
-     "risk_reason": "Correct but likely to upset a user who likes the app."
+     "risk_reason": "Correct but likely to upset a user who likes the app.",
+     "emoji": "🧾"
     }
    ]
   },
@@ -905,7 +922,8 @@
      },
      "reply": "Thanks for reporting this! It's a known issue in 3.6.0 and a fix is on the way in the next update.",
      "risk": "low",
-     "risk_reason": "Reply only; lifetime user, no grant possible."
+     "risk_reason": "Reply only; lifetime user, no grant possible.",
+     "emoji": "🙏"
     },
     {
      "action": "no_reply",
@@ -917,7 +935,8 @@
      },
      "reply": "",
      "risk": "low",
-     "risk_reason": "Bug report for the engineering team; nothing for support."
+     "risk_reason": "Bug report for the engineering team; nothing for support.",
+     "emoji": "❌"
     }
    ]
   },
