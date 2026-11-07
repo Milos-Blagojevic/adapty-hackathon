@@ -1,55 +1,54 @@
 # AGENTS.md
 
-Resolve: a support inbox for a subscription app (the seeded Lumen app on Adapty). Users send purchase complaints; the Level 2 agent proposes a category, root cause, action and reply with the user's live Adapty profile in hand; the owner approves; the approved action runs in Adapty (`grantAccessLevel`). Level 1 groups all tickets into insights and drafts an A/B test on the offending placement. Built at the Adapty Hackathon Belgrade, 7–8 Nov 2026. `README.md` is the user documentation; the scope lives outside the repo (`~/hackathon/scope.md`).
+Resolve: AI support for a subscription app on Adapty (the seeded Lumen app). Level 2 is the first-line agent inside the app (`POST /chat`): it reads the user's live Adapty profile, explains, gives store steps and grants free access within limits; everything risky goes to Level 1 as a ticket. Level 1 is the triage agent for the support person: it builds each ticket with tools and proposes 2–3 ranked options; a person accepts, edits or rejects; only then anything runs in Adapty. Built at the Adapty Hackathon Belgrade, 7–8 Nov 2026. `README.md` is the user documentation; `docs/agents.md` is the binding spec; `docs/openapi.json` the API contract.
 
-Python 3.11+, FastAPI + Jinja + htmx, SQLite, one `uvicorn` process. Anthropic API with structured output for the agent. Adapty server-side API v2 for profiles and grants; the Adapty CLI (`adapty ab-tests create`) for the A/B draft.
+Python 3.11+, FastAPI, SQLite, one `uvicorn` process. One tool-calling interface for two LLM providers (Anthropic, or any OpenAI-compatible API such as DeepSeek). Adapty server-side API v2 for profiles and grants. The web UI is static HTML/CSS/JS in `resolve/static/ui-alex/` over the JSON API.
 
 ## Layout
 
 | Module | Role |
 |---|---|
-| `resolve/config.py` | Settings from the environment (`.env` via python-dotenv): keys, app id, access level, compensation days, `DEMO_MODE`, DB path |
-| `resolve/adapty.py` | The only module that talks to the Adapty server-side API: `get_profile`, `grant_access_level`, `update_profile`, the compensation expiry rule (`compensation_expiry`), `AdaptyError`. `requests` with a 15 s timeout, no retries |
-| `resolve/tickets.py` | The fixed enums (categories, actions, statuses), the `Ticket` record, the offline → live clock shift (`LIVE_SHIFT`), the synthetic ticket generator from the offline CSVs |
-| `resolve/db.py` | SQLite schema (tickets with cached profile / proposal / action, insights, ab_drafts), seeding from `data/tickets.json`, the conditional status update |
-| `resolve/agent.py` | Level 2: the `Proposal` pydantic model, the profile summary the model sees, the policy prompt with five examples, `messages.parse` structured output, policy validation, `MAX_CALLS` |
-| `resolve/workflow.py` | The ticket state machine: `open_ticket` (profile), `propose` (cached), `approve` (grant + `last_support_ticket` stamp, idempotent, Adapty errors return the ticket to `proposed`), `dismiss`; `Services` carries the clients |
-| `resolve/insights.py` | Level 1: `PLACEMENTS` (live ids read from the account), grouping (category × product, category × flow from the ticket's offline context), the `Insight` hypothesis call, `Runner` for the Adapty CLI, `draft_ab_test` |
-| `resolve/web.py` | FastAPI app factory `create_app`, routes, htmx partials, Jinja templates in `resolve/templates/`, CSS and vendored htmx in `resolve/static/`; `python -m resolve` is `__main__.py` |
-| `scripts/` | `generate_tickets.py` (the three hand-written demo tickets live here), `adapty_check.py` (Gate 1 proof), `eval.py` (20-ticket eval runner, paid), `snapshot.py` (DEMO_MODE snapshot) |
-| `data/` | `tickets.json` (60 seed tickets, 3 with `demo: true`), `eval.json` (hand-labelled cases), `eval_results.json`, `demo.sqlite` (committed snapshot); `resolve.sqlite` is the live DB (git-ignored) |
-| `tests/` | pytest; no network, no keys. `fakes.py` has the profile fixtures and the scripted Anthropic fake |
+| `resolve/config.py` | Settings from `.env`: keys, `LLM_PROVIDER` (auto/openai/anthropic), OpenAI-compatible extras, app id, `DEMO_MODE`, DB path |
+| `resolve/adapty.py` | The only client of the Adapty server-side API: `get_profile`, `grant_access_level`, `update_profile`, `update_email`, `compensation_expiry` |
+| `resolve/llm.py`, `llm_openai.py`, `llm_anthropic.py`, `llm_schema.py` | `LLM.step(system, messages, tools) -> Step`; providers only translate formats; strict tool schemas from pydantic; `FakeLLM` for tests |
+| `resolve/models.py` | Shared contract: AgentConfig, TriageTicket, Decision, ChatResult, API response models |
+| `resolve/policy.py` | Grant limits as pure code (`check_grant`), config loading |
+| `resolve/actions.py` | `execute(...)`: the only place an action writes to Adapty; grants recorded in `grants` |
+| `resolve/frontline.py` | Level 2 chat loop: enabled tools only, every call checked and logged, handoff in code after a blocked grant, after-handoff mode, `cancel_handoff` |
+| `resolve/triage.py` | Level 1 tool loop (`get_profile`, `find_user_by_email`, `get_user_history`, `get_agent_config`, `submit_ticket`), checks on the submitted ticket, insights |
+| `resolve/workflow.py` | accept / reject / reopen, idempotent status transitions |
+| `resolve/api.py`, `resolve/analytics.py` | JSON API (CORS for the phone apps), full-text search, analytics (timeline, open tasks) |
+| `resolve/db.py` | SQLite schema + migrations (tickets, conversations, messages, l2_events, grants, agent_config, email_index) |
+| `resolve/web.py` | App factory; v1 HTML pages kept for reference |
+| `scripts/` | `seed_demo_profiles.py` (copy the demo users into another Adapty app), `import_feedback.py`, `seed_emails.py`, `eval.py` (paid), `export_openapi.py`, `generate_tickets.py`, `snapshot.py` |
+| `mobile-mock/` | Backup Android app: chat + debug buttons over `POST /chat` |
+| `tests/` | pytest, no network, no keys; `tests/fakes_v2.py` has the scripted LLM steps and profiles |
 
 ## Commands
 
 ```bash
-uv venv .venv && source .venv/bin/activate   # or python3 -m venv .venv
-pip install -r requirements.txt
-cp .env.example .env                         # fill in the keys
-python -m resolve                            # http://127.0.0.1:8000
-DEMO_MODE=1 python -m resolve                # no keys, committed snapshot
+python -m resolve --port 8010            # http://127.0.0.1:8010/static/ui-alex/index.html
 python -m pytest
-python scripts/eval.py                       # paid: 20 Anthropic calls; ask first
+python scripts/export_openapi.py         # after any API change
+python scripts/eval.py --yes [--l2]      # paid: ask the owner first
 ```
 
-## Hard limits (from the scope; do not relax)
+## Hard limits (do not relax)
 
-- Adapty writes allowed: `grantAccessLevel` and `updateProfile` on seeded profiles, `adapty ab-tests create` (draft only). Never `ab-tests start`/`stop`/`replace`/`archive`, never `placements update`, never anything in Adapty Mail, never the seeder (`seed_adapty.py`).
-- Every Adapty write happens on a click in the UI (Approve, Draft A/B test). Nothing autonomous.
-- Anthropic calls cost money: cache proposals on the ticket, cap at 3 model calls per ticket, no batch runs over all tickets without asking the owner. The eval runner is 20 calls; ask before running it.
-- No real end-user data: tickets are synthetic; App Store reviews are never ticket text.
-- Nothing sends email or messages anywhere. "Sent" is a status.
-- `.env` is git-ignored. Never print, log or commit `ADAPTY_SECRET_KEY` or `ANTHROPIC_API_KEY`.
+- Adapty writes allowed: `grantAccessLevel` and `updateProfile` on seeded demo users only (and `createProfile` / `setTransaction` only through `scripts/seed_demo_profiles.py` into a teammate's own app). Never Adapty Mail, placements, A/B start/stop.
+- Level 2 may grant on its own only within the config limits, checked in code (`policy.check_grant`). Everything else that writes runs on a person's click in Level 1.
+- Refunds are never done by an agent: only the store refunds; Level 2 hands off, Level 1 offers `refund_to_human`.
+- LLM calls cost money: no batch runs, no eval without asking the owner. Model calls per ticket and per chat message are capped in code.
+- No real end-user data: tickets and chats are synthetic; App Store reviews are never ticket text.
+- Nothing sends email or messages anywhere; "sent" is a status.
+- `.env` is git-ignored. Never print, log or commit any key.
 
 ## Conventions
 
-- Adapty server-side API: `Authorization: Api-Key <secret>`, user addressed by the `adapty-customer-user-id` header, base `https://api.adapty.io`. Docs: https://adapty.io/docs/ss-authorization.md and `https://adapty.io/docs/api-adapty/operations/<operationId>.md` (`getProfile`, `grantAccessLevel`, `updateProfile`). The `adapty-docs` skill indexes the rest; do not guess slugs.
-- Compensation = 7 days of `premium`: `expires_at = max(now, current premium expires_at) + 7 days` (extends an active subscription, starts now for free or expired users). A lifetime access level (no `expires_at`) is not extended; the agent must not propose `grant_access` for it.
-- Enums are fixed: categories `charged_after_trial`, `no_access_after_purchase`, `billing_issue`, `refund_request`, `cancel_how`, `price_complaint`, `other`; actions `grant_access`, `explain`, `escalate_refund`, `no_action`; statuses `new → triaged → proposed → approved → done`, plus `dismissed`. Agent output outside the enums is rejected, not coerced.
-- Approve is idempotent: a ticket that is already `done` is never granted again; the grant response is stored on the ticket. An Adapty failure surfaces in the UI and leaves the ticket in `proposed`.
-- The user → placement/flow/A/B arm mapping comes from `data/offline/users.csv.gz` in the seed repo, not from the live profile; say so in the UI.
-- `DEMO_MODE=1` reads `data/demo.sqlite` and never calls Adapty or Anthropic; Approve changes local state and the page says so.
-- Tests make no network calls: Adapty is mocked with `responses`, the Anthropic client with a fake, the CLI with a stub command.
+- The model never chooses the customer: Level 2 tools take the session's customer; Level 1 may read only the ticket's customer or one found by email in the same run.
+- Model output is validated with pydantic; a bad tool call gets one corrective retry, then the run stops with an error on the ticket.
+- Every Level 2 tool call is logged in `l2_events` (allowed / blocked reason / result).
+- Spec first: behaviour changes go into `docs/agents.md` before the code; tests are written from the spec.
 
 ## AI log
 
