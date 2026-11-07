@@ -1,0 +1,12 @@
+// Versions pinned to what is already in ~/.gradle/caches (offline build).
+buildscript {
+    dependencies {
+        // AGP 8.5.2 asks for Kotlin 1.9.20 libs, which are not cached; these versions are.
+        classpath 'org.jetbrains.kotlin:kotlin-reflect:1.9.23'
+        classpath 'org.jetbrains.kotlin:kotlin-stdlib:1.9.24'
+    }
+}
+plugins {
+    id 'com.android.application' version '8.5.2' apply false
+    id 'org.jetbrains.kotlin.android' version '1.9.24' apply false
+}
