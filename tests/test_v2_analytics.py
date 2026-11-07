@@ -125,11 +125,12 @@ def test_timeline_and_open_tasks(tmp_path):
     for sid, outcome in (("a", "resolved"), ("b", "open"), ("c", "handed_off")):
         db.ensure_conversation(conn, sid, "u1")
         db.set_outcome(conn, sid, outcome)
-        conn.execute("UPDATE conversations SET created_at = '2026-11-08T10:15:00Z', updated_at = '2026-11-08T11:00:00Z' WHERE session_id = ?", (sid,))
+        with conn:
+            conn.execute("UPDATE conversations SET created_at = '2026-11-08T10:15:00Z', updated_at = '2026-11-08T11:00:00Z' WHERE session_id = ?", (sid,))
     db.append_message(conn, "b", "user", "paid but locked")
     tid = db.insert_feedback(conn, "hello", source="form", customer_user_id="u2")
-    conn.execute("UPDATE tickets SET created_at = '2026-11-08T09:30:00Z' WHERE id = ?", (tid,))
-    conn.commit()
+    with conn:
+        conn.execute("UPDATE tickets SET created_at = '2026-11-08T09:30:00Z' WHERE id = ?", (tid,))
     tl = analytics.timeline(conn, now)
     assert tl["bucket"] == "hour" and tl["agent_share"] == round(2 / 3, 3)
     by_t = {p["t"]: p for p in tl["points"]}
