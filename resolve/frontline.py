@@ -30,6 +30,18 @@ MAX_MODEL_CALLS = 4
 HANDED_OFF_REPLY = "A teammate has your conversation and will reply here."
 TOO_LONG_REPLY = "This is taking longer than it should, so I've passed our conversation to a teammate. They will reply here."
 FALLBACK_REPLY = "Sorry, something went wrong on my side. I've passed our conversation to a teammate, who will reply here."
+AUTO_HANDOFF_REPLY = "I've passed this to a teammate who can help with this; they will reply here."
+
+# A blocked grant hands off in code, whatever the model does next: policy reason → handoff reason.
+# A mapped rule hands off only when it is in cfg.always_handoff; "other" always hands off.
+# over_max_days is not here: the model may retry once within the limit (see _grant_access).
+BLOCKED_GRANT_HANDOFF = {
+    "grant_limit_30d": "repeat_after_grant",
+    "already_granted_this_session": "repeat_after_grant",
+    "lifetime": "profile_mismatch",
+    "not_paid": "profile_mismatch",
+    "tool_disabled": "other",
+}
 # Declared stub: demo mode / no model configured.
 DEMO_REPLY = "Demo mode: the support assistant is not connected, so this is a fixed reply. A real reply would use your account details."
 
@@ -110,7 +122,8 @@ def system_prompt(cfg: AgentConfig) -> str:
             "(paid, but premium is locked) or was misled (charged when a trial converted without them noticing). "
             f"At most {cfg.grant.max_days} days, once. Never only because the user demands it, "
             "and never for a user with lifetime access. The system checks the limits; if it answers "
-            "'blocked: <reason>', do not try again: hand off. After a grant, tell the user how many days you added "
+            "'blocked: over_max_days', you may try once more within the limit; on any other 'blocked: <reason>', "
+            "do not try again: hand off. After a grant, tell the user how many days you added "
             "and until which date, and suggest Restore purchases if the app still looks locked."
         )
     else:
@@ -208,6 +221,8 @@ class _Turn:
         self.actions: list[ActionLog] = []
         self.ticket_id: str | None = None
         self.granted = False
+        self.over_max_days = 0  # over_max_days blocks in this turn
+        self.auto_handoff = False  # a blocked grant handed off in code
 
     def record(self, tool: str, args: dict, allowed: bool, blocked_reason: str | None, result) -> None:
         db.log_event(self.services.conn, self.session_id, tool, args, allowed, blocked_reason, result)
@@ -265,10 +280,14 @@ def chat(services, customer_user_id: str, session_id: str, message: str) -> Chat
                 else:
                     content, is_error = _run_tool(turn, call)
                 messages.append(llm.tool_message(call, content, is_error))
+            if turn.auto_handoff:
+                break  # no further model call or tool call this turn
     except llm.LLMError as exc:
         log.warning("session %s: model call failed: %s", session_id, exc.__class__.__name__)
         failed = "model error"
 
+    if turn.auto_handoff:
+        return _finish(turn, AUTO_HANDOFF_REPLY)
     if not failed and text and text.strip():
         return _finish(turn, text)
     # No usable reply: the user still gets an answer, and a human gets the conversation.
@@ -342,8 +361,19 @@ def _grant_access(turn: _Turn, call: llm.ToolCall, args: GrantArgs) -> tuple[str
     in_session = turn.granted or any(g["ref"] == turn.session_id for g in db.grants_since(turn.services.conn, turn.customer, ""))
     allowed, reason = policy.check_grant(profile, turn.cfg, _grants_30d(turn, now), args.days, in_session)
     if not allowed:
-        turn.record(call.name, call.args, False, reason, f"blocked: {reason}")
-        return f"blocked: {reason}", True
+        handoff_reason = BLOCKED_GRANT_HANDOFF.get(reason)
+        if reason == "over_max_days":
+            turn.over_max_days += 1
+            if turn.over_max_days >= 2:
+                handoff_reason = "other"
+            content = f"blocked: over_max_days (max {turn.cfg.grant.max_days} days)"
+        else:
+            content = f"blocked: {reason}"
+        turn.record(call.name, call.args, False, reason, content)
+        if handoff_reason == "other" or handoff_reason in turn.cfg.always_handoff:
+            _handoff(turn, handoff_reason, f"grant_access blocked: {reason}")
+            turn.auto_handoff = True
+        return content, True
     try:
         result = actions.execute(turn.services, turn.customer, "grant_access", {"days": args.days}, source="l2", ref=turn.session_id)
     except AdaptyError as exc:
