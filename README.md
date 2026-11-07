@@ -45,11 +45,11 @@ Tests (no network, no keys) and the eval:
 python -m pytest                      # Adapty client (success, 4xx, timeout), enum rejection, call cap, approve idempotency, generator shape, pages
 python scripts/eval.py                # category + action accuracy on data/eval.json; reuses cached proposals, paid for the rest
 python scripts/batch_triage.py        # one Level 2 pass over every open ticket (paid, ~1.2 calls per ticket); Level 1 needs it
-python scripts/generate_tickets.py    # regenerate the 60 tickets from the seed repo's CSVs (deterministic)
+python scripts/generate_tickets.py --force   # regenerate the 60 tickets (deterministic for --seed and --now); invalidates data/eval.json labels and cached proposals
 python scripts/snapshot.py            # rebuild data/demo.sqlite from the live DB
 ```
 
-In `DEMO_MODE=1` the app copies `data/demo.sqlite` to a scratch file, serves cached profiles and proposals, and Approve changes local state only (the page says so). No key is read. Each restart resets to the snapshot.
+In `DEMO_MODE=1` the app copies `data/demo.sqlite` to a scratch file (`data/demo-run.sqlite`), serves cached profiles and proposals, and Approve changes local state only (the page says so). No key is used: the Adapty and Anthropic clients are never built. Each restart resets to the snapshot. The snapshot is the live DB as it stood after the Saturday batch: `demo-1` is already `done` with its real grant; the keyless happy path is `demo-2` (annual plan, `grant_access`) or `demo-3` (billing issue, `explain`).
 
 ## What is real and what is mocked
 
