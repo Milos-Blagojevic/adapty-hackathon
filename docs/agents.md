@@ -207,3 +207,18 @@ Ticket (`GET /api/tickets/{id}`): summary fields + `{body, session_id, triage (T
 }
 ```
 (`eval` is null when no results file.) Errors: 404 unknown id, 409 wrong status for accept/reject, 422 invalid body. `web.py` calls `api.install(app, services)`, which adds CORS (all origins, for the APK and other UIs) and includes the router.
+
+### Rules added after the first build (binding)
+
+Level 1 `submit_ticket` is checked in code; a failed check gets the same single corrective retry as a schema error:
+- `customer_user_id` must be null, the ticket's own id, or an id found by `find_user_by_email` in this run.
+- An option with `grant_access` requires that `get_profile` was called in this run and the user is not lifetime; days 1–365.
+- If the best option is `grant_access` or `refund_to_human`, at least one other option must be neither (a safe option).
+- If the user is not identified (`customer_user_id` null), one option must be `ask_user`.
+- `ask_user` needs `params.question`; every reply is non-empty except `no_reply`, ≤160 words.
+- A text answer without a tool call gets one nudge to call `submit_ticket`.
+- `get_user_history` has the same allowed-id rule as `get_profile`. An id found by email is written to the ticket's `customer_user_id` when it had none.
+
+Level 2: a blocked `grant_access` hands off in code (ticket created, outcome `handed_off`, no further tool calls this turn, fixed reply "I've passed this to a teammate who can help with this; they will reply here."), mapped by reason when that rule is in `always_handoff`: `grant_limit_30d` / `already_granted_this_session` → `repeat_after_grant`; `lifetime` / `not_paid` → `profile_mismatch`; `tool_disabled` → `other` (always). `over_max_days`: the first time in a turn the model gets `blocked: over_max_days (max N days)` and may retry; the second time → handoff `other`. When the mapped rule is not in `always_handoff`, the model just gets `blocked: <reason>`.
+
+Decisions: accept stores `decision_json = Decision.model_dump()`; reject always stores `{"rejected": true, "note", "reply"}`; reject is allowed from new/triaged/proposed. Accepting a reply on a `chat_handoff` ticket appends it as a `support` message to the conversation. Accept/reject return the full ticket.
