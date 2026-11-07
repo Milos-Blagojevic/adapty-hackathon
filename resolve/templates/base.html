@@ -12,10 +12,10 @@
   <a class="brand" href="/">Resolve</a>
   <nav>
     <a href="/" {% if request.url.path == '/' %}class="on"{% endif %}>Inbox</a>
-    <a href="/insights" {% if request.url.path.startswith('/insights') %}class="on"{% endif %}>Level 1 · Insights</a>
+    <a href="/insights" {% if request.url.path.startswith('/insights') %}class="on"{% endif %}>Insights</a>
   </nav>
   <span class="app">Lumen – AI Photo Editor</span>
-  {% if demo %}<span class="badge demo" title="No keys: cached profiles and proposals; Approve changes local state only">DEMO MODE</span>{% endif %}
+  {% if demo %}<span class="badge demo" title="No keys: cached profiles and triage; Accept changes local state only">DEMO MODE</span>{% endif %}
 </header>
 <main>
 {% block content %}{% endblock %}

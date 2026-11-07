@@ -1,9 +1,9 @@
-"""One pass of Level 2 over every open ticket without a proposal (paid; ask the owner first).
+"""One pass of Level 1 triage over every open ticket without a triage (paid; ask the owner first).
 
     python scripts/batch_triage.py [--db data/resolve.sqlite] [--limit N]
 
-Per ticket: live getProfile, then at most 2 model calls (the second only after a rejected output),
-never beyond agent.MAX_CALLS per ticket across runs. Tickets that already have a proposal, or are
+Per ticket: live getProfile, then the triage tool loop, never beyond triage.MAX_CALLS model calls per
+ticket across runs. Tickets that already have a triage (or a v1 proposal), or are
 done or dismissed, are skipped, so a re-run costs nothing for them. Logs rejection reasons only.
 """
 
@@ -18,7 +18,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from resolve import agent, config, db, workflow  # noqa: E402
+from resolve import config, db, llm, workflow  # noqa: E402
 from resolve.adapty import Client  # noqa: E402
 
 logging.basicConfig(level=logging.WARNING, format="%(levelname)s %(name)s: %(message)s")
@@ -32,12 +32,11 @@ def main() -> int:
 
     conn = db.connect(args.db)
     db.seed(conn, config.ROOT / "data" / "tickets.json")
-    client = agent.make_client()
-    services = workflow.Services(conn=conn, demo=False, adapty=Client(config.adapty_secret()), anthropic=client, model=agent.resolve_model(client))
-    todo = [t for t in db.list_tickets(conn) if t["status"] in workflow.OPEN_STATUSES and not t["proposal"]]
+    services = workflow.Services(conn=conn, demo=False, adapty=Client(config.adapty_secret()), llm=llm.make_llm())
+    todo = [t for t in db.list_tickets(conn) if t["status"] in workflow.OPEN_STATUSES and not t["triage"] and not t["proposal"]]
     if args.limit:
         todo = todo[: args.limit]
-    print(f"{len(todo)} tickets to triage with {services.model}\n")
+    print(f"{len(todo)} tickets to triage with {services.llm.model}\n")
 
     calls_before = sum(t["model_calls"] for t in db.list_tickets(conn))
     outcomes: Counter = Counter()
@@ -48,13 +47,13 @@ def main() -> int:
             outcomes["profile_error"] += 1
             continue
         result = workflow.propose(services, ticket["id"])
-        if result["proposal"]:
-            p = result["proposal"]
-            outcomes[p["category"]] += 1
-            print(f"  {ticket['id']:7s} {result['model_calls']} call(s)  {p['category']:26s} {p['action']:16s} {p['confidence']:.2f}")
+        if result["triage"]:
+            t = result["triage"]
+            outcomes[t["category"]] += 1
+            print(f"  {ticket['id']:7s} {result['model_calls']} call(s)  {t['category']:26s} {t['options'][0]['action']:16s} {t['confidence']:.2f}")
         else:
-            outcomes["agent_error"] += 1
-            print(f"  {ticket['id']}: {result['proposal_error']}")
+            outcomes["triage_error"] += 1
+            print(f"  {ticket['id']}: {result['triage_error']}")
         time.sleep(0.5)
     calls_after = sum(t["model_calls"] for t in db.list_tickets(conn))
     print(f"\n{calls_after - calls_before} model calls this run. Outcomes: {dict(outcomes)}")

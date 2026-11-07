@@ -1,10 +1,11 @@
-"""Level 1: all tickets → grouping, one hypothesis, one A/B-test draft in Adapty.
+"""Insights (a side screen of Level 1): all tickets → grouping, one hypothesis, one A/B-test draft in Adapty.
 
 Grouping needs no model: category × product (product from the live profile) and category × the
 paywall/flow the user saw (from the offline CSV mapping stored on the ticket at generation time; the
-live profile has no "paywall seen" field, and the UI says so). The hypothesis is one Opus call,
-cached in the `insights` table. The draft goes through the Adapty CLI (`adapty ab-tests create`,
-draft only; this module never starts, stops or replaces a test).
+live profile has no "paywall seen" field, and the UI says so). The hypothesis is one model call
+(`triage.run_insights`, the `submit_insight` tool with `Insight` below), cached in the `insights`
+table. The draft goes through the Adapty CLI (`adapty ab-tests create`, draft only; this module
+never starts, stops or replaces a test).
 """
 
 from __future__ import annotations
@@ -14,12 +15,9 @@ import subprocess
 from collections import Counter, defaultdict
 from typing import Literal
 
-import anthropic
-import pydantic
 from pydantic import BaseModel, Field
 
 from resolve import config
-from resolve.agent import MAX_TOKENS, AgentError
 from resolve.tickets import CATEGORIES
 
 # Read from the seeded account on Sat 7 Nov with `adapty placements list` and `adapty flows list`
@@ -132,7 +130,7 @@ def group_tickets(tickets: list[dict]) -> dict:
     }
 
 
-# --- The hypothesis (one model call, cached) --------------------------------------------------------
+# --- The hypothesis (one model call in triage.run_insights, cached) --------------------------------------------------------
 
 
 class Insight(BaseModel):
@@ -152,28 +150,7 @@ Flows and placements:
 - main: "Main - 3 plans" and "Main - Lifetime anchor"
 - ai_limit_reached: "AI limit reached - Pro"; settings_upgrade: "Settings - Upgrade"; win_back: "Win-back - Monthly"
 
-Rules: pick the largest cluster, name the flow most of those users saw, propose one concrete change to that flow, and say what should move. Numbers only from the data given. One sentence per field, plain English."""
-
-
-def analyse(client: anthropic.Anthropic, model: str, groups: dict) -> Insight:
-    if not groups["triaged"]:
-        raise AgentError("no triaged tickets yet; open tickets (or run the batch) first")
-    data = {k: groups[k] for k in ("total", "triaged", "by_category", "by_category_product", "by_category_flow", "by_flow", "by_placement")}
-    try:
-        response = client.messages.parse(
-            model=model,
-            max_tokens=MAX_TOKENS,
-            system=SYSTEM_PROMPT,
-            messages=[{"role": "user", "content": f"<inbox_aggregates>\n{json.dumps(data, indent=1)}\n</inbox_aggregates>"}],
-            output_format=Insight,
-        )
-    except anthropic.APIError as exc:
-        raise AgentError(f"Anthropic API error: {exc.__class__.__name__}: {exc}", calls=1) from None
-    except pydantic.ValidationError as exc:
-        raise AgentError(f"insight did not match the schema: {exc.errors()[0].get('msg')}", calls=1) from None
-    if response.parsed_output is None:
-        raise AgentError("empty structured output", calls=1)
-    return response.parsed_output
+Rules: pick the largest cluster, name the flow most of those users saw, propose one concrete change to that flow, and say what should move. Numbers only from the data given. One sentence per field, plain English. Answer by calling submit_insight."""
 
 
 # --- The draft (Adapty CLI) -------------------------------------------------------------------------
