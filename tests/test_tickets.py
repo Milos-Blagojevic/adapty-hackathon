@@ -58,3 +58,13 @@ def test_seed_file_matches_model():
     tickets = [Ticket(**row) for row in rows]
     assert len(tickets) == 60
     assert all(t.rule in CATEGORIES for t in tickets)
+
+
+def test_eval_labels_match_the_seed_file():
+    """A regenerated tickets.json reshuffles ids; every label's category must still be that ticket's generator rule."""
+    tickets = {row["id"]: row for row in json.loads((config.ROOT / "data" / "tickets.json").read_text())}
+    cases = json.loads((config.ROOT / "data" / "eval.json").read_text())["cases"]
+    assert len(cases) == 20 and len({c["ticket_id"] for c in cases}) == 20
+    for case in cases:
+        assert tickets[case["ticket_id"]]["rule"] == case["category"], case
+        assert case["action"] in ACTIONS
