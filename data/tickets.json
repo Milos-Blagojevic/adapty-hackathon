@@ -752,7 +752,7 @@
     "customer_user_id": "lumen_443814_02110",
     "subject": "How do I cancel?",
     "body": "I can't find where to cancel the weekly plan. It renews on Nov 10 and I don't want to be charged again. Please cancel it for me.",
-    "created_at": "2026-11-04T10:51:04Z",
+    "created_at": "2026-11-04T10:06:55Z",
     "demo": false,
     "rule": "cancel_how",
     "context": {
@@ -786,7 +786,7 @@
     "customer_user_id": "lumen_443814_02153",
     "subject": "Charged but features locked",
     "body": "the App Store charged me ₹1,469.00 on Nov 4 and Lumen still treats me as a free user. This is unacceptable, I needed the export today.",
-    "created_at": "2026-11-05T09:18:09Z",
+    "created_at": "2026-11-05T07:02:59Z",
     "demo": false,
     "rule": "no_access_after_purchase",
     "context": {
@@ -794,6 +794,23 @@
       "flow": "onb_trial",
       "ab_test": "Onboarding: annual trial vs weekly first",
       "country": "IN",
+      "platform": "iOS",
+      "acquisition_channel": "organic"
+    }
+  },
+  {
+    "id": "t-048",
+    "customer_user_id": "lumen_443814_01531",
+    "subject": "Too expensive",
+    "body": "Charged R$20.99 again on Nov 4. For what, three filters? Lower the price or I'm out.",
+    "created_at": "2026-11-05T07:57:44Z",
+    "demo": false,
+    "rule": "price_complaint",
+    "context": {
+      "placement": "onboarding",
+      "flow": "onb_trial",
+      "ab_test": "Onboarding: annual trial vs weekly first",
+      "country": "BR",
       "platform": "iOS",
       "acquisition_channel": "organic"
     }
@@ -813,23 +830,6 @@
       "country": "US",
       "platform": "Android",
       "acquisition_channel": "meta_ads"
-    }
-  },
-  {
-    "id": "t-048",
-    "customer_user_id": "lumen_443814_01531",
-    "subject": "Too expensive",
-    "body": "Charged R$20.99 again on Nov 4. For what, three filters? Lower the price or I'm out.",
-    "created_at": "2026-11-05T12:48:23Z",
-    "demo": false,
-    "rule": "price_complaint",
-    "context": {
-      "placement": "onboarding",
-      "flow": "onb_trial",
-      "ab_test": "Onboarding: annual trial vs weekly first",
-      "country": "BR",
-      "platform": "iOS",
-      "acquisition_channel": "organic"
     }
   },
   {
@@ -854,7 +854,7 @@
     "customer_user_id": "lumen_443814_02798",
     "subject": "How do I cancel?",
     "body": "I can't find where to cancel the weekly plan. It renews on Nov 12 and I don't want to be charged again. Please cancel it for me.",
-    "created_at": "2026-11-06T14:03:35Z",
+    "created_at": "2026-11-06T01:43:07Z",
     "demo": false,
     "rule": "cancel_how",
     "context": {
@@ -871,7 +871,7 @@
     "customer_user_id": "lumen_443814_04613",
     "subject": "No access after paying A$10.99",
     "body": "Receipt says paid on Nov 4. App says free. I reinstalled, logged out, nothing. What now?",
-    "created_at": "2026-11-06T16:30:33Z",
+    "created_at": "2026-11-06T07:32:25Z",
     "demo": false,
     "rule": "no_access_after_purchase",
     "context": {
@@ -880,6 +880,40 @@
       "ab_test": "Onboarding: annual trial vs weekly first",
       "country": "AU",
       "platform": "iOS",
+      "acquisition_channel": "organic"
+    }
+  },
+  {
+    "id": "t-051",
+    "customer_user_id": "lumen_443814_04371",
+    "subject": "Where is my refund",
+    "body": "I requested a refund through the App Store for the 137.99 SEK charge on Nov 5. Still nothing. Can you check on your side?",
+    "created_at": "2026-11-06T11:21:27Z",
+    "demo": false,
+    "rule": "refund_request",
+    "context": {
+      "placement": "settings_upgrade",
+      "flow": "main_lifetime",
+      "ab_test": "Settings: upgrade vs lifetime anchor",
+      "country": "SE",
+      "platform": "iOS",
+      "acquisition_channel": "google_uac"
+    }
+  },
+  {
+    "id": "t-052",
+    "customer_user_id": "lumen_443814_04751",
+    "subject": "How do I cancel?",
+    "body": "I can't find where to cancel the annual plan. It renews on Nov 13 and I don't want to be charged again. Please cancel it for me.",
+    "created_at": "2026-11-06T12:31:56Z",
+    "demo": false,
+    "rule": "cancel_how",
+    "context": {
+      "placement": "onboarding",
+      "flow": "onb_trial",
+      "ab_test": "Onboarding: annual trial vs weekly first",
+      "country": "IN",
+      "platform": "Android",
       "acquisition_channel": "organic"
     }
   },
@@ -901,79 +935,28 @@
     }
   },
   {
-    "id": "t-051",
-    "customer_user_id": "lumen_443814_04751",
-    "subject": "How do I cancel?",
-    "body": "I can't find where to cancel the annual plan. It renews on Nov 13 and I don't want to be charged again. Please cancel it for me.",
-    "created_at": "2026-11-06T23:59:32Z",
-    "demo": false,
-    "rule": "cancel_how",
-    "context": {
-      "placement": "onboarding",
-      "flow": "onb_trial",
-      "ab_test": "Onboarding: annual trial vs weekly first",
-      "country": "IN",
-      "platform": "Android",
-      "acquisition_channel": "organic"
-    }
-  },
-  {
-    "id": "t-052",
-    "customer_user_id": "lumen_443814_04371",
-    "subject": "Where is my refund",
-    "body": "I requested a refund through the App Store for the 137.99 SEK charge on Nov 5. Still nothing. Can you check on your side?",
-    "created_at": "2026-11-07T05:09:31Z",
-    "demo": false,
-    "rule": "refund_request",
-    "context": {
-      "placement": "settings_upgrade",
-      "flow": "main_lifetime",
-      "ab_test": "Settings: upgrade vs lifetime anchor",
-      "country": "SE",
-      "platform": "iOS",
-      "acquisition_channel": "google_uac"
-    }
-  },
-  {
     "id": "t-053",
-    "customer_user_id": "lumen_443814_01826",
-    "subject": "Trial converted without warning",
-    "body": "The paywall said \"try free\". 3 days later I'm paying £5.99. I would have cancelled if I had known the date. Can you at least refund this one?",
-    "created_at": "2026-11-07T14:59:59Z",
+    "customer_user_id": "lumen_443814_02021",
+    "subject": "SCAM - trial was not free",
+    "body": "Downloaded this for the \"free\" trial and got hit with $6.99 yesterday. I used the app twice. This is a scam, cancel it and give me my money back.",
+    "created_at": "2026-11-07T04:02:06Z",
     "demo": false,
     "rule": "charged_after_trial",
     "context": {
       "placement": "onboarding",
       "flow": "onb_weekly",
       "ab_test": "Onboarding: annual trial vs weekly first",
-      "country": "GB",
+      "country": "US",
       "platform": "Android",
       "acquisition_channel": "meta_ads"
     }
   },
   {
     "id": "t-054",
-    "customer_user_id": "lumen_443814_02021",
-    "subject": "SCAM - trial was not free",
-    "body": "Downloaded this for the \"free\" trial and got hit with $6.99 yesterday. I used the app twice. This is a scam, cancel it and give me my money back.",
-    "created_at": "2026-11-07T14:59:59Z",
-    "demo": false,
-    "rule": "charged_after_trial",
-    "context": {
-      "placement": "onboarding",
-      "flow": "onb_weekly",
-      "ab_test": "Onboarding: annual trial vs weekly first",
-      "country": "US",
-      "platform": "Android",
-      "acquisition_channel": "meta_ads"
-    }
-  },
-  {
-    "id": "t-055",
     "customer_user_id": "lumen_443814_04719",
     "subject": "Unexpected charge $6.99",
     "body": "Why was I charged $6.99 on Nov 5? I only signed up for the trial. I did not agree to a weekly plan. Please refund.",
-    "created_at": "2026-11-07T14:59:59Z",
+    "created_at": "2026-11-07T05:00:21Z",
     "demo": false,
     "rule": "charged_after_trial",
     "context": {
@@ -986,11 +969,11 @@
     }
   },
   {
-    "id": "t-056",
+    "id": "t-055",
     "customer_user_id": "lumen_443814_03456",
     "subject": "How do I cancel?",
     "body": "I can't find where to cancel the weekly plan. It renews on Nov 13 and I don't want to be charged again. Please cancel it for me.",
-    "created_at": "2026-11-07T14:59:59Z",
+    "created_at": "2026-11-07T05:20:28Z",
     "demo": false,
     "rule": "cancel_how",
     "context": {
@@ -1003,11 +986,28 @@
     }
   },
   {
+    "id": "t-056",
+    "customer_user_id": "lumen_443814_01826",
+    "subject": "Trial converted without warning",
+    "body": "The paywall said \"try free\". 3 days later I'm paying £5.99. I would have cancelled if I had known the date. Can you at least refund this one?",
+    "created_at": "2026-11-07T06:06:50Z",
+    "demo": false,
+    "rule": "charged_after_trial",
+    "context": {
+      "placement": "onboarding",
+      "flow": "onb_weekly",
+      "ab_test": "Onboarding: annual trial vs weekly first",
+      "country": "GB",
+      "platform": "Android",
+      "acquisition_channel": "meta_ads"
+    }
+  },
+  {
     "id": "t-057",
     "customer_user_id": "lumen_443814_00076",
     "subject": "Pricing is misleading",
     "body": "The price on the paywall looked like a monthly price. It's $6.99 every week. That's more than Netflix. Not happy.",
-    "created_at": "2026-11-07T14:59:59Z",
+    "created_at": "2026-11-07T07:56:59Z",
     "demo": false,
     "rule": "price_complaint",
     "context": {

@@ -257,7 +257,9 @@ TEMPLATES: dict[str, list[tuple[str, str]]] = {
 
 def write_ticket(rule: str, event: dict, rng: random.Random, now: datetime) -> Ticket:
     subject, body = rng.choice(TEMPLATES[rule])
-    created = min(event["event_at"] + timedelta(hours=rng.uniform(3, 96)), now - timedelta(minutes=5))
+    latest = now - timedelta(minutes=5)
+    window_hours = min(96.0, max(0.5, (latest - event["event_at"]).total_seconds() / 3600))
+    created = event["event_at"] + timedelta(hours=rng.uniform(min(3.0, window_hours), window_hours))
     days_ago = (created - event["event_at"]).days
     slots = dict(event, date=day(event["event_at"]), ago="yesterday" if days_ago <= 1 else f"{days_ago} days ago")
     return Ticket(
