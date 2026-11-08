@@ -135,11 +135,24 @@ def run_l1(services, conn: db.Database, ro: ReadOnlyAdapty, cases: list[dict]) -
             action_ok=got_action in actions,
             confidence=result.get("confidence"),
             customer_user_id=result.get("customer_user_id"),
+            evidence=len(result.get("evidence") or []),
+            evidence_ungrounded=ungrounded(services, conn, ticket, result),
         )
         rows.append(row)
         mark = ("✓" if row["category_ok"] else "✗") + ("✓" if row["action_ok"] else "✗")
         print(f"{mark} {tid:7s} {case['category']:26s}→ {got_category:26s} {case['expected_action']:18s}→ {got_action:18s} {row['confidence']}")
     return rows
+
+
+def ungrounded(services, conn: db.Database, ticket: dict, result: dict) -> list[str]:
+    """Evidence lines whose value is not in the facts code loads for this ticket (v3 prefetch). Rough: no LLM."""
+    from datetime import datetime, timezone
+
+    from resolve import policy, triage
+    from resolve.models import TriageTicket
+
+    facts = triage.prefetch(services, ticket, set(), {}, policy.load_config(conn), datetime.now(timezone.utc))
+    return triage.ungrounded_evidence(TriageTicket.model_validate(result), json.dumps(facts) + ticket["body"] + ticket["subject"])
 
 
 def grant_outcome(actions: list, attempted: bool) -> tuple[str, list]:
@@ -263,11 +276,14 @@ def main() -> int:
         "l2_cases": len(scenarios) if args.l2 else None,
         "l2_correct": sum(r["correct"] for r in l2_rows) if args.l2 else None,
         "model_calls_l1": sum(r.get("model_calls") or 0 for r in l1_rows),
+        "evidence_lines": sum(r.get("evidence") or 0 for r in scored),
+        "evidence_ungrounded": sum(len(r.get("evidence_ungrounded") or []) for r in scored),
         "profiles": "live" if args.live_profiles else "cached",
         "ran_at": db.now_iso(),
     }
     n = len(scored)
     line = f"\ncategory {summary['category_correct']}/{n}  action {summary['action_correct']}/{n}  both {summary['both_correct']}/{n}"
+    line += f"  evidence grounded {summary['evidence_lines'] - summary['evidence_ungrounded']}/{summary['evidence_lines']}"
     if args.l2:
         line += f"  level 2 {summary['l2_correct']}/{len(scenarios)}"
     print(line)
