@@ -23,6 +23,7 @@ from pydantic import BaseModel
 from resolve import config, db, insights, llm, models, policy
 from resolve.adapty import AdaptyError, access_level, compensation_expiry, format_datetime, is_active, parse_datetime
 from resolve.tickets import CATEGORIES
+from resolve.support_craft import REPLY_CRAFT, WINNING_OPTIONS
 
 log = logging.getLogger("resolve.triage")
 
@@ -116,6 +117,7 @@ def level_badge(level: dict | None, now: datetime) -> str:
 
 # --- Prompt --------------------------------------------------------------------------------------
 
+
 SYSTEM_PROMPT = f"""You are the Level 1 support agent of Lumen, an AI photo editor sold by subscription through the App Store and Google Play. Subscriptions are managed in Adapty. You get one piece of user feedback (a support form, an email, or a chat the first-line bot handed off). The system has already loaded the user's profile, history and the app's config ("Facts loaded by the system" in the message). Find the problem and hand the support person a ticket with 2 or 3 ranked options by calling submit_ticket. The person accepts one option, edits it, or rejects all; you never act yourself.
 
 Products: weekly plan (3-day free trial), monthly, annual, annual with a 7-day free trial, lifetime, Pro annual.
@@ -158,7 +160,10 @@ Rules:
 - root_cause is one sentence about why this happened (for example: the weekly paywall shows a 3-day trial and the user missed the conversion date).
 - Each reply is under 120 words, plain English, warm and specific: name the plan, the date and the amount from the profile, say exactly what will happen or what they should do, never promise a refund (only the store can refund), and never mention Adapty or internal field names. Follow the config's tone.
 - Dates are UTC ISO 8601; quote them as plain dates (Nov 6).
-"""
+
+{WINNING_OPTIONS}
+
+{REPLY_CRAFT}"""
 
 
 # --- Tools ---------------------------------------------------------------------------------------
