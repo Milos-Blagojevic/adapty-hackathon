@@ -426,18 +426,33 @@ class InsightTop(BaseModel):
     count: int
 
 
+class InsightCell(BaseModel):
+    category: str
+    flow: str = Field(description="Flow key from the offline dataset")
+    tickets: int
+    users: int = Field(description="Distinct customers in the cell")
+
+
 class InsightReport(BaseModel):
     headline: str
     hypothesis: str
+    caveat: str | None = Field(None, description="What the data cannot tell, or the part a paywall cannot fix")
     placement: str
     placement_title: str | None
     control_flow: str
+    variant_source: Literal["existing_flow", "edited_copy"] | None = Field(None, description="The variant arm is another existing flow, or an edited copy of the control")
+    variant_flow: str | None = Field(None, description="The existing flow used as the variant arm (variant_source = existing_flow)")
     variant: str
     expected_effect: str
     evidence: list[str]
+    ticket_ids: list[str] = Field(default_factory=list, description="Tickets the hypothesis was read from")
+    cited_cells: list[InsightCell] = Field(default_factory=list, description="The first is the tested cell")
+    what_changed: str | None = Field(None, description="Computed from counts against the replaced report: the test kept or moved")
+    model_calls: int | None = Field(None, description="Model calls the run took (2 = one corrective retry)")
+    latency_s: float | None = Field(None, description="Wall time of the model calls")
     created_at: str | None
     trigger: Literal["manual", "auto"] | None = None
-    reason: str | None = None
+    reason: str | None = Field(None, description="What started an auto run")
 
 
 class InsightRun(BaseModel):
@@ -488,7 +503,8 @@ class InsightsView(BaseModel):
     triaged: int
     untriaged: int
     categories: list[InsightCategory]
-    top: InsightTop | None
+    top: InsightTop | None = Field(description="Raw top: the category with most tickets and its most common flow")
+    tested: InsightTop | None = Field(None, description="The cell the current report tests (its cited_cells[0]), with its ticket count now")
     report: InsightReport | None
     previous: InsightReport | None = Field(description="The report the current one replaced")
     run: InsightRun

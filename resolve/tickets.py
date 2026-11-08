@@ -324,3 +324,13 @@ def _weighted_sample(pool: list[dict], count: int, rng: random.Random) -> list[d
         remaining.remove(choice)
         picked.append(choice)
     return picked
+
+CATEGORY_LABELS = {
+    "charged_after_trial": "Charged after trial",
+    "no_access_after_purchase": "No access after purchase",
+    "billing_issue": "Billing issue",
+    "refund_request": "Refund request",
+    "cancel_how": "How to cancel",
+    "price_complaint": "Price complaint",
+    "other": "Other",
+}

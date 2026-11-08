@@ -1897,6 +1897,36 @@
     ],
     "title": "InsightCategory"
    },
+   "InsightCell": {
+    "properties": {
+     "category": {
+      "type": "string",
+      "title": "Category"
+     },
+     "flow": {
+      "type": "string",
+      "title": "Flow",
+      "description": "Flow key from the offline dataset"
+     },
+     "tickets": {
+      "type": "integer",
+      "title": "Tickets"
+     },
+     "users": {
+      "type": "integer",
+      "title": "Users",
+      "description": "Distinct customers in the cell"
+     }
+    },
+    "type": "object",
+    "required": [
+     "category",
+     "flow",
+     "tickets",
+     "users"
+    ],
+    "title": "InsightCell"
+   },
    "InsightCount": {
     "properties": {
      "product": {
@@ -2026,6 +2056,18 @@
       "type": "string",
       "title": "Hypothesis"
      },
+     "caveat": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Caveat",
+      "description": "What the data cannot tell, or the part a paywall cannot fix"
+     },
      "placement": {
       "type": "string",
       "title": "Placement"
@@ -2045,6 +2087,34 @@
       "type": "string",
       "title": "Control Flow"
      },
+     "variant_source": {
+      "anyOf": [
+       {
+        "type": "string",
+        "enum": [
+         "existing_flow",
+         "edited_copy"
+        ]
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Variant Source",
+      "description": "The variant arm is another existing flow, or an edited copy of the control"
+     },
+     "variant_flow": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Variant Flow",
+      "description": "The existing flow used as the variant arm (variant_source = existing_flow)"
+     },
      "variant": {
       "type": "string",
       "title": "Variant"
@@ -2059,6 +2129,58 @@
       },
       "type": "array",
       "title": "Evidence"
+     },
+     "ticket_ids": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Ticket Ids",
+      "description": "Tickets the hypothesis was read from"
+     },
+     "cited_cells": {
+      "items": {
+       "$ref": "#/components/schemas/InsightCell"
+      },
+      "type": "array",
+      "title": "Cited Cells",
+      "description": "The first is the tested cell"
+     },
+     "what_changed": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "What Changed",
+      "description": "Computed from counts against the replaced report: the test kept or moved"
+     },
+     "model_calls": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Model Calls",
+      "description": "Model calls the run took (2 = one corrective retry)"
+     },
+     "latency_s": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Latency S",
+      "description": "Wall time of the model calls"
      },
      "created_at": {
       "anyOf": [
@@ -2095,7 +2217,8 @@
         "type": "null"
        }
       ],
-      "title": "Reason"
+      "title": "Reason",
+      "description": "What started an auto run"
      }
     },
     "type": "object",
@@ -2276,7 +2399,19 @@
        {
         "type": "null"
        }
-      ]
+      ],
+      "description": "Raw top: the category with most tickets and its most common flow"
+     },
+     "tested": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/InsightTop"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "The cell the current report tests (its cited_cells[0]), with its ticket count now"
      },
      "report": {
       "anyOf": [

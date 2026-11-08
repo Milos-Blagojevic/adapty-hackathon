@@ -15,6 +15,7 @@ from __future__ import annotations
 import json
 import re
 import logging
+import time
 from datetime import datetime, timezone
 
 import pydantic
@@ -498,9 +499,10 @@ INSIGHT_CALLS = 2  # one corrective retry
 
 
 def run_insights(services, groups: dict) -> dict:
-    """All tickets aggregated → one `insights.Insight` dict plus `snapshot`. Raises TriageError; at most 2 model calls.
+    """All tickets aggregated → one `insights.Insight` dict plus `snapshot`, `what_changed`, `model_calls`, `latency_s`.
 
-    The stored insight, if any, is the `previous` analysis the model keeps or moves away from.
+    Raises TriageError; at most 2 model calls. The stored insight, if any, is the `previous` analysis the
+    model keeps or moves away from.
     """
     if services.demo:
         raise TriageError("Demo mode: insights come from the snapshot")
@@ -514,7 +516,8 @@ def run_insights(services, groups: dict) -> dict:
     data = insights.facts(groups, previous)
     messages: list[dict] = [{"role": "user", "content": f"<inbox_facts>\n{json.dumps(data, indent=1, ensure_ascii=False)}\n</inbox_facts>\nCall submit_insight."}]
     problem = "no call"
-    for _ in range(INSIGHT_CALLS):
+    started = time.monotonic()
+    for n in range(1, INSIGHT_CALLS + 1):
         try:
             step = services.llm.step(insights.SYSTEM_PROMPT, messages, INSIGHT_TOOLS)
         except llm.LLMError as exc:
@@ -535,7 +538,9 @@ def run_insights(services, groups: dict) -> dict:
         except pydantic.ValidationError as exc:
             problem = f"the arguments do not match the schema: {_error_text(exc)}"
         if problem is None:
-            return dict(submitted.model_dump(), snapshot=insights.snapshot(groups, submitted.cited_cells[0]))
+            main = submitted.cited_cells[0]
+            return dict(submitted.model_dump(), snapshot=insights.snapshot(groups, main), what_changed=insights.what_changed(previous, main.model_dump(), groups),
+                        model_calls=n, latency_s=round(time.monotonic() - started, 1))
         for call in step.tool_calls:
             messages.append(llm.tool_message(call, f"Rejected: {problem}. Call submit_insight again.", is_error=True))
     raise TriageError(f"no valid insight: {problem}")

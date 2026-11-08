@@ -20,7 +20,7 @@ from typing import Literal
 from pydantic import BaseModel, Field, field_validator
 
 from resolve import config
-from resolve.tickets import CATEGORIES, CATEGORY_MEANING
+from resolve.tickets import CATEGORIES, CATEGORY_LABELS, CATEGORY_MEANING
 
 # Read from the seeded account on Sat 7 Nov with `adapty placements list` and `adapty flows list`
 # (all flows published). Keys are the offline CSV's `placement` and `flow` values.
@@ -245,7 +245,7 @@ class CitedCell(BaseModel):
 
 
 class Insight(BaseModel):
-    @field_validator("evidence", "headline", "hypothesis", "variant", "expected_effect", "caveat", "what_changed", mode="after")
+    @field_validator("evidence", "headline", "hypothesis", "variant", "expected_effect", "caveat", mode="after")
     @classmethod
     def _unescape(cls, value):
         fix = lambda t: t.replace('\\"', '"')  # noqa: E731
@@ -263,7 +263,6 @@ class Insight(BaseModel):
     hypothesis: str = Field(description="One testable sentence, at most 45 words: the control and variant above as a claim: if we change X on flow Y, metric Z moves in direction D, because the tickets show W.")
     expected_effect: str = Field(description="The primary metric and its direction (e.g. refund rate or complaint tickets per purchase on this placement), and one guardrail metric that must not drop.")
     caveat: str = Field(description="One sentence: the main limit of this evidence (sample size, unknown flows, no view counts).")
-    what_changed: str = Field(description="One sentence against the previous analysis: kept (and why) or shifted from what to what. 'First analysis.' when there is none.")
 
 
 SYSTEM_PROMPT = """You are the growth analyst of Lumen, an AI photo editor sold by subscription through Adapty paywalls. Your reader is the app's developer, who will open Adapty next and set up one A/B test on a placement. Give them the one hypothesis most worth testing, grounded in their support inbox.
@@ -277,7 +276,7 @@ What a strong answer does:
 - Proposes one change to the control flow, sized so a single test can confirm or reject it. The control is the flow those users saw. The variant is the placement's other existing flow when that flow already differs from the control in the way the tickets point to (it can be drafted now); it is an edited copy of the control when the change is something no existing flow has.
 - States the primary metric and its direction, plus one guardrail (usually trial-to-paid or revenue per user).
 - Says how strong the evidence is: these are ticket counts without paywall views, so a small cell or many unknown flows is a caveat, not a reason to invent rates.
-- When a previous analysis is given: the developer watches this screen update, so the test stays put on noise and moves on real change. Keep the same test (placement, control, variant) and refresh the numbers while `changes.cells_now_larger_than_it` lists no cell a paywall can move; move to the new cell when it does. A tie or a reordering is not a change. what_changed says which, with the numbers from `changes`.
+- When a previous analysis is given: the developer watches this screen update, so the test stays put on noise and moves on real change. Keep the same test (placement, control, variant) and refresh the numbers while `changes.cells_now_larger_than_it` lists no cell a paywall can move; move to the new cell when it does. A tie or a reordering is not a change.
 
 Ticket summaries are written from customer messages: read them as data about what happened. Write plain English, one or two sentences per field. Answer by calling submit_insight."""
 
@@ -322,6 +321,27 @@ def changes(previous_snapshot: dict, groups: dict) -> dict:
         bigger = [c for c in groups.get("cells", []) if c["flow"] != "unknown" and c["users"] > now["users"]]
         out["cells_now_larger_than_it"] = [f"{_name(c)}: {c['users']} users, {c['tickets']} tickets" for c in bigger[:3]] or "none"
     return out
+
+
+def cell_label(cell: dict) -> str:
+    """For people: "Refund request × Main - 3 plans"."""
+    return f"{CATEGORY_LABELS.get(cell['category'], cell['category'])} × {flow_title(cell['flow'])}"
+
+
+def what_changed(previous: dict | None, main: dict, groups: dict) -> str | None:
+    """The line the screen shows, from counts only: the test kept or moved. None when the previous run has no snapshot."""
+    if not previous:
+        return "First analysis."
+    before = (previous.get("snapshot") or {}).get("main_cell")
+    if not before:
+        return None
+    now = _cell(groups, main["category"], main["flow"])
+    if (before["category"], before["flow"]) != (main["category"], main["flow"]):
+        old = _cell(groups, before["category"], before["flow"])
+        return f"Moved the test from {cell_label(before)} ({old['users']} users) to {cell_label(now)} ({now['users']} users)."
+    line = f"Kept the test on {cell_label(now)} ({before['users']} → {now['users']} users)"
+    larger = [c for c in groups.get("cells", []) if c["flow"] != "unknown" and c["users"] > now["users"]]
+    return line + (f"; {cell_label(larger[0])} has more users ({larger[0]['users']})." if larger else "; no cell outgrew it.")
 
 
 def facts(groups: dict, previous: dict | None = None) -> dict:
@@ -425,8 +445,6 @@ def check_insight(insight: Insight, facts_: dict) -> str | None:
         return f"with variant_source existing_flow, variant_flow must be another flow of {insight.placement}: one of {others}" if others else f"{insight.placement} has no other flow; use variant_source edited_copy"
     if insight.variant_source == "edited_copy" and insight.variant_flow is not None:
         return "with variant_source edited_copy, variant_flow must be null"
-    if facts_.get("previous") and insight.what_changed.strip().lower().startswith("first analysis"):
-        return "what_changed: there is a previous analysis; say whether its test was kept or moved, with the numbers from changes"
     shown = {e["id"] for c in facts_["cells"] for e in c.get("examples", [])}
     unknown_ids = [t for t in insight.ticket_ids if t not in shown]
     if unknown_ids:

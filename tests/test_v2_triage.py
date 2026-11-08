@@ -344,7 +344,6 @@ INSIGHT = {
     "hypothesis": "Disclose the 3-day trial end on Onboarding - Weekly first.",
     "expected_effect": "Fewer charged_after_trial tickets.",
     "caveat": "One ticket.",
-    "what_changed": "First analysis.",
 }
 
 
@@ -390,7 +389,7 @@ def test_run_insights_gives_the_stored_insight_as_previous_with_changes(conn):
     groups = _one_ticket_groups()
     stored = dict(INSIGHT, headline="OLD HEADLINE 99 of 99", snapshot={"triaged": 3, "categories": {"refund_request": 3}, "main_cell": {"category": "refund_request", "flow": "main", "tickets": 3, "users": 2}})
     db.save_insights(conn, stored)
-    fake = FakeLLM([call("submit_insight", **dict(INSIGHT, what_changed="Shifted."))])
+    fake = FakeLLM([call("submit_insight", **INSIGHT)])
     triage.run_insights(services(conn, fake), groups)
     facts = json.loads(fake.calls[0]["messages"][0]["content"].split("<inbox_facts>")[1].split("</inbox_facts>")[0])
     assert facts["previous"]["hypothesis"] == INSIGHT["hypothesis"] and facts["previous"]["main_cell"] == "charged_after_trial × onb_weekly"

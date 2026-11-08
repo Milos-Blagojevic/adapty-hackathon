@@ -15,13 +15,18 @@ from collections import deque
 from datetime import datetime, timezone
 
 from resolve import config, db, insights, triage
+from resolve.tickets import CATEGORY_LABELS
 
 AUTO_DEBOUNCE_S = 3.0  # the grouping must stay identical this long after a material change
 AUTO_MIN_GAP_S = 20.0  # between two auto starts
 AUTO_MAX_PER_HOUR = 10  # auto runs per rolling hour; each run is ≤2 model calls
 SHARE_THRESHOLD = 0.05  # a category's share of triaged tickets moving this much is material
 
-REPORT_KEYS = ("headline", "hypothesis", "placement", "control_flow", "variant", "expected_effect", "evidence")
+REPORT_KEYS = (
+    "headline", "hypothesis", "caveat", "placement", "control_flow", "variant_source", "variant_flow", "variant",
+    "expected_effect", "evidence", "ticket_ids", "cited_cells", "what_changed", "model_calls", "latency_s",
+)
+PREVIOUS_KEYS = REPORT_KEYS + ("created_at", "trigger", "reason")  # the replaced report as stored: one level, no `previous`
 
 
 class Busy(Exception):
@@ -35,39 +40,50 @@ def _iso(ts: float | None) -> str | None:
 
 
 def _label(category: str | None) -> str:
-    from resolve.web import CATEGORY_LABELS  # web imports api imports this module
-
     return CATEGORY_LABELS.get(category or "", (category or "none").replace("_", " "))
 
 
-def with_user_context(tickets: list[dict]) -> list[dict]:
-    """A ticket without `context.flow` takes the context of the same customer's seeded ticket (per-user offline data)."""
-    known = {}
-    for t in tickets:
-        if t.get("customer_user_id") and (t.get("context") or {}).get("flow"):
-            known.setdefault(t["customer_user_id"], t["context"])
-    out = []
-    for t in tickets:
-        if not (t.get("context") or {}).get("flow") and t.get("customer_user_id") in known:
-            t = {**t, "context": known[t["customer_user_id"]]}
-        out.append(t)
-    return out
+def _key(cell: dict) -> str:
+    return f"{cell['category']}|{cell['flow']}"
 
 
-def basis_of(groups: dict) -> dict:
+def outgrown(groups: dict, main: dict | None) -> list[dict]:
+    """Flow-known cells with more distinct users than the tested (main) cell has now, largest first."""
+    if not main:
+        return []
+    now = next((c for c in groups.get("cells", []) if _key(c) == _key(main)), None)
+    users = now["users"] if now else 0
+    return [c for c in groups.get("cells", []) if c["flow"] != "unknown" and c["users"] > users]
+
+
+def basis_of(groups: dict, main: dict | None = None) -> dict:
+    """What a run saw: the raw top, the shares, the cell it tested and the cells already larger than that cell."""
     triaged = groups["triaged"] or 0
     return {
         "top_category": groups["top_category"],
         "top_flow": groups["top_flow"],
         "triaged": triaged,
         "shares": {row["category"]: round(row["count"] / triaged, 4) for row in groups["by_category"]} if triaged else {},
+        "main_cell": {"category": main["category"], "flow": main["flow"]} if main else None,
+        "outgrown": [_key(c) for c in outgrown(groups, main)],
     }
 
 
 def material_change(basis: dict | None, groups: dict) -> str | None:
-    """Why the hypothesis is out of date, or None. Order: top category, top flow, the largest share move."""
+    """Why the hypothesis is out of date, or None.
+
+    Order: a cell outgrew the tested cell (the rule `check_insight` holds the model to), then the raw top
+    category, the raw top flow, the largest share move.
+    """
     if not basis or not groups["triaged"]:
         return None
+    main = basis.get("main_cell")
+    if main:
+        seen = set(basis.get("outgrown") or [])
+        new = [c for c in outgrown(groups, main) if _key(c) not in seen]
+        if new:
+            tested = next((c for c in groups["cells"] if _key(c) == _key(main)), {**main, "users": 0})
+            return f"{insights.cell_label(new[0])} ({new[0]['users']} users) outgrew the tested {insights.cell_label(tested)} ({tested['users']} users)"
     now = basis_of(groups)
     if now["top_category"] != basis.get("top_category"):
         return f"top issue changed: {_label(basis.get('top_category'))} → {_label(now['top_category'])}"
@@ -85,7 +101,8 @@ def _report_view(report: dict | None, with_previous: bool = True) -> dict | None
     if not report or not report.get("headline"):
         return None
     out = {k: report.get(k) for k in REPORT_KEYS}
-    out["evidence"] = list(out["evidence"] or [])
+    for k in ("evidence", "ticket_ids", "cited_cells"):
+        out[k] = list(out[k] or [])
     out["placement_title"] = insights.PLACEMENTS.get(report.get("placement") or "", {}).get("title", report.get("placement"))
     out.update(created_at=report.get("created_at"), trigger=report.get("trigger"), reason=report.get("reason"))
     if with_previous:
@@ -125,7 +142,7 @@ class Live:
     # --- reads ---------------------------------------------------------------------------------------
 
     def groups(self) -> dict:
-        return insights.group_tickets(with_user_context(db.list_tickets(self.services.conn)))
+        return insights.group_tickets(db.list_tickets(self.services.conn))
 
     def auto_on(self) -> bool:
         return self.auto_enabled and not self.services.demo and self.services.llm is not None
@@ -147,6 +164,11 @@ class Live:
         if groups["top_category"]:
             top = {"category": groups["top_category"], "flow": groups["top_flow"], "title": insights.flow_title(groups["top_flow"]), "count": groups["top_flow_count"]}
         report = _report_view(db.get_insights(conn))
+        tested = None
+        if report and report["cited_cells"]:
+            main = report["cited_cells"][0]
+            count = groups["by_category_flow"].get(main["category"], {}).get(main["flow"], 0)
+            tested = {"category": main["category"], "flow": main["flow"], "title": insights.flow_title(main["flow"]), "count": count}
         with self._state:
             run = dict(self.run)
             pending = None
@@ -163,6 +185,7 @@ class Live:
             "untriaged": groups["untriaged"],
             "categories": categories,
             "top": top,
+            "tested": tested,
             "report": {k: v for k, v in report.items() if k != "previous"} if report else None,
             "previous": report["previous"] if report else None,
             "run": run,
@@ -245,8 +268,9 @@ class Live:
                         self.failed_key = self._running_key
                 return
             old = db.get_insights(conn)
-            previous = {k: v for k, v in old.items() if k not in ("previous", "basis")} if old and old.get("headline") else None
-            db.save_insights(conn, {**result, "basis": basis_of(groups), "trigger": trigger, "reason": reason, "previous": previous})
+            previous = {k: old[k] for k in PREVIOUS_KEYS if k in old} if old and old.get("headline") else None
+            main = (result.get("cited_cells") or [None])[0]
+            db.save_insights(conn, {**result, "basis": basis_of(groups, main), "trigger": trigger, "reason": reason, "previous": previous})
             with self._state:
                 self.run.update(state="idle", error=None, finished_at=_iso(self.clock()))
                 self.pending = None

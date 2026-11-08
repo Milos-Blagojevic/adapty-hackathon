@@ -83,7 +83,6 @@ def insight(**overrides) -> Insight:
         "hypothesis": "Leading with the annual trial cuts charged_after_trial tickets.",
         "expected_effect": "Fewer charged_after_trial tickets per purchase; trial-to-paid must not drop.",
         "caveat": "Two users.",
-        "what_changed": "First analysis.",
     }
     base.update(overrides)
     return Insight.model_validate(base)
@@ -218,7 +217,7 @@ def test_check_insight_keeps_the_previous_main_cell_on_a_tie_and_wants_the_main_
     flip = insight(cited_cells=[{"category": "no_access_after_purchase", "flow": "onb_trial", "tickets": 2, "users": 2}], headline="2 users.", evidence=["x: 2"],
                    ticket_ids=[], control_flow="Onboarding - Annual trial", variant_flow="Onboarding - Weekly first")
     assert "(a tie is not a change); keep refund_request × onb_weekly as cited_cells[0]" in insights.check_insight(flip, facts)
-    keep = insight(cited_cells=[{"category": "refund_request", "flow": "onb_weekly", "tickets": 2, "users": 2}], headline="2 users.", evidence=["x: 2"], ticket_ids=[], what_changed="Kept.")
+    keep = insight(cited_cells=[{"category": "refund_request", "flow": "onb_weekly", "tickets": 2, "users": 2}], headline="2 users.", evidence=["x: 2"], ticket_ids=[])
     assert insights.check_insight(keep, facts) is None
     weaker_first = keep.model_copy(update={"cited_cells": [insights.CitedCell(category="cancel_how", flow="onb_weekly", tickets=1, users=1), *keep.cited_cells]})
     assert "put the cell the test rests on first" in insights.check_insight(weaker_first, facts)
@@ -229,8 +228,14 @@ def test_check_insight_keeps_the_previous_test_while_the_main_cell_is_the_same()
     previous = {"hypothesis": "h", "placement": "onboarding", "control_flow": "Onboarding - Weekly first", "variant_source": "existing_flow", "variant_flow": "Onboarding - Annual trial",
                 "cited_cells": [{"category": "refund_request", "flow": "onb_weekly"}], "snapshot": insights.snapshot(groups, {"category": "refund_request", "flow": "onb_weekly"})}
     facts = insights.facts(groups, previous)
-    same = insight(cited_cells=[{"category": "refund_request", "flow": "onb_weekly", "tickets": 2, "users": 2}], headline="2 users.", evidence=["x: 2"], ticket_ids=[], hypothesis="Reworded.", what_changed="Kept.")
+    same = insight(cited_cells=[{"category": "refund_request", "flow": "onb_weekly", "tickets": 2, "users": 2}], headline="2 users.", evidence=["x: 2"], ticket_ids=[], hypothesis="Reworded.")
     assert insights.check_insight(same, facts) is None
-    assert "say whether its test was kept or moved" in insights.check_insight(same.model_copy(update={"what_changed": "First analysis."}), facts)
     other_arm = same.model_copy(update={"variant_source": "edited_copy", "variant_flow": None})
     assert "keep its test: placement onboarding, control_flow Onboarding - Weekly first, variant_source existing_flow" in insights.check_insight(other_arm, facts)
+
+
+def test_what_changed_without_a_previous_snapshot_is_none():
+    groups = insights.group_tickets([_t("t-1", "u1", "charged_after_trial", flow="onb_weekly")], seed={})
+    main = {"category": "charged_after_trial", "flow": "onb_weekly"}
+    assert insights.what_changed(None, main, groups) == "First analysis."
+    assert insights.what_changed({"headline": "old"}, main, groups) is None

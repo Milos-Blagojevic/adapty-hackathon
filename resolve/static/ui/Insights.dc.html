@@ -260,11 +260,11 @@ textarea.ctl{height:auto;min-height:96px;padding:10px 12px;line-height:1.5;resiz
 <div class="{{ resCls }}" style="display: flex; flex-direction: column; gap: 18px">
 <p style="margin: 0; font-family: Newsreader, Georgia, 'Times New Roman', serif; font-size: 22px; font-weight: 450; line-height: 1.36; letter-spacing: -0.005em; color: #18181b; text-wrap: pretty"><sc-for list="{{ head }}" as="h"><sc-if value="{{ h.code }}"><span class="code-t">{{ h.t }}</span></sc-if><sc-if value="{{ h.plain }}">{{ h.t }}</sc-if></sc-for></p>
 <dl class="kv">
-<dt>Hypothesis</dt><dd>{{ r.hypothesis }}</dd>
+<dt>Hypothesis</dt><dd>{{ r.hypothesis }}<sc-if value="{{ r.hasCaveat }}"><span class="muted" style="display: block; margin-top: 6px; line-height: 1.5">{{ r.caveat }}</span></sc-if></dd>
 <dt>Placement</dt><dd>{{ r.placement }} · control: {{ r.control }}</dd>
-<dt>Variant</dt><dd>{{ r.variant }}</dd>
+<dt>Variant</dt><dd>{{ r.variant }}<sc-if value="{{ r.hasArm }}"><span class="muted" style="display: block; margin-top: 6px; line-height: 1.5">{{ r.arm }}</span></sc-if></dd>
 <dt>Measure</dt><dd><sc-for list="{{ measure }}" as="h"><sc-if value="{{ h.code }}"><span class="code-t">{{ h.t }}</span></sc-if><sc-if value="{{ h.plain }}">{{ h.t }}</sc-if></sc-for></dd>
-<dt>Evidence</dt><dd><ul class="ev"><sc-for list="{{ r.evidence }}" as="e"><li>{{ e }}</li></sc-for></ul></dd>
+<dt>Evidence</dt><dd><ul class="ev"><sc-for list="{{ r.evidence }}" as="e"><li>{{ e }}</li></sc-for></ul><sc-if value="{{ r.hasTickets }}"><p class="muted" style="margin-top: 8px; line-height: 1.9">Read from <sc-for list="{{ r.tickets }}" as="t"><a href="{{ t.href }}" class="code-t">{{ t.id }}</a> </sc-for></p></sc-if></dd>
 </dl>
 <p class="muted" style="padding-top: 12px; border-top: 1px solid #f2f2f4">{{ generated }}</p>
 <sc-if value="{{ hasPrev }}">
@@ -377,10 +377,14 @@ var GOAL = 'People who start on the weekly-first onboarding paywall don’t expe
 // mock: canned texts, no model (?mock=1&sim=1 swaps them in when the top cell moves)
 var CANNED = {
   charged_after_trial: { placement: 'onboarding', placement_title: 'Onboarding', control_flow: 'Onboarding - Weekly first', hypothesis: GOAL,
+    caveat: 'Counts are tickets, not rates: views per flow are not known, and 12 users is a small sample.',
+    variant_source: 'existing_flow', variant_flow: 'Onboarding - Annual trial', ticket_ids: ['f-0019', 'f-0016', 'f-0013'],
     variant: 'Lead Onboarding with the annual trial and put the renewal date and price on the trial button itself.',
     expected_effect: 'Fewer charged_after_trial tickets per 100 onboarding trials, with trial starts no lower than control.' },
   refund_request: { placement: 'main', placement_title: 'Main paywall', control_flow: 'Main - 3 plans',
     hypothesis: 'People who buy from the three-plan main paywall don’t see that the plan renews at full price, so the first renewal reads as a charge they never agreed to.',
+    caveat: 'Refunds after a renewal are partly a billing-policy question; the paywall can only fix what people expected at purchase.',
+    variant_source: 'edited_copy', variant_flow: null, ticket_ids: ['f-0018', 'f-0017'],
     variant: 'Show the renewal price and date under each plan on Main - 3 plans and pre-select the monthly plan.',
     expected_effect: 'Fewer refund_request tickets per 100 main-paywall purchases, with purchases no lower than control.' }
 };
@@ -407,6 +411,22 @@ function marked(text) {
     return { t: x, code: code, plain: !code };
   });
 }
+/** The report's rows for the kv list: caveat under the hypothesis, the variant arm, the tickets it was read from. */
+function reportRows(report) {
+  var arm = report.variant_source === 'existing_flow' ? 'Variant arm: the existing flow ' + report.variant_flow
+    : report.variant_source === 'edited_copy' ? 'Variant arm: an edited copy of ' + report.control_flow : '';
+  var ids = report.ticket_ids || [];
+  return { hypothesis: report.hypothesis, placement: report.placement_title || report.placement, control: report.control_flow,
+    caveat: report.caveat, hasCaveat: !!report.caveat, variant: report.variant, arm: arm, hasArm: !!arm, evidence: report.evidence,
+    hasTickets: ids.length > 0,
+    tickets: ids.map(function (id) { return { id: id, href: API.mock ? 'Ticket.dc.html' : 'Ticket.dc.html?id=' + encodeURIComponent(id) }; }) };
+}
+/** "Updated on its own … · 1 model call, 4.8 s. Kept the test on …" — what changed is computed from counts on the server; the trigger reason only when there is none. */
+function generatedLine(report) {
+  var calls = report.model_calls ? report.model_calls + ' model call' + (report.model_calls > 1 ? 's' : '') + (report.latency_s != null ? ', ' + Number(report.latency_s).toFixed(1) + ' s' : '') : '';
+  var changed = report.what_changed && !/^first analysis/i.test(report.what_changed) ? report.what_changed : report.trigger === 'auto' ? report.reason : '';
+  return (report.trigger === 'auto' ? 'Updated on its own ' : 'Generated ') + when(report.created_at) + (calls ? ' · ' + calls : '') + '.' + (changed ? ' ' + sentence(changed) : '');
+}
 function countsOf(d) {
   var out = {};
   (d && d.categories || []).forEach(function (c) {
@@ -425,7 +445,7 @@ function mockData(state) {
       flows: c.flows.map(function (f) { return { flow: f[1], title: f[0], count: f[2] }; }) };
   });
   var d = { updated_at: new Date().toISOString(), demo: false, llm: true, auto: true, total: TRIAGED, triaged: TRIAGED, untriaged: 0,
-    categories: categories, top: null, report: null, previous: null,
+    categories: categories, top: null, tested: null, report: null, previous: null,
     run: { state: 'idle', trigger: null, reason: null, started_at: null, finished_at: null, error: null }, pending: null,
     placements: clone(PLACEMENTS), drafts: [clone(DRAFT0)] };
   mockTop(d);
@@ -462,10 +482,17 @@ function mockReason(b, d) {
   });
   return best && move >= SHARE - 1e-9 ? label(best) + ' share ' + Math.round((b.shares[best] || 0) * 100) + '% → ' + Math.round((now.shares[best] || 0) * 100) + '%' : null;
 }
-function mockReport(d, trigger, reason) {
+function mockReport(d, trigger, reason, old) {
   var t = d.top, c = d.categories[0];
   var text = CANNED[t.category] || CANNED.charged_after_trial;
+  var was = old && old.cited_cells && old.cited_cells[0];
+  var name = label(t.category) + ' × ' + t.title;
+  var changed = !old ? 'First analysis.' : was && was.category === t.category && was.flow === t.flow
+    ? 'Kept the test on ' + name + ' (' + was.users + ' → ' + t.count + ' users); no cell outgrew it.'
+    : 'Moved the test from ' + (was ? label(was.category) + ' × ' + was.title + ' (' + was.users + ' users)' : 'the tested cell') + ' to ' + name + ' (' + t.count + ' users).';
   return Object.assign({}, text, {
+    cited_cells: [{ category: t.category, flow: t.flow, title: t.title, tickets: t.count, users: t.count }],
+    what_changed: changed, model_calls: 1, latency_s: 4.7,
     headline: 'The biggest complaint cluster is ' + t.category + ' (' + c.count + ' of ' + d.triaged + ' tickets), and ' + t.count + ' of those users saw the “' + t.title + '” flow.',
     evidence: [c.count + ' of ' + d.triaged + ' triaged tickets are ' + t.category, t.count + ' of those ' + c.count + ' saw ' + t.title]
       .concat(c.flows.slice(1, 2).map(function (f) { return f.count + ' saw ' + f.title; }))
@@ -587,8 +614,8 @@ class Component extends DCLogic {
       if (!d.triaged) d.run = Object.assign(d.run, { state: 'error', error: 'no triaged tickets yet; open tickets first' });
       else {
         var old = d.report;
-        d.report = mockReport(d, trigger, reason);
-        d.previous = old ? { headline: old.headline, hypothesis: old.hypothesis, created_at: old.created_at } : null;
+        d.report = mockReport(d, trigger, reason, old);
+        d.previous = old ? { headline: old.headline, hypothesis: old.hypothesis, what_changed: old.what_changed, created_at: old.created_at } : null;
         d.basis = mockBasis(d);
         d.run = Object.assign(d.run, { state: 'idle', finished_at: new Date().toISOString() });
       }
@@ -600,7 +627,7 @@ class Component extends DCLogic {
     var self = this, s = this.state || {}, d = s.data;
     var now = Date.now();
     var cats = d ? d.categories : [];
-    var top = d && d.top;
+    var top = d && (d.tested || d.top);  // the cell the hypothesis tests; the raw top before the first run
     var rows = cats.map(function (c) {
       var col = COLORS[c.category] || COLORS.other, k = c.category;
       var isTop = top && top.category === k;
@@ -662,10 +689,8 @@ class Component extends DCLogic {
       updReason: run.reason || 'run by a person',
       resCls: running ? 'upd' : (s.swapUntil || 0) > now ? 'swap' : '',
       head: report ? marked(report.headline) : [], measure: report ? marked(report.expected_effect) : [],
-      r: report ? { hypothesis: report.hypothesis, placement: report.placement_title || report.placement, control: report.control_flow, variant: report.variant, evidence: report.evidence } : {},
-      generated: !report ? '' : report.trigger === 'auto'
-        ? 'Updated on its own ' + when(report.created_at) + ' · ' + report.reason + '.'
-        : 'Generated ' + when(report.created_at) + ' · 1 model call, cached.',
+      r: report ? reportRows(report) : {},
+      generated: report ? generatedLine(report) : '',
       hasPrev: !!(report && prev), prev: prev ? { when: when(prev.created_at), headline: prev.headline, hypothesis: prev.hypothesis } : {},
       hasPending: !!pending, pendText: pendText, pendCls: pending && pending.blocked ? 'note quiet' : 'note',
       notRun: !!d && !report && !running && !demo && !runErr,

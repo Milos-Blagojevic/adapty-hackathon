@@ -1,5 +1,6 @@
 """Insights over the JSON API, from docs/agents.md "Insights: JSON API and live screen". No network, no keys, no CLI."""
 
+import json
 from types import SimpleNamespace
 
 import pytest
@@ -11,22 +12,52 @@ from resolve.llm import FakeLLM
 from tests.fakes import ticket_row, tickets_file
 from tests.fakes_v2 import call
 
-VIEW_KEYS = {"updated_at", "demo", "llm", "auto", "total", "triaged", "untriaged", "categories", "top", "report", "previous",
+VIEW_KEYS = {"updated_at", "demo", "llm", "auto", "total", "triaged", "untriaged", "categories", "top", "tested", "report", "previous",
              "run", "pending", "placements", "drafts"}
 
 
-def insight_step(headline="Charged after trial leads; most saw Onboarding - Weekly first.", **over):
-    args = {
-        "headline": headline,
-        "hypothesis": "Show the renewal date on the weekly-first trial button.",
-        "placement": "onboarding",
-        "control_flow": "Onboarding - Weekly first",
-        "variant": "Put the price and renewal date on the CTA.",
-        "expected_effect": "Fewer charged_after_trial tickets.",
-        "evidence": ["charged_after_trial: 3"],
-    }
-    args.update(over)
-    return call("submit_insight", **args)
+def facts_in(messages: list[dict]) -> dict:
+    text = messages[0]["content"]
+    return json.loads(text[text.index("<inbox_facts>") + len("<inbox_facts>"): text.index("</inbox_facts>")])
+
+
+class FactsLLM(FakeLLM):
+    """FakeLLM whose callable steps get the facts of the request: the insight is built from them and passes check_insight."""
+
+    def step(self, system, messages, tools):
+        out = super().step(system, messages, tools)
+        return out(facts_in(messages)) if callable(out) else out
+
+
+def insight_step(headline="Charged after trial leads; most saw Onboarding - Weekly first.", main=None, **over):
+    """An insight on the largest flow-known cell, or on `main` (category, flow), or kept on the previous main cell on a tie."""
+
+    def build_call(facts):
+        cells = [c for c in facts["cells"] if c["flow"] != "unknown"]
+        previous, changes = facts.get("previous"), facts.get("changes", {})
+        want = main
+        if want is None and previous and previous.get("main_cell") and changes.get("cells_now_larger_than_it") == "none":
+            want = tuple(previous["main_cell"].split(" × "))
+        pick = next((c for c in cells if (c["category"], c["flow"]) == want), cells[0])
+        shown = [e["id"] for c in facts["cells"] for e in c.get("examples", [])]
+        args = {
+            "cited_cells": [{k: pick[k] for k in ("category", "flow", "tickets", "users")}],
+            "ticket_ids": [e["id"] for e in pick.get("examples", [])][:2] or shown[:1],
+            "evidence": [f"{pick['category']} × {pick['flow']}: {pick['users']} users"],
+            "headline": headline,
+            "placement": pick["placement"],
+            "control_flow": pick["title"],
+            "variant_source": "edited_copy",
+            "variant_flow": None,
+            "variant": "Put the price and renewal date on the CTA.",
+            "hypothesis": "Show the renewal date on the trial button.",
+            "expected_effect": "Fewer tickets of this category per 100 trials; trial starts no lower.",
+            "caveat": "A handful of users.",
+        }
+        args.update(over)
+        return call("submit_insight", **args)
+
+    return build_call
 
 
 class Runner:
@@ -58,7 +89,7 @@ ROWS = [
 def build(tmp_path, steps=(), demo=False, rows=ROWS):
     from resolve.web import create_app
 
-    fake = FakeLLM(list(steps))
+    fake = FactsLLM(list(steps))
     path = tmp_path / "ins.sqlite"
     seed = tickets_file(tmp_path, rows)
     if demo:
@@ -111,6 +142,7 @@ def test_view_shape_and_grouping_without_a_model_call(env):
 
 
 def test_a_ticket_without_context_takes_the_same_users_flow(env):
+    """One source: `insights.group_tickets` fills the flow per user."""
     tid = db.insert_feedback(env.conn, "Charged again", source="chat_handoff", customer_user_id="u4")
     db.update_ticket(env.conn, tid, category="refund_request")
     stranger = db.insert_feedback(env.conn, "Who am I", source="form")
@@ -267,6 +299,69 @@ def test_auto_off_by_setting(env):
     v = get(env, 30)
     v = get(env, 10)
     assert not v["auto"] and v["pending"] is None and len(env.llm.calls) == 1
+
+
+def test_report_carries_the_insight_fields_and_the_run_cost(env):
+    r = env.client.post("/api/insights/run").json()["report"]
+    assert r["cited_cells"] == [{"category": "charged_after_trial", "flow": "onb_weekly", "tickets": 3, "users": 3}]
+    assert r["caveat"] == "A handful of users." and r["what_changed"] == "First analysis."
+    assert r["variant_source"] == "edited_copy" and r["variant_flow"] is None
+    assert r["ticket_ids"] and set(r["ticket_ids"]) <= {"t-001", "t-002", "t-003"}
+    assert r["model_calls"] == 1 and isinstance(r["latency_s"], float)
+    assert get(env)["tested"] == {"category": "charged_after_trial", "flow": "onb_weekly", "title": "Onboarding - Weekly first", "count": 3}
+
+
+def test_the_stored_previous_is_one_level_deep(env):
+    env.llm.steps.append(insight_step("Third."))
+    for _ in range(3):
+        env.client.post("/api/insights/run")
+    stored = db.get_insights(env.conn)
+    assert stored["previous"]["headline"] == "Refund requests lead now."
+    assert set(stored["previous"]) <= set(insights_live.PREVIOUS_KEYS)
+    assert "previous" not in stored["previous"] and "snapshot" not in stored["previous"]
+    assert env.client.get("/api/insights").json()["previous"]["what_changed"] == "Kept the test on Charged after trial × Onboarding - Weekly first (3 → 3 users); no cell outgrew it."
+
+
+WIDE = ROWS + [dict(ticket_row(f"t-00{i}", customer=f"u{i}"), context={"placement": "main", "flow": "main"}) for i in (6, 7)]
+
+
+def outgrow(env):
+    """Refund request × Main - 3 plans reaches 4 users; the tested Charged after trial × Weekly first has 3."""
+    categorize(env, **{"t-005": "refund_request", "t-006": "refund_request", "t-007": "refund_request"})
+
+
+def test_a_cell_outgrowing_the_tested_cell_is_the_reason_and_the_run_moves(tmp_path):
+    e = build(tmp_path, steps=[insight_step(), insight_step("Refund requests on the main paywall.")], rows=WIDE)
+    categorize(e, **{"t-001": "charged_after_trial", "t-002": "charged_after_trial", "t-003": "charged_after_trial", "t-004": "refund_request"})
+    e.client.post("/api/insights/run")
+    outgrow(e)
+    v = get(e, 30)
+    assert v["pending"]["reason"] == "Refund request × Main - 3 plans (4 users) outgrew the tested Charged after trial × Onboarding - Weekly first (3 users)"
+    get(e, 3.5)
+    v = get(e, 0.5)
+    assert len(e.llm.calls) == 2 and v["report"]["cited_cells"][0]["flow"] == "main"
+    assert v["report"]["what_changed"] == "Moved the test from Charged after trial × Onboarding - Weekly first (3 users) to Refund request × Main - 3 plans (4 users)."
+    assert v["report"]["reason"].endswith("(3 users)")
+    for _ in range(3):
+        assert get(e, 5)["pending"] is None
+    assert len(e.llm.calls) == 2
+
+
+def test_a_run_that_keeps_a_smaller_cell_is_not_retriggered_by_the_cells_it_saw(tmp_path):
+    keep = ("charged_after_trial", "onb_weekly")
+    e = build(tmp_path, steps=[insight_step(), insight_step(main=keep)], rows=WIDE)
+    categorize(e, **{"t-001": "charged_after_trial", "t-002": "charged_after_trial", "t-003": "charged_after_trial", "t-004": "refund_request"})
+    e.client.post("/api/insights/run")
+    outgrow(e)
+    get(e, 30)
+    get(e, 3.5)
+    v = get(e, 0.5)
+    assert len(e.llm.calls) == 2 and v["report"]["cited_cells"][0]["category"] == "charged_after_trial"
+    assert db.get_insights(e.conn)["basis"]["outgrown"] == ["refund_request|main"]
+    assert v["report"]["what_changed"] == "Kept the test on Charged after trial × Onboarding - Weekly first (3 → 3 users); Refund request × Main - 3 plans has more users (4)."
+    for _ in range(3):
+        assert get(e, 30)["pending"] is None
+    assert len(e.llm.calls) == 2
 
 
 # --- draft A/B test ---------------------------------------------------------------------------------
