@@ -234,7 +234,7 @@ class Verdict(BaseModel):
     checks: list[VerdictCheck]
 
 
-JUDGE_SYSTEM = """You review one support chat between a user and a support assistant of a subscription app. You get the account the assistant could see (raw), the chat with every tool call the assistant made and the tool's result, and numbered checks. Judge each check strictly from the assistant's replies: a check passes only when every reply satisfies it. Tool results count as sources the assistant had; the raw account counts too; anything else the assistant states as fact (how the app works, menus, policies, causes) is not backed by a source. Call verdict once with one entry per check."""
+JUDGE_SYSTEM = """You review one support chat between a user and a support assistant of a subscription app. You get the account the assistant could see (raw), the chat with every tool call the assistant made and the tool's result, and numbered checks. Judge each check strictly from the assistant's replies: a check passes only when every reply satisfies it. Tool results count as sources the assistant had; the raw account counts too; anything else the assistant states as fact (how the app works, menus, policies, causes) is not backed by a source. The system also told the assistant, as fact: premium belongs to the account and works on every device signed in to it, iPhone or Android, whichever store it was bought in; the user writes from the app signed in to this account. A reply saying a teammate will reply is backed only when a handoff tool call ran. Call verdict once with one entry per check."""
 
 
 def transcript_text(turns: list[tuple[str, object]]) -> str:
@@ -297,6 +297,7 @@ def run_scenario(services, conn, ro, overrides, sc, access_level, clock, as_of, 
     if "profile" in setup:
         overrides[cuid] = setup["profile"]
     clock.set(as_of)
+    last_grant = conn.execute("SELECT COALESCE(MAX(id), 0) FROM grants").fetchone()[0]
     try:
         prior = setup.get("prior_grant")
         if prior:
@@ -323,6 +324,8 @@ def run_scenario(services, conn, ro, overrides, sc, access_level, clock, as_of, 
         clock.set(None)
         overrides.pop(cuid, None)
     expect = sc["expect"]
+    with conn:  # runs are independent: a grant simulated in this run must not block the next one
+        conn.execute("DELETE FROM grants WHERE id > ?", (last_grant,))
     grant, days = grant_outcome(actions, len(ro.attempts) > attempts_before)
     handoff = None
     if handed_off:  # "auto" = handed off without a handoff tool call (max_turns, LLM failure)

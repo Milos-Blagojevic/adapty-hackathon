@@ -232,3 +232,37 @@ def test_craft_example_paths_are_canned_store_steps():
         words = re.sub(r"[^\w.]+", " ", seg).strip().casefold()
         words = re.sub(r"^(if you d rather not renew open|the fastest route is to go to|open)\s+", "", words)
         assert words and words in re.sub(r"[^\w.]+", " ", canned), seg
+
+
+# --- refund steps hand off in code ----------------------------------------------------------------
+
+
+def test_refund_steps_hand_off_under_the_refund_rule(http, conn):
+    mock_profile(http, paid_profile())
+    result, fake = chat(conn, [
+        call("store_instructions", kind="refund_request", store="play_store"),
+        say("Here is how to ask Google; a teammate will also reply here."),
+    ], message="I want my money back")
+    assert result.handed_off is True and result.ticket_id
+    assert [a.args["reason"] for a in result.actions if a.tool == "handoff"] == ["refund"]
+    assert result.reply == "Here is how to ask Google; a teammate will also reply here.", "the model's reply is kept"
+    assert "Handed off as ticket" in tool_results(fake, "store_instructions")[0]["content"]
+
+
+def test_refund_steps_after_a_handoff_make_no_second_ticket(http, conn):
+    mock_profile(http, paid_profile())
+    result, _ = chat(conn, [
+        calls(("handoff", {"reason": "refund", "summary": "wants money back"}), ("store_instructions", {"kind": "refund_request", "store": "play_store"})),
+        say("A teammate will reply."),
+    ], message="refund please")
+    assert [a.tool for a in result.actions].count("handoff") == 1
+    assert len(db.list_tickets(conn)) == 1
+
+
+def test_refund_steps_without_the_refund_rule_do_not_hand_off(http, conn):
+    from tests.fakes_v2 import set_config
+
+    set_config(conn, always_handoff=["chargeback"])
+    mock_profile(http, paid_profile())
+    result, _ = chat(conn, [call("store_instructions", kind="refund_request", store="play_store"), say("Here is how.")], message="refund?")
+    assert result.handed_off is False

@@ -113,7 +113,7 @@ def tool_specs(cfg: AgentConfig, grant_available: bool = True) -> list[llm.ToolS
     specs = [
         llm.ToolSpec("get_profile", "Reload this user's account (the facts in the prompt are already loaded). Use it only to refresh, e.g. after the user restored purchases.", GetProfileArgs),
         llm.ToolSpec("store_instructions", STORE_TOOL_TEXT, StoreInstructionsArgs),
-        llm.ToolSpec("handoff", "Pass the conversation to a human teammate. `reason` is the matching rule or 'other'; `summary` is one or two sentences on what the user wants and what you tried.", HandoffArgs),
+        llm.ToolSpec("handoff", "Pass the conversation to a human teammate; returns the ticket. Only then tell the user a teammate will reply. `reason` is the matching rule or 'other'; `summary` is one or two sentences on what the user wants and what you tried.", HandoffArgs),
         llm.ToolSpec("mark_resolved", "Close the conversation as solved, only after the user confirmed it works. `note`: one line on what fixed it.", MarkResolvedArgs),
     ]
     if cfg.tools.get("grant_access") and grant_available:
@@ -173,9 +173,10 @@ What you know, and the only things you state as facts:
 - The user's account, loaded by the system just now ("Account facts" at the end of these instructions): plans, prices, charges, dates and access come only from there. Call get_profile only to refresh it (for example after the user restored purchases).
 - The store steps store_instructions returns.
 - These instructions.
-How {cfg.app_name} works beyond that (its features and tiers, Family Sharing, menus inside the app or on the phone, why something crashes or fails) is not among them. When the user asks about it, say plainly that you can't see that from here and that a teammate who knows the app can answer, and hand off (reason "other") when they need that answer to go on. A confident guess reads to the user as a promise.
+How {cfg.app_name} works beyond that (its features and tiers, Family Sharing, menus inside the app or on the phone, why something crashes or fails) is not among them. When the user asks about it, say plainly that you can't see that from here and that a teammate who knows the app can answer; when they need that answer to go on, call handoff (reason "other"). A confident guess reads to the user as a promise.
+What you tell the user you did matches what you did: a teammate has the conversation only once handoff returned a ticket, and days are added only once grant_access returned the new date.
 
-How access works: premium belongs to the user's account, not to a phone or a store. It works on every device signed in to the account, iPhone or Android, whichever store it was bought in ("premium" in the facts says what gives it). The user is writing from the app signed in to this account. Store steps (restore, cancel, refund request) work only in the store where the purchase was made.
+How access works: premium belongs to the user's account, not to a phone or a store. It works on every device signed in to the account, iPhone or Android, whichever store it was bought in ("premium" in the facts says what gives it). The user is writing from the app signed in to this account. Store steps (restore, cancel, refund request) work only in the store where the purchase was made; Restore purchases is one of them, so on a phone of the other store it finds nothing, and premium the account already has needs no restore.
 
 How to answer:
 - Explain charges, plans, trials, renewals and expiry dates from the account in plain words. Dates are UTC; write them as plain dates (Nov 6).
@@ -311,6 +312,7 @@ class _Turn:
         self.auto_handoff = False  # a blocked grant handed off in code
         self.profile: dict | None = None  # the latest profile loaded this turn (prefetch or get_profile)
         self.user_messages: list[str] = []  # this session's user messages, for the grant's quote check
+        self.after_handoff = False  # a teammate already had the conversation when this message came in
 
     def record(self, tool: str, args: dict, allowed: bool, blocked_reason: str | None, result) -> None:
         db.log_event(self.services.conn, self.session_id, tool, args, allowed, blocked_reason, result)
@@ -329,6 +331,7 @@ def chat(services, customer_user_id: str, session_id: str, message: str) -> Chat
     turn = _Turn(services, cfg, customer, session_id)
     history = db.list_messages(conn, session_id)
     turn.user_messages = [m["content"] for m in history if m["role"] == "user"]
+    turn.after_handoff = after_handoff
 
     if after_handoff and (services.demo or services.llm is None):
         return _finish(turn, HANDED_OFF_REPLY)
@@ -524,6 +527,10 @@ def _store_instructions(turn: _Turn, call: llm.ToolCall, args: StoreInstructions
         return content, True
     steps = STORE_STEPS[(args.store, args.kind)].format(app=turn.cfg.app_name)
     turn.record(call.name, call.args, True, None, steps)
+    # Refund steps mean the user wants money back: the refund rule hands off in code (a person follows up).
+    if args.kind == "refund_request" and "refund" in turn.cfg.always_handoff and turn.ticket_id is None and not turn.after_handoff:
+        ticket_id = _handoff(turn, "refund", f"refund steps given ({args.store}); the user wants money back")
+        steps += f"\n(Handed off as ticket {ticket_id} under the refund rule: also tell the user a teammate will reply in this chat.)"
     return steps, False
 
 
