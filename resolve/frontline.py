@@ -37,6 +37,25 @@ FALLBACK_REPLY = "Sorry, something went wrong on my side. I've passed our conver
 AUTO_HANDOFF_REPLY = "I've passed this to a teammate who can help with this; they will reply here."
 ACCOUNT_DOWN_REPLY = "I can't load your account right now, so I've passed this to a teammate. They will reply here."
 
+# The fixed replies in the user's language (docs/agents.md, "Fixed replies"). English for everyone else.
+FIXED_REPLIES_RU = {
+    HANDED_OFF_REPLY: "Ваш разговор уже передан сотруднику поддержки: ответ придёт сюда.",
+    TOO_LONG_REPLY: "Это занимает больше времени, чем должно, поэтому наш разговор передан сотруднику поддержки. Ответ придёт сюда.",
+    FALLBACK_REPLY: "Извините, у меня что-то пошло не так. Наш разговор передан сотруднику поддержки: ответ придёт сюда.",
+    AUTO_HANDOFF_REPLY: "Ваш вопрос передан сотруднику поддержки, который с этим поможет: ответ придёт сюда.",
+    ACCOUNT_DOWN_REPLY: "Сейчас не получается загрузить ваш аккаунт, поэтому вопрос передан сотруднику поддержки. Ответ придёт сюда.",
+}
+# Cyrillic letters Russian does not use: another language, so English rather than a wrong guess.
+NOT_RUSSIAN = set("іїєґўђјљњћџѓќѕ")
+
+
+def writes_russian(user_messages: list[str]) -> bool:
+    """Most letters of the session's user messages are Cyrillic, and none of them is foreign to Russian."""
+    letters = [c for c in " ".join(user_messages).casefold() if c.isalpha()]
+    cyrillic = [c for c in letters if "\u0400" <= c <= "\u04ff"]
+    return len(cyrillic) * 2 > len(letters) and not NOT_RUSSIAN.intersection(cyrillic)
+
+
 # A blocked grant hands off in code, whatever the model does next: policy reason → handoff reason.
 # A mapped rule hands off only when it is in cfg.always_handoff; "other" always hands off.
 # over_max_days and no_problem_quote are not here: the model may correct one of them once per turn (see _grant_access).
@@ -335,10 +354,10 @@ def chat(services, customer_user_id: str, session_id: str, message: str) -> Chat
     turn.after_handoff = after_handoff
 
     if after_handoff and (services.demo or services.llm is None):
-        return _finish(turn, HANDED_OFF_REPLY)
+        return _finish(turn, _fixed(turn, HANDED_OFF_REPLY))
     if not after_handoff and sum(1 for m in history if m["role"] == "user") > cfg.max_turns:
         _handoff(turn, "other", "conversation too long")
-        return _finish(turn, TOO_LONG_REPLY)
+        return _finish(turn, _fixed(turn, TOO_LONG_REPLY))
 
     if services.demo or services.llm is None:
         return _finish(turn, DEMO_REPLY)  # declared stub
@@ -346,9 +365,9 @@ def chat(services, customer_user_id: str, session_id: str, message: str) -> Chat
     facts, account_down = _prefetch(turn)
     if account_down:
         if after_handoff:
-            return _finish(turn, HANDED_OFF_REPLY)
+            return _finish(turn, _fixed(turn, HANDED_OFF_REPLY))
         _handoff(turn, "other", "account could not be loaded")
-        return _finish(turn, ACCOUNT_DOWN_REPLY)
+        return _finish(turn, _fixed(turn, ACCOUNT_DOWN_REPLY))
     grant_available = bool(facts and facts["free_days_available"])
 
     messages = [
@@ -393,16 +412,21 @@ def chat(services, customer_user_id: str, session_id: str, message: str) -> Chat
         failed = "model error"
 
     if turn.auto_handoff:
-        return _finish(turn, AUTO_HANDOFF_REPLY)
+        return _finish(turn, _fixed(turn, AUTO_HANDOFF_REPLY))
     if not failed and text and text.strip():
         return _finish(turn, text)
     if after_handoff:
-        return _finish(turn, HANDED_OFF_REPLY)  # the teammate already has it; no second ticket
+        return _finish(turn, _fixed(turn, HANDED_OFF_REPLY))  # the teammate already has it; no second ticket
     # No usable reply: the user still gets an answer, and a human gets the conversation.
     if turn.ticket_id is not None:
-        return _finish(turn, HANDED_OFF_REPLY)
+        return _finish(turn, _fixed(turn, HANDED_OFF_REPLY))
     _handoff(turn, "other", failed or "the assistant did not finish its reply")
-    return _finish(turn, FALLBACK_REPLY)
+    return _finish(turn, _fixed(turn, FALLBACK_REPLY))
+
+
+def _fixed(turn: _Turn, reply: str) -> str:
+    """A fixed reply in the user's language. No model call: these replies also cover a model that failed."""
+    return FIXED_REPLIES_RU[reply] if writes_russian(turn.user_messages) else reply
 
 
 def _finish(turn: _Turn, reply: str) -> ChatResult:

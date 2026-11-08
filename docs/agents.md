@@ -236,6 +236,10 @@ While the session is `handed_off`, each user message still gets a model reply, b
 
 The model keeps copying evidence as `field: value` (`ungrounded_evidence` depends on it). The Ticket screen shows a readable label for the field (`custom_attributes.simulated_install_date` → Install date, `access_levels[0].expires_at` → Access expires); the value is shown as written. Level 1's prompt calls the first-line agent "the assistant", so its summaries do too; stored tickets keep their text until they are triaged again.
 
+### Fixed replies in the user's language (binding)
+
+`HANDED_OFF_REPLY`, `TOO_LONG_REPLY`, `FALLBACK_REPLY`, `AUTO_HANDOFF_REPLY` and `ACCOUNT_DOWN_REPLY` have a Russian text, chosen in code with no model call, because they also cover a failed model. Russian means: most letters of the session's user messages are Cyrillic and none is a letter Russian does not use (`frontline.writes_russian`). Everyone else gets English, including other languages; a Cyrillic language with no letters of its own (Bulgarian) gets Russian. The demo stub `DEMO_REPLY` stays English.
+
 ### Reopen (binding)
 
 `POST /api/tickets/{id}/reopen {note?}` → only from `done`/`dismissed` (else 409): status `proposed` if the ticket has a triage or v1 proposal, else `new`; the earlier `{at, from_status, decision, action, note}` is appended to `history` (Ticket field); decision/action/reply_sent_at are cleared. Nothing is undone in Adapty: an earlier grant stays.
