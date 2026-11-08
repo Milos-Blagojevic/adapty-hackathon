@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import threading
 from datetime import datetime, timezone
 from typing import Literal
 
@@ -152,13 +153,38 @@ def build_router(services, live: insights_live.Live | None = None, ab_runner=lam
             raise HTTPException(404, f"no ticket {ticket_id}")
         return ticket
 
+    # One Level 1 run per ticket at a time; a message that arrives during a run gets one more run after it.
+    retriage_lock = threading.Lock()
+    retriage_running: set[str] = set()
+    retriage_again: set[str] = set()
+
+    def retriage(ticket_id: str) -> None:
+        with retriage_lock:
+            if ticket_id in retriage_running:
+                retriage_again.add(ticket_id)
+                return
+            retriage_running.add(ticket_id)
+        try:
+            while True:
+                triage.run(services, ticket_id, force=True)
+                with retriage_lock:
+                    if ticket_id not in retriage_again:
+                        retriage_running.discard(ticket_id)
+                        return
+                    retriage_again.discard(ticket_id)
+        except Exception:
+            with retriage_lock:
+                retriage_running.discard(ticket_id)
+                retriage_again.discard(ticket_id)
+            raise
+
     @router.post("/chat", response_model=ChatResult, tags=["mobile"], summary="Send one user message to the Level 2 agent")
     def chat(body: ChatRequest, background: BackgroundTasks):
         before = db.get_conversation(conn, body.session_id)
         before_ticket = before["ticket_id"] if before else None
         result = frontline.chat(services, body.customer_user_id, body.session_id, body.message)
-        if result.handed_off and result.ticket_id and result.ticket_id != before_ticket:
-            background.add_task(triage.run, services, result.ticket_id)
+        if result.handed_off and result.ticket_id:
+            background.add_task(retriage, result.ticket_id)
         return result.model_dump()
 
     @router.get("/api/chat/{session_id}", response_model=ChatSession, tags=["mobile"], summary="Conversation, tool-call log and outcome", responses=E404)

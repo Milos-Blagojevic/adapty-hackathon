@@ -282,6 +282,21 @@ def test_chat_handoff_is_triaged_in_the_background(env):
     assert s["outcome"] == "handed_off" and s["ticket_id"] == out["ticket_id"]
 
 
+def test_message_after_handoff_reruns_level_1_on_the_same_ticket(env):
+    env.chat.steps.extend([call("handoff", reason="other", summary="asked for a human"), say("Passed to our team.")])
+    env.triage.steps.extend([call("get_profile", customer_user_id=CUID), submit(triage_ticket(category="other"))])
+    first = env.client.post("/chat", json={"customer_user_id": CUID, "session_id": "s-more", "message": "a human please"}).json()
+    assert get_ticket(env, first["ticket_id"])["category"] == "other"
+
+    env.chat.steps.append(say("Of course, I'm here."))
+    env.triage.steps.extend([call("get_profile", customer_user_id=CUID), submit(triage_ticket(category="refund_request"))])
+    second = env.client.post("/chat", json={"customer_user_id": CUID, "session_id": "s-more", "message": "I want my money back"}).json()
+    assert second["ticket_id"] == first["ticket_id"]
+    t = get_ticket(env, first["ticket_id"])
+    assert t["category"] == "refund_request"
+    assert any(m["content"] == "I want my money back" for m in t["conversation"])
+
+
 # --- config, analytics, users -----------------------------------------------------------------------
 
 

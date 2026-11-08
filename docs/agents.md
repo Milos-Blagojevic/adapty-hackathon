@@ -229,7 +229,7 @@ Decisions: accept stores `decision_json = Decision.model_dump()`; reject always 
 
 ### After a handoff (binding, replaces "after handoff no model call")
 
-While the session is `handed_off`, each user message still gets a model reply, but only with tools `get_profile`, `store_instructions`, `cancel_handoff {note: str}`; any other tool call is logged as not run ("not run: a teammate has the conversation"); no second ticket. New messages are visible to the teammate through the ticket's conversation. `cancel_handoff` dismisses the ticket if it is still new/triaged/proposed (`decision_json = {"rejected": true, "note": "user cancelled the handoff: …", "reply": null}`) and sets the outcome back to `open`. Demo mode / no LLM: fixed reply `HANDED_OFF_REPLY`.
+While the session is `handed_off`, each user message still gets a model reply, but only with tools `get_profile`, `store_instructions`, `cancel_handoff {note: str}`; any other tool call is logged as not run ("not run: a teammate has the conversation"); no second ticket. New messages are visible to the teammate through the ticket's conversation. Each such message also reruns Level 1 on the open ticket with the whole conversation (one run per ticket at a time, a message during a run gets one more run after it), so the summary, options and translations follow what the user said after the handoff. A ticket already decided is left as it is. `cancel_handoff` dismisses the ticket if it is still new/triaged/proposed (`decision_json = {"rejected": true, "note": "user cancelled the handoff: …", "reply": null}`) and sets the outcome back to `open`. Demo mode / no LLM: fixed reply `HANDED_OFF_REPLY`.
 
 ### Reopen (binding)
 
