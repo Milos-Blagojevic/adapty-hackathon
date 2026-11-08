@@ -163,7 +163,8 @@ def system_prompt(cfg: AgentConfig, grant_available: bool = True) -> str:
             f"that describes the problem. At most {cfg.grant.max_days} days, once, and never for a user with lifetime access. "
             "The system checks the limits and the quote; on 'blocked: over_max_days' or 'blocked: no_problem_quote' you may correct "
             "the call once; on any other 'blocked: <reason>', do not try again: hand off. After a grant, tell the user how many days "
-            "you added and until which date, and give the restore steps if the app still looks locked."
+            "you added and until which date, and give the restore steps if the app still looks locked. That answers this turn: "
+            "the user tries the app and tells you how it went, and a teammate comes in if they say it is still not working."
         )
     else:
         grant = "You cannot give free access. If a user needs it, hand off."

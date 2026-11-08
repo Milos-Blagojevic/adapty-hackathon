@@ -703,10 +703,12 @@ def run(services, ticket_id: str, force: bool = False) -> dict:
         db.update_ticket(conn, ticket_id, only_status=OPEN_STATUSES, **fields)
         return db.get_ticket(conn, ticket_id)
 
+    # Each message after a handoff reruns triage, so the budget grows with the user's messages; the chat's own turn limit bounds it.
+    call_cap = MAX_CALLS * max(1, sum(1 for m in chat or [] if m["role"] == "user"))
     json_retried = False  # arguments that are not JSON say nothing about the ticket: one retry of their own
     while True:
-        if not db.reserve_model_call(conn, ticket_id, MAX_CALLS):
-            return fail(f"call cap reached ({MAX_CALLS} model calls for this ticket)")
+        if not db.reserve_model_call(conn, ticket_id, call_cap):
+            return fail(f"call cap reached ({call_cap} model calls for this ticket)")
         try:
             step = services.llm.step(system_prompt(cfg.app_name), messages, TOOLS)
         except llm.LLMError as exc:
