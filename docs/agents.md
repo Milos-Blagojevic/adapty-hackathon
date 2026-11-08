@@ -105,7 +105,7 @@ The mobile showcase, the mock APK and the Chat tab all use `POST /chat` and `GET
 
 ```json
 {
-  "app_name": "Lumen",
+  "app_name": "FitBuddy",
   "tone": "warm, short, plain English",
   "tools": {"grant_access": true},
   "grant": {"access_level": "premium", "max_days": 7, "max_grants_per_user_30d": 1, "require_paid": true},
@@ -276,6 +276,17 @@ Level 1:
 
 Decided by the owner after the review (2026-11-08): keep `confidence` (the models are DeepSeek and Opus, not a small model), keep three equal options, no keyword backstop for hand-off rules.
 
+### Brand: Adapty, FitBuddy and the Lumen data (binding, 2026-11-08)
+
+The owner's decision. Our web product is Adapty (the nav says so). The end-user app is what the phone app `appy/` shows: FitBuddy, a fitness app. The agents and the screens say the same thing.
+
+- The name comes from one place: `AgentConfig.app_name` (default `FitBuddy`, editable in Agent settings). Level 1 (`triage.system_prompt`, its `store_steps`), Insights (`insights.system_prompt`) and Level 2 (`frontline`) all read it from the stored config; no prompt hard-codes a name. Level 1 and Insights describe the app as a fitness app; no prompt or example describes it as a photo editor.
+- Seed and demo text (tickets, hard cases, Level 2 scenarios, mock text on the screens) says FitBuddy. A body that only made sense for a photo editor is reworded to a fitness equivalent with the same support meaning and the same labels.
+- What stays Lumen, because it is true: profile ids `lumen_443814_*` and store product ids `lumen.*` / `lumen_*` (real Adapty ids), the organisers' dataset name in data sources (`data/offline/`, README), and the dated reports of what happened before this decision (older sections here, AI_LOG).
+- Data from Adapty or the offline dataset is shown as it is, even when it reads as a photo editor: flow and paywall titles ("AI limit reached - Pro"), placement titles built on them, custom attributes (`ai_edits_first_day`, `photos_imported`, `onboarding_goal`).
+- Impact (`static/impact.html`, `static/ui/Impact.dc.html`): the owner agreed the text with Milos. FitBuddy in the heading and the rows; the source note says the rows come from the organisers' dataset, which the demo app runs on. Layout and numbers unchanged.
+- Stored data (a DB that has the old name in its config, tickets and replies) is not migrated by the app: a one-off script does it at the restart. Stored Adapty profiles are not touched.
+
 ### Insights: JSON API and live screen (binding)
 
 The side screen of Level 1 (open question 3: yes, it stays one). Grouping is `insights.group_tickets` (code, no model); the hypothesis is `triage.run_insights` (≤2 model calls per run, cached in the `insights` table); the draft is `insights.draft_ab_test` (Adapty CLI `ab-tests create`, draft only). The JSON layer is `resolve/insights_live.py`; it shapes, decides when to run, and never changes those three.
@@ -346,7 +357,7 @@ Facts (code, `triage.model_profile`, used by the prefetch and by `get_profile`; 
 - History tickets carry `subject` and `triage_summary`; history sessions leave out the ticket's own chat.
 - A handed-off chat is shown once (the transcript inside the ticket body is cut), each message labelled user / bot / support teammate, with the line that the reply is the next message in that chat, sent by the support teammate.
 
-Prompt (goals): what Lumen sells and where (nothing else exists: no web checkout, no other tier); how access works (premium lives on the Lumen account and unlocks on any device signed in to it; Restore in the other store finds nothing); no prices on the profile; refunds by store (Apple only; Google Play: the user in 48 h, later a teammate from the Play Console). The diagnosis follows the field order: evidence copied as `field: value` plus `user says: …`, then a root cause that explains every fact and claim and names the claim the facts contradict (or what the bot got wrong), confidence, summary, category (with two issues, the one that needs the lead's decision). Options: 2–3 different strategies a lead would defend; a third only as a real alternative. Replies: written as the teammate; chat 25–60 words, email/form 40–90; a reply promises only what accepting its option does; store paths quoted from `store_steps`.
+Prompt (goals): what the app sells and where (nothing else exists: no web checkout, no other tier); how access works (premium lives on the app account and unlocks on any device signed in to it; Restore in the other store finds nothing); no prices on the profile; refunds by store (Apple only; Google Play: the user in 48 h, later a teammate from the Play Console). The diagnosis follows the field order: evidence copied as `field: value` plus `user says: …`, then a root cause that explains every fact and claim and names the claim the facts contradict (or what the bot got wrong), confidence, summary, category (with two issues, the one that needs the lead's decision). Options: 2–3 different strategies a lead would defend; a third only as a real alternative. Replies: written as the teammate; chat 25–60 words, email/form 40–90; a reply promises only what accepting its option does; store paths quoted from `store_steps`.
 
 Schema order: the `submit_ticket` schema the model sees has the TriageTicket fields in thinking order (`customer_user_id, lookup, evidence, root_cause, confidence, summary, category, options`; option: `action, params, risk, risk_reason, reply, emoji, confidence`) with sharper descriptions (`triage.TicketDraft`); arguments are still validated with `models.TriageTicket`, so the stored shape does not change.
 
