@@ -192,7 +192,8 @@ Legacy proposals (v1 `proposal_json`, e.g. in `data/demo.sqlite`) are shown as a
 
 ### JSON shapes (fixed)
 
-Ticket summary (`GET /api/tickets`): `{id, status, source, category, customer_user_id, email, subject, created_at, updated_at, confidence, top_action}`.
+Ticket title: `title` (`tickets.ticket_title`) is what the screens show. A subject a person wrote stays; a machine subject (`Chat: refund`) or a cut of the body gives way to the triage summary (without "The user", first clause, at most 90 characters), else to a readable line for the handoff reason. `subject` stays as stored.
+Ticket summary (`GET /api/tickets`): `{id, status, source, category, customer_user_id, email, subject, title, created_at, updated_at, confidence, top_action}`.
 Ticket (`GET /api/tickets/{id}`): summary fields + `{body, session_id, triage (TriageTicket | null), legacy (bool), profile (raw Adapty profile | null), decision, action, action_error, triage_error, conversation ([{role, content, ts}] | null)}`.
 `GET /api/users`: `[{customer_user_id, badge: "active"|"expired"|"lifetime"|"none"|"unknown", product: str | null}]`.
 `GET /api/chat/{session_id}`: `{session_id, customer_user_id, outcome, ticket_id, messages: [{role, content, ts}], events: [{ts, tool, args, allowed, blocked_reason, result}]}`; 404 if unknown.

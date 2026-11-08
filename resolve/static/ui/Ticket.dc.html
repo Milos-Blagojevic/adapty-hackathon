@@ -653,7 +653,7 @@ function liveModel(t, cfg) {
     lang: lang, base: base, order: order, conf: conf, user: t.customer_user_id || t.email || 'unknown user', action: a, actionError: t.action_error,
     phase: t.status === 'dismissed' || noReply ? 'dismissed' : t.status === 'done' ? 'closed' : 'open',
     closed: closed,
-    title: t.subject, meta: (t.customer_user_id || t.email || 'unknown user') + ' · ' + when(t.created_at),
+    title: t.title, meta: (t.customer_user_id || t.email || 'unknown user') + ' · ' + when(t.created_at),
     messages: messages,
     hasTriage: !!tri, foundSummary: found, foundCause: tri && tri.root_cause !== tri.summary ? tri.root_cause : '',
     confidence: tri && typeof tri.confidence === 'number' ? Math.round(tri.confidence * 100) : null, category: tri ? CATEGORIES[tri.category] || tri.category : '',

@@ -3211,6 +3211,11 @@
       "type": "string",
       "title": "Subject"
      },
+     "title": {
+      "type": "string",
+      "title": "Title",
+      "description": "What a person reads: the subject they wrote, else from the triage summary, else the handoff reason"
+     },
      "created_at": {
       "type": "string",
       "title": "Created At"
@@ -3391,6 +3396,7 @@
      "source",
      "customer_user_id",
      "subject",
+     "title",
      "created_at",
      "body",
      "legacy"
@@ -3498,6 +3504,11 @@
       "type": "string",
       "title": "Subject"
      },
+     "title": {
+      "type": "string",
+      "title": "Title",
+      "description": "What a person reads: the subject they wrote, else from the triage summary, else the handoff reason"
+     },
      "created_at": {
       "type": "string",
       "title": "Created At"
@@ -3575,6 +3586,7 @@
      "source",
      "customer_user_id",
      "subject",
+     "title",
      "created_at"
     ],
     "title": "TicketSummary"

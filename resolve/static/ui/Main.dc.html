@@ -268,7 +268,7 @@ function liveTicket(t, full) {
   return {
     id: t.id, status: status, source: LIVE_SOURCE[t.source],
     user: t.customer_user_id || t.email || 'unknown user',
-    subject: t.subject, action: action, age: API.ago(t.created_at),
+    subject: t.title, action: action, age: API.ago(t.created_at),
     snippet: t.snippet || '', category: t.category || ''
   };
 }

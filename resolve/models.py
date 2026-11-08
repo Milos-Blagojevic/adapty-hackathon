@@ -188,6 +188,7 @@ class TicketSummary(BaseModel):
     customer_user_id: str = Field(description="Empty string when the user is not identified")
     email: str | None = None
     subject: str
+    title: str = Field(description="What a person reads: the subject they wrote, else from the triage summary, else the handoff reason")
     created_at: str
     updated_at: str | None = None
     confidence: float | None = None

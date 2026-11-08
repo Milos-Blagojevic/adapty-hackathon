@@ -134,7 +134,7 @@ class Component extends DCLogic {
       line = (t.status === 'dismissed' ? 'Dismissed ' : 'Closed ') + at + (what ? ' · ' + what : '');
     }
     return {
-      subject: live ? (t ? t.subject : '') : 'Wants another free week after compensation',
+      subject: live ? (t ? t.title : '') : 'Wants another free week after compensation',
       closedLine: live ? line : 'Closed Nov 7 · Granted 7 days',
       dotColor: !live ? '#16a34a' : !closed ? 'transparent' : t.status === 'dismissed' ? '#d4d4d8' : '#16a34a',
       ticketHref: live && id ? 'Ticket.dc.html?id=' + encodeURIComponent(id) : 'Ticket.dc.html',
