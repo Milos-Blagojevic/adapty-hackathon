@@ -254,4 +254,6 @@ Level 1:
 - `get_agent_config` is removed (the config is in the facts). `get_profile`, `find_user_by_email`, `get_user_history` stay, for a second id or email named in the ticket.
 - New check: two options with the same `action` → rejected ("options[i] repeats the action of options[j]; each option must be a different action"), same single retry.
 - When the user was found only by email: the prompt says replies must not state plan, dates, amounts or payment details (the sender is unverified).
-- `triage.ungrounded_evidence(ticket, facts_text) -> list[str]`: evidence lines whose value (after the first `: `) does not occur, case-insensitively, in the facts the run loaded. Used by eval only; the run does not drop them.
+- `triage.ungrounded_evidence(ticket, facts_text) -> list[str]`: evidence lines whose value (after the first `: `) has a token with a digit, `_` or `.` (amounts, dates, ids, versions) that does not occur, case-insensitively, in the facts the run loaded (the model merges facts into one line, so whole-line matching is useless). Used by eval only; the run does not drop them.
+
+Decided by the owner after the review (2026-11-08): keep `confidence` (the models are DeepSeek and Opus, not a small model), keep three equal options, no keyword backstop for hand-off rules.

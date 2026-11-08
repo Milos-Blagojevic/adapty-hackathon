@@ -66,5 +66,15 @@ def test_repeated_action_gets_one_correction(http, conn):
 
 def test_ungrounded_evidence():
     t = TriageTicket.model_validate(triage_dict(evidence=["product: lumen_weekly", "expires_at: 2030-01-01", "no colon here"]))
-    facts = '{"product": "Lumen_Weekly", "note": "no colon here"}'
+    facts = '{"product": "Lumen_Weekly", "note": "nothing"}'
     assert triage.ungrounded_evidence(t, facts) == ["expires_at: 2030-01-01"]
+
+
+def test_ungrounded_evidence_checks_numbers_dates_and_ids():
+    t = TriageTicket.model_validate(triage_dict(evidence=[
+        "subscriptions: lumen_weekly bought 2026-10-19T14:09:53Z, $6.99, no billing issue",
+        "access: premium active until 2027-01-01",
+        "history: ticket x-999 on Nov 1",
+    ]))
+    facts = '{"product": "lumen_weekly", "purchased_at": "2026-10-19T14:09:53+00:00", "price": "6.99", "expires_at": "2027-01-01T00:00:00+00:00"}'
+    assert triage.ungrounded_evidence(t, facts) == ["history: ticket x-999 on Nov 1"]

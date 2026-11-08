@@ -13,6 +13,7 @@ option in the UI and only then `workflow.accept` runs it.
 from __future__ import annotations
 
 import json
+import re
 import logging
 from datetime import datetime, timezone
 
@@ -269,13 +270,23 @@ def prefetch(services, ticket: dict, allowed: set[str], profiles: dict[str, dict
     return facts
 
 
+ISO_DATETIME = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}")
+FACT_TOKEN = re.compile(r"[A-Za-z0-9_.:+-]*\d[A-Za-z0-9_.:+-]*|[A-Za-z0-9]+(?:[_.][A-Za-z0-9]+)+")
+
+
 def ungrounded_evidence(t: models.TriageTicket, facts_text: str) -> list[str]:
-    """Evidence lines whose value (after the first ': ') is not in the loaded facts. For eval; the run keeps them."""
+    """Evidence lines with a number, date or id (a token with a digit, `_` or `.`) that the loaded facts do not contain.
+
+    The model often merges several facts into one line, so whole-line matching says nothing; a made-up
+    amount, date or product id is what this catches. For eval; the run keeps the lines.
+    """
     hay = facts_text.casefold()
     out = []
     for line in t.evidence:
         value = line.split(": ", 1)[1] if ": " in line else line
-        if value.strip().casefold() not in hay:
+        tokens = [tok.strip(".:,+-") for tok in FACT_TOKEN.findall(value)]
+        tokens = [tok[:19] if ISO_DATETIME.match(tok) else tok for tok in tokens]  # Z vs +00:00 is not a made-up date
+        if any(tok and tok.casefold() not in hay for tok in tokens):
             out.append(line)
     return out
 
