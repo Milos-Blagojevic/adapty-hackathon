@@ -148,7 +148,7 @@ input::placeholder{color:#7b7b85}
 </div>
 
 <div style="display: flex; flex-wrap: wrap; align-items: stretch; gap: 20px">
-<section class="card" aria-label="Chat with the Lumen assistant" style="flex: 999 1 520px; min-width: 0; height: 680px; display: flex; flex-direction: column; overflow: hidden">
+<section class="card" aria-label="Chat with the FitBuddy assistant" style="flex: 999 1 520px; min-width: 0; height: 680px; display: flex; flex-direction: column; overflow: hidden">
 <div role="log" aria-live="polite" style="flex: 1 1 auto; overflow-y: auto; padding: 20px 20px 12px">
 <div style="max-width: 720px; margin: 0 auto; display: flex; flex-direction: column">
 <sc-if value="{{ empty }}" hint-placeholder-val="{{ false }}">
@@ -167,7 +167,7 @@ input::placeholder{color:#7b7b85}
 </div>
 </sc-for>
 <sc-if value="{{ typing }}" hint-placeholder-val="{{ false }}">
-<div class="msg gap in"><span class="av" aria-hidden="true">L</span><div class="b b-assistant last" style="padding: 0"><span class="typing" aria-label="Lumen is typing"><i></i><i></i><i></i></span></div></div>
+<div class="msg gap in"><span class="av" aria-hidden="true">F</span><div class="b b-assistant last" style="padding: 0"><span class="typing" aria-label="FitBuddy is typing"><i></i><i></i><i></i></span></div></div>
 </sc-if>
 </div>
 </div>
@@ -445,7 +445,7 @@ class Component extends DCLogic {
     var user = LIVE ? s.user || '' : s.user || 'lumen_443814_02380';
     var openIdx = s.openLog || {};
     var handoff = LIVE ? s.handoff || null : s.handoff !== undefined ? s.handoff : 'f-0013';
-    var supportLabel = LIVE ? (s.appName ? s.appName + ' support' : 'Support') : 'Lumen support';
+    var supportLabel = LIVE ? (s.appName ? s.appName + ' support' : 'Support') : 'FitBuddy support';
     var shaped = msgs.map(function (m, i) {
       var prev = msgs[i - 1], next = msgs[i + 1];
       var first = !prev || prev.role !== m.role;

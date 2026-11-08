@@ -1,7 +1,7 @@
 """How great subscription support writes: shared by both agents' prompts.
 
 Plain text, no braces (it is inserted into f-strings). The examples are from a made-up app (Pebble, a sleep
-app) on purpose: the model learns the shape of a good answer, not facts it could copy into a Lumen reply.
+app) on purpose: the model learns the shape of a good answer, not facts it could copy into a real reply.
 Their store paths are the same canned store steps the system gives (frontline.STORE_STEPS), so copying
 the shape never teaches a menu that does not exist; one example shows the honest answer to a question
 the facts cannot answer (docs/agents.md, v4).

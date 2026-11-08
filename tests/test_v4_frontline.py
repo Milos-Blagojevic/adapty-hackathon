@@ -82,8 +82,8 @@ def test_problem_quote_must_be_the_users_words(quote):
 
 
 def test_problem_quote_works_in_any_language_and_across_messages():
-    said = ["Hola", "pago Lumen cada semana pero los filtros de IA me piden suscribirme otra vez"]
-    assert policy.check_problem_quote("los filtros de IA me piden suscribirme", said) is None
+    said = ["Hola", "pago FitBuddy cada semana pero los entrenamientos premium me piden suscribirme otra vez"]
+    assert policy.check_problem_quote("los entrenamientos premium me piden suscribirme", said) is None
     assert policy.check_problem_quote("Фильтры не открываются", ["Здравствуйте! Фильтры не открываются."]) is None
 
 

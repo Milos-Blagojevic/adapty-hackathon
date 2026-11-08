@@ -38,7 +38,7 @@ class GrantLimits(BaseModel):
 
 
 class AgentConfig(BaseModel):
-    app_name: str = "Lumen"
+    app_name: str = "FitBuddy"
     tone: str = "warm, short, plain English"
     tools: dict[str, bool] = Field(default_factory=lambda: {"grant_access": True})
     grant: GrantLimits = Field(default_factory=GrantLimits)

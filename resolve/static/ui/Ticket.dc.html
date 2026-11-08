@@ -418,7 +418,7 @@ var LIVE = !API.mock;
 var USER = 'lumen_443814_02380';
 var BASE = {
   reply: { emoji: '🥶', action: 'reply', days: 7, store: 'Google Play', kind: 'Cancel', question: '', reply: "Hi! We added 7 days of premium on Nov 5 for the trial charge, so your access now runs to Nov 20. We can't add more, but you can cancel any time in Google Play → Subscriptions." },
-  steps: { emoji: '👋', action: 'store_steps', days: 7, store: 'Google Play', kind: 'Cancel', question: '', reply: 'You can cancel the weekly plan any time: Google Play → Profile → Payments & subscriptions → Subscriptions → Lumen → Cancel. Premium stays until Nov 20.' },
+  steps: { emoji: '👋', action: 'store_steps', days: 7, store: 'Google Play', kind: 'Cancel', question: '', reply: 'You can cancel the weekly plan any time: Google Play → Profile → Payments & subscriptions → Subscriptions → FitBuddy → Cancel. Premium stays until Nov 20.' },
   grant: { emoji: '🎁', action: 'grant', days: 7, store: 'Google Play', kind: 'Cancel', question: '', reply: "As a one-off, we've added 7 more days of premium to your account." }
 };
 var ORDER = ['reply', 'steps', 'grant'];
@@ -447,9 +447,9 @@ var MOCK = {
   meta: 'lumen_443814_02380 · 21:40',
   messages: [
     { isUser: true, text: 'Hi, the trial thing again, I still feel tricked by the weekly charge', time: '21:38' },
-    { labelled: true, avatar: 'L', label: 'Lumen assistant', text: "I'm sorry you feel that way. I can see your weekly plan renews on Nov 13 and we added 7 days of premium on Nov 5.", time: '21:38' },
+    { labelled: true, avatar: 'F', label: 'FitBuddy assistant', text: "I'm sorry you feel that way. I can see your weekly plan renews on Nov 13 and we added 7 days of premium on Nov 5.", time: '21:38' },
     { isUser: true, text: 'Give me another week for free then. Or a month.', time: '21:39' },
-    { plain: true, avatar: 'L', text: "I can't add more days myself, but I've sent your request to our support team. They'll get back to you here.", time: '21:39' }
+    { plain: true, avatar: 'F', text: "I can't add more days myself, but I've sent your request to our support team. They'll get back to you here.", time: '21:39' }
   ],
   hasTriage: true,
   foundSummary: 'The user wants more free days after already being compensated for the trial conversion.',
@@ -466,12 +466,12 @@ if (API.param('sample') === 'ru') Object.assign(MOCK, {
   lang: 'Russian', title: 'Wants a refund for the annual plan', meta: 'lumen_443814_02380 · 21:40',
   messages: [
     { isUser: true, text: 'I was charged $49.99 for the annual plan and I no longer use the app. Please refund the money.', orig: 'С меня списали $49.99 за годовой план, а я приложением больше не пользуюсь. Верните деньги, пожалуйста.', time: '21:38' },
-    { plain: true, avatar: 'L', text: "I've passed your request to our support team. They will reply here.", orig: 'Я передал ваш запрос команде поддержки. Они ответят здесь.', time: '21:39' }
+    { plain: true, avatar: 'F', text: "I've passed your request to our support team. They will reply here.", orig: 'Я передал ваш запрос команде поддержки. Они ответят здесь.', time: '21:39' }
   ],
   foundSummary: 'The user wants a refund for the $49.99 annual plan.', foundCause: 'The user stopped using the app after the annual renewal.', category: 'Refund request',
   base: {
     reply: Object.assign({}, BASE.reply, { reply: 'Refunds for the $49.99 annual plan are decided by Apple: go to reportaproblem.apple.com and choose Request a refund.', orig: 'Возврат за годовой план на $49.99 решает Apple: откройте reportaproblem.apple.com и выберите Request a refund.' }),
-    steps: Object.assign({}, BASE.steps, { reply: 'You can turn off renewal in Settings → your name → Subscriptions → Lumen → Cancel.', orig: 'Продление можно отключить: Настройки → ваше имя → Подписки → Lumen → Отменить.' }),
+    steps: Object.assign({}, BASE.steps, { reply: 'You can turn off renewal in Settings → your name → Subscriptions → FitBuddy → Cancel.', orig: 'Продление можно отключить: Настройки → ваше имя → Подписки → FitBuddy → Отменить.' }),
     grant: Object.assign({}, BASE.grant, { reply: "As a one-off, we've added 7 more days of premium to your account.", orig: 'В качестве исключения мы добавили 7 дней премиума к вашему аккаунту.' })
   }
 });

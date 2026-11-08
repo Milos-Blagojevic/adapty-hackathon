@@ -162,7 +162,7 @@ td{padding:7px 10px;border-bottom:1px solid #f3f3f5;text-align:right;font-varian
 
 <div style="display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px 24px">
 <div style="display: flex; flex-direction: column; gap: 6px">
-<p style="margin: 0; font-size: 12px; font-weight: 500; letter-spacing: .12em; text-transform: uppercase; color: rgba(255,255,255,.7)">Analyze · Lumen</p>
+<p style="margin: 0; font-size: 12px; font-weight: 500; letter-spacing: .12em; text-transform: uppercase; color: rgba(255,255,255,.7)">Analyze · FitBuddy</p>
 <h1 id="hero-h" style="margin: 0; font-family: Newsreader, Georgia, 'Times New Roman', serif; font-size: 38px; font-weight: 500; letter-spacing: -0.012em; line-height: 1.1">Machines vs humans</h1>
 <p style="margin: 0; font-size: 14.5px; color: rgba(255,255,255,.75)">{{ rangeNote }}</p>
 </div>
@@ -308,7 +308,7 @@ td{padding:7px 10px;border-bottom:1px solid #f3f3f5;text-align:right;font-varian
 
 <section class="card" aria-labelledby="log-h" style="padding: 20px 22px 8px; min-width: 0">
 <div class="ch">
-<div><h2 id="log-h">Agent replies from the app logs</h2><p>Latest lines of the Lumen chat log</p></div>
+<div><h2 id="log-h">Agent replies from the app logs</h2><p>Latest lines of the FitBuddy chat log</p></div>
 <a href="Chat.dc.html" style="font-size: 13.5px; font-weight: 500">Try the agent</a>
 </div>
 <div role="list" style="margin-top: 10px">
@@ -411,7 +411,7 @@ td{padding:7px 10px;border-bottom:1px solid #f3f3f5;text-align:right;font-varian
 </div>
 </section>
 
-<p style="margin: 8px 0 0; font-size: 12.5px; color: #6b6b75">Agent data comes from the Lumen app's chat logs; people's from tickets answered in Incoming. Updated {{ updated }}.</p>
+<p style="margin: 8px 0 0; font-size: 12.5px; color: #6b6b75">Agent data comes from the FitBuddy app's chat logs; people's from tickets answered in Incoming. Updated {{ updated }}.</p>
 </main>
 </div>
 </x-dc>
@@ -442,7 +442,7 @@ var LOGS = [
   { t: '21:24:03', kind: 'ok', out: 'resolved', user: 'lumen_314007_62518', reply: 'On the new phone, open Settings → Restore purchases while signed in to the same account.', lat: '3.2 s' },
   { t: '21:10:55', kind: 'no', out: 'grant blocked', user: 'lumen_120977_44410', reply: "Your payment is still syncing with the store. I've asked support to check it.", lat: '2.6 s' },
   { t: '20:58:31', kind: 'go', out: 'handed off', user: 'maria.k@gmail.com', reply: "I've passed this to our support team so a person can help with the refund.", lat: '1.7 s' },
-  { t: '20:44:09', kind: 'ok', out: 'resolved', user: 'lumen_903355_40018', reply: 'You can cancel any time: Google Play → Subscriptions → Lumen → Cancel.', lat: '1.2 s' }
+  { t: '20:44:09', kind: 'ok', out: 'resolved', user: 'lumen_903355_40018', reply: 'You can cancel any time: Google Play → Subscriptions → FitBuddy → Cancel.', lat: '1.2 s' }
 ];
 var LOGMARK = { ok: '✓', go: '→', no: '✕' };
 var TASKS = [
@@ -455,7 +455,7 @@ var TASKS = [
   { label: 'Being triaged', dot: 'ring', items: [
     { title: 'Charged after free trial', user: 'lumen_771204_33018', note: 'reading the profile', age: 64, href: 'Ticket.dc.html' },
     { title: 'Restore purchases does nothing', user: 'lumen_588102_17733', note: 'matching the store receipt', age: 131, href: 'Ticket.dc.html' },
-    { title: 'Lifetime but filters broken', user: 'dusan.p@outlook.com', note: 'looking up the user by email', age: 372, href: 'Ticket.dc.html' },
+    { title: 'Lifetime but workouts broken', user: 'dusan.p@outlook.com', note: 'looking up the user by email', age: 372, href: 'Ticket.dc.html' },
     { title: 'Trial did not start on iPad', user: 'lumen_209331_50127', note: 'checking trial eligibility', age: 545, href: 'Ticket.dc.html' } ] },
   { label: 'Waiting for a person', dot: 'solid', items: [
     { title: 'Wants another free week after compensation', user: 'lumen_443814_02380', note: 'reply, no action', age: 254, href: 'Ticket.dc.html' },

@@ -1065,7 +1065,7 @@
      "app_name": {
       "type": "string",
       "title": "App Name",
-      "default": "Lumen"
+      "default": "FitBuddy"
      },
      "tone": {
       "type": "string",

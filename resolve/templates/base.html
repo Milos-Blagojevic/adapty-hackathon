@@ -14,12 +14,12 @@
     <a href="/inbox" {% if request.url.path == '/inbox' %}class="on"{% endif %}>Inbox</a>
     <a href="/insights" {% if request.url.path.startswith('/insights') %}class="on"{% endif %}>Insights</a>
   </nav>
-  <span class="app">Lumen – AI Photo Editor</span>
+  <span class="app">FitBuddy – a fitness app</span>
   {% if demo %}<span class="badge demo" title="No keys: cached profiles and triage; Accept changes local state only">DEMO MODE</span>{% endif %}
 </header>
 <main>
 {% block content %}{% endblock %}
 </main>
-<footer>Tickets are synthetic. Profiles, grants and A/B drafts are real Adapty calls on the seeded Lumen app. Nothing is ever sent to a user.</footer>
+<footer>Tickets are synthetic. Profiles, grants and A/B drafts are real Adapty calls on the seeded FitBuddy app. Nothing is ever sent to a user.</footer>
 </body>
 </html>

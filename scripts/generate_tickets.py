@@ -37,9 +37,9 @@ DEMO_TICKETS = [
         customer_user_id="lumen_443814_02021",
         subject="Charged after my free trial",
         body=(
-            "I downloaded Lumen on Nov 3 for the 3-day free trial. This morning I got charged $6.99. "
+            "I downloaded FitBuddy on Nov 3 for the 3-day free trial. This morning I got charged $6.99. "
             "The trial screen never said it turns into a weekly plan, I thought I had a week to decide. "
-            "I don't want to pay $7 every week for a few filters. I feel tricked. What can you do about this?"
+            "I don't want to pay $7 every week for a few workouts. I feel tricked. What can you do about this?"
         ),
         created_at="2026-11-06T18:40:00Z",
         demo=True,
@@ -50,8 +50,8 @@ DEMO_TICKETS = [
         customer_user_id="lumen_443814_00014",
         subject="Paid $49.99, app still locked",
         body=(
-            "I bought the annual plan yesterday for $49.99 (Apple receipt attached) and Lumen still shows the upgrade screen "
-            "every time I open an AI tool. Restore Purchases says there is nothing to restore. I need this for a client shoot tomorrow."
+            "I bought the annual plan yesterday for $49.99 (Apple receipt attached) and FitBuddy still shows the upgrade screen "
+            "every time I open a premium workout. Restore Purchases says there is nothing to restore. I need this for a training block that starts tomorrow."
         ),
         created_at="2026-11-05T14:12:00Z",
         demo=True,
@@ -63,7 +63,7 @@ DEMO_TICKETS = [
         subject="Payment problem after trial",
         body=(
             "My 3-day trial ended on Nov 4 and instead of charging me the app now says there is a problem with my payment and "
-            "locked all my edits. My card is fine, I bought groceries with it this morning. I actually wanted to keep the subscription. What do I do?"
+            "locked all my workouts. My card is fine, I bought groceries with it this morning. I actually wanted to keep the subscription. What do I do?"
         ),
         created_at="2026-11-05T09:20:00Z",
         demo=True,

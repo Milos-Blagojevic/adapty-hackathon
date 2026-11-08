@@ -230,14 +230,14 @@ TEMPLATES: dict[str, list[tuple[str, str]]] = {
     ],
     "no_access_after_purchase": [
         ("Paid but still locked", "I paid {price} for the {product} on {date} and the app still shows me the subscribe screen. Restore purchases does nothing. I have the receipt from {store}."),
-        ("Premium not working after purchase", "Bought the {product} ({price}) {ago}. Every AI edit still says upgrade. Fix this or refund me."),
+        ("Premium not working after purchase", "Bought the {product} ({price}) {ago}. Every premium workout still says upgrade. Fix this or refund me."),
         ("No access after paying {price}", "Receipt says paid on {date}. App says free. I reinstalled, logged out, nothing. What now?"),
-        ("Charged but features locked", "{store} charged me {price} on {date} and Lumen still treats me as a free user. This is unacceptable, I needed the export today."),
+        ("Charged but features locked", "{store} charged me {price} on {date} and FitBuddy still treats me as a free user. This is unacceptable, I needed my training plan today."),
     ],
     "billing_issue": [
         ("Payment problem message", "Since {date} the app says there is a problem with my payment and I lost access to premium. My card works everywhere else. What is going on?"),
         ("Lost premium - billing error", "Got a notification about a billing issue on {date} and now the {product} is gone. I didn't change anything. How do I get it back?"),
-        ("Subscription stopped working", "My {product} just stopped {ago}, {store} shows some payment error. I don't want to lose my edits. Help."),
+        ("Subscription stopped working", "My {product} just stopped {ago}, {store} shows some payment error. I don't want to lose my workout history. Help."),
         ("billing issue??", "app says 'billing issue detected' since {date}. i have money on the card. fix your app"),
     ],
     "refund_request": [
@@ -245,7 +245,7 @@ TEMPLATES: dict[str, list[tuple[str, str]]] = {
         ("Want my money back", "{price} for this?? Charged on {date}. I want a full refund, I am not using it."),
         ("Refund for accidental purchase", "My kid bought the {product} ({price}) on {date} by accident. Please refund, I already removed the app."),
         ("Where is my refund", "I requested a refund through {store} for the {price} charge on {date}. Still nothing. Can you check on your side?"),
-        ("Refund please - not what I expected", "Paid {price} on {date} expecting the AI tools to work on my photos. Results are bad. I'd like a refund."),
+        ("Refund please - not what I expected", "Paid {price} on {date} expecting the AI coach to build a plan that fits me. The plans are bad. I'd like a refund."),
     ],
     "cancel_how": [
         ("How do I cancel?", "I can't find where to cancel the {product}. It renews on {renews} and I don't want to be charged again. Please cancel it for me."),
@@ -253,14 +253,14 @@ TEMPLATES: dict[str, list[tuple[str, str]]] = {
         ("Stop renewal", "I don't need the {product} anymore. I deleted the app, does that cancel it? I don't want another charge on {renews}."),
     ],
     "price_complaint": [
-        ("{price} a WEEK?", "{price} per week for a photo app is insane. I didn't notice it was weekly until the second charge. Do you have a cheaper plan?"),
+        ("{price} a WEEK?", "{price} per week for a fitness app is insane. I didn't notice it was weekly until the second charge. Do you have a cheaper plan?"),
         ("Pricing is misleading", "The price on the paywall looked like a monthly price. It's {price} every week. That's more than Netflix. Not happy."),
-        ("Too expensive", "Charged {price} again on {date}. For what, three filters? Lower the price or I'm out."),
+        ("Too expensive", "Charged {price} again on {date}. For what, three workouts? Lower the price or I'm out."),
     ],
     "other": [
-        ("App crashes on export", "Lumen {version} crashes every time I export an edited photo. I use it for {goal}. Android, latest update."),
+        ("App crashes when saving a workout", "FitBuddy {version} crashes every time I save a finished workout. Android, latest update."),
         ("Can I use it on two phones?", "Can I use my account on my tablet too? Didn't find it in the settings."),
-        ("Feature request: batch edit", "Would love to edit several photos at once with the same preset. Mostly doing {goal}."),
+        ("Feature request: workout queue", "Would love to queue several workouts in a row with the same rest timer."),
     ],
 }
 

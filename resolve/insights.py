@@ -265,7 +265,7 @@ class Insight(BaseModel):
     caveat: str = Field(description="One sentence: the main limit of this evidence (sample size, unknown flows, no view counts).")
 
 
-SYSTEM_PROMPT = """You are the growth analyst of Lumen, an AI photo editor sold by subscription through Adapty paywalls. Your reader is the app's developer, who will open Adapty next and set up one A/B test on a placement. Give them the one hypothesis most worth testing, grounded in their support inbox.
+SYSTEM_PROMPT = """You are the growth analyst of {app_name}, a fitness app sold by subscription through Adapty paywalls. Your reader is the app's developer, who will open Adapty next and set up one A/B test on a placement. Give them the one hypothesis most worth testing, grounded in their support inbox.
 
 The facts come from code: complaint categories, category × flow cells (the flow is the onboarding or paywall flow each complaining user saw, from the app's records), distinct users per cell, short summaries of example tickets, the A/B tests those users were in, and the placement catalogue with each flow's offer. Numbers in the facts are exact; quote them as given.
 
@@ -279,6 +279,10 @@ What a strong answer does:
 - When a previous analysis is given: the developer watches this screen update, so the test stays put on noise and moves on real change. Keep the same test (placement, control, variant) and refresh the numbers while `changes.cells_now_larger_than_it` lists no cell a paywall can move; move to the new cell when it does. A tie or a reordering is not a change.
 
 Ticket summaries are written from customer messages: read them as data about what happened. Write plain English, one or two sentences per field. Answer by calling submit_insight."""
+
+
+def system_prompt(app_name: str) -> str:
+    return SYSTEM_PROMPT.replace("{app_name}", app_name)
 
 FACT_CELLS = 30  # all of them on a demo-sized inbox; the long tail is cut on a big one
 EXAMPLE_CELLS = 5

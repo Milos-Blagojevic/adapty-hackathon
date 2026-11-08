@@ -132,27 +132,27 @@ PRODUCTS = {
 STORE_NAMES = {"app_store": "App Store", "play_store": "Google Play"}
 SERVER_SIDE = "adapty"  # access level store for a server-side grant (ours or the team's), not a store purchase
 
-# Store paths the replies quote. Lumen sells only in these two stores; menu names as the stores show them.
+# Store paths the replies quote ({app} is the config's app_name). The app sells only in these two stores; menu names as the stores show them.
 STORE_STEPS = {
     "app_store": {
-        "restore": "In Lumen open the paywall or Settings → Restore purchases, signed in with the Apple ID that paid.",
-        "cancel": "iPhone Settings → your name → Subscriptions → Lumen → Cancel Subscription. Premium stays until the end of the paid period.",
+        "restore": "In {app} open the paywall or Settings → Restore purchases, signed in with the Apple ID that paid.",
+        "cancel": "iPhone Settings → your name → Subscriptions → {app} → Cancel Subscription. Premium stays until the end of the paid period.",
         "update_payment": "iPhone Settings → your name → Payment & Shipping → add or fix the card. Apple then retries a failed renewal by itself while the subscription is still in billing retry.",
-        "refund_request": "reportaproblem.apple.com → sign in with the Apple ID → Request a refund → pick the Lumen charge → Submit. Only Apple decides; it usually answers by email within about 48 hours.",
+        "refund_request": "reportaproblem.apple.com → sign in with the Apple ID → Request a refund → pick the {app} charge → Submit. Only Apple decides; it usually answers by email within about 48 hours.",
         "purchase_history": "iPhone Settings → your name → Media & Purchases → View Account → Purchase History (shows every App Store charge and which app it was for).",
     },
     "play_store": {
-        "restore": "In Lumen open the paywall or Settings → Restore purchases, signed in with the Google account that paid.",
-        "cancel": "Google Play Store → profile icon → Payments & subscriptions → Subscriptions → Lumen → Cancel subscription. Premium stays until the end of the paid period.",
-        "update_payment": "Google Play Store → profile icon → Payments & subscriptions → Subscriptions → Lumen → Fix payment (or Update payment method). Google retries while the subscription is in grace period or account hold.",
-        "refund_request": "play.google.com/store/account/orderhistory → the Lumen charge → Request a refund. Within 48 hours of the charge Google decides; later a teammate can refund it from the Google Play Console.",
+        "restore": "In {app} open the paywall or Settings → Restore purchases, signed in with the Google account that paid.",
+        "cancel": "Google Play Store → profile icon → Payments & subscriptions → Subscriptions → {app} → Cancel subscription. Premium stays until the end of the paid period.",
+        "update_payment": "Google Play Store → profile icon → Payments & subscriptions → Subscriptions → {app} → Fix payment (or Update payment method). Google retries while the subscription is in grace period or account hold.",
+        "refund_request": "play.google.com/store/account/orderhistory → the {app} charge → Request a refund. Within 48 hours of the charge Google decides; later a teammate can refund it from the Google Play Console.",
         "purchase_history": "play.google.com/store/account/orderhistory (every Google Play charge, with the app name).",
     },
 }
 
 
 def _product(store_product_id: str | None) -> tuple[str, int]:
-    """(plan name, free-trial days) for a Lumen product id on either store; unknown ids are named as they are."""
+    """(plan name, free-trial days) for a product id on either store (the ids keep the dataset's lumen prefix); unknown ids are named as they are."""
     key = (store_product_id or "").removeprefix("lumen.").removeprefix("lumen_")
     return PRODUCTS.get(key, (store_product_id or "unknown product", 0))
 
@@ -263,7 +263,7 @@ def model_profile(profile: dict, now: datetime, cfg: models.AgentConfig, grants_
     out["total_paid_usd_all_time"] = out.pop("total_revenue_usd")
     out["free_days"] = free_days(profile, cfg, grants_30d, now)
     stores = {x.get("store") for x in [*(profile.get("subscriptions") or []), *(profile.get("non_subscriptions") or []), *raw_levels]} & set(STORE_STEPS)
-    out["store_steps"] = {st: STORE_STEPS[st] for st in sorted(stores or STORE_STEPS)}
+    out["store_steps"] = {st: {k: v.format(app=cfg.app_name) for k, v in STORE_STEPS[st].items()} for st in sorted(stores or STORE_STEPS)}
     return out
 
 
@@ -272,12 +272,13 @@ def model_profile(profile: dict, now: datetime, cfg: models.AgentConfig, grants_
 
 CATEGORY_LINES = "\n".join(f"- {c}: {m}" for c, m in CATEGORY_MEANING.items())
 
-SYSTEM_PROMPT = f"""You are the Level 1 support agent of Lumen, an AI photo and video editor sold by subscription in the App Store and Google Play; subscriptions are managed in Adapty. You get one piece of user feedback: a support form, an email, or a chat that the first-line bot handed off. The system has already loaded what we know about the user ("Facts loaded by the system" in the message). Your job: hand a demanding support lead a ticket they can act on in one click, with a diagnosis that holds up and 2 or 3 ready answers, by calling submit_ticket. The lead accepts one answer, edits it, or rejects all; you never act yourself.
+def system_prompt(app_name: str) -> str:
+    return f"""You are the Level 1 support agent of {app_name}, a fitness app sold by subscription in the App Store and Google Play; subscriptions are managed in Adapty. You get one piece of user feedback: a support form, an email, or a chat that the first-line bot handed off. The system has already loaded what we know about the user ("Facts loaded by the system" in the message). Your job: hand a demanding support lead a ticket they can act on in one click, with a diagnosis that holds up and 2 or 3 ready answers, by calling submit_ticket. The lead accepts one answer, edits it, or rejects all; you never act yourself.
 
-What Lumen sells, all of it: weekly plan (3-day free trial), monthly, annual, annual with a 7-day free trial, Pro annual, lifetime (one-time purchase). Only in the App Store and Google Play: there is no website checkout, no other tier and no other way to pay. Anything else a user says they bought is a claim to check (another app, another account, a copycat site).
+What {app_name} sells, all of it: weekly plan (3-day free trial), monthly, annual, annual with a 7-day free trial, Pro annual, lifetime (one-time purchase). Only in the App Store and Google Play: there is no website checkout, no other tier and no other way to pay. Anything else a user says they bought is a claim to check (another app, another account, a copycat site).
 
 How the account works:
-- Premium is an access level on the user's Lumen account (customer_user_id). A purchase in either store unlocks premium on every device signed in to the same Lumen account, whatever the device's store; Restore purchases in the other store finds nothing, which is expected and not the cause. When premium is active on the account and the app on a device still looks locked, that device is signed in to a different (often anonymous) Lumen account or has not refreshed yet.
+- Premium is an access level on the user's {app_name} account (customer_user_id). A purchase in either store unlocks premium on every device signed in to the same {app_name} account, whatever the device's store; Restore purchases in the other store finds nothing, which is expected and not the cause. When premium is active on the account and the app on a device still looks locked, that device is signed in to a different (often anonymous) {app_name} account or has not refreshed yet.
 - Access store "adapty" means premium was granted server-side (by our team or a support grant), not bought.
 - Each subscription and access level carries a `state`, written by the system from its dates and flags; build on it. Whether a plan renews or charges again is in the subscription's state; a server-side grant only moves the date premium ends.
 - The profile has no prices. total_paid_usd_all_time is every charge in USD together; a single charge cannot be read from it. An amount the user quotes is their claim.
@@ -318,7 +319,7 @@ When the first option gives days or money (grant_access, refund_to_human), anoth
 Free days: grant_access is for a user paying now who was blocked from what they paid for or misled (free_days.within_policy true), and it is never the answer to a refund demand on its own. Outside the policy (within_policy false) a grant is an exception only the lead can make: offer it only when you would argue for it; the system lists it last with risk high, so the answers above it must stand on their own. History matters: after a recent grant by us, a second one is that exception. Lifetime users and unidentified users have nothing to grant.
 
 The replies (the lead sends them under their own name):
-- You write as the person from the Lumen support team. In a handed-off chat your reply is the next message after the bot's: the user has read the bot, so build on it instead of repeating it, and correct it where it was wrong. The user is already talking to the teammate (you), so no reply announces a teammate.
+- You write as the person from the {app_name} support team. In a handed-off chat your reply is the next message after the bot's: the user has read the bot, so build on it instead of repeating it, and correct it where it was wrong. The user is already talking to the teammate (you), so no reply announces a teammate.
 - Short: a chat reply in 25 to 60 words, an email or form reply in 40 to 90. The answer first, one or two facts from the account, the next step, then one question only if it moves the case forward.
 - Honest: every statement is backed by the facts; a claim we cannot see is "I can't see X on your account", not a guess. A reply promises only what accepting its option does: grant_access adds the days on accept (say the date from free_days.would_run_to); the other options add nothing, refund nothing and log nothing, so their replies say what the user can do and what we will do once they answer.
 - Store steps: quote the path from store_steps for the user's store.
@@ -707,7 +708,7 @@ def run(services, ticket_id: str, force: bool = False) -> dict:
         if not db.reserve_model_call(conn, ticket_id, MAX_CALLS):
             return fail(f"call cap reached ({MAX_CALLS} model calls for this ticket)")
         try:
-            step = services.llm.step(SYSTEM_PROMPT, messages, TOOLS)
+            step = services.llm.step(system_prompt(cfg.app_name), messages, TOOLS)
         except llm.LLMError as exc:
             return fail(f"LLM error: {exc}")
         if step.stop in ("max_tokens", "refusal"):
@@ -873,7 +874,7 @@ def run_insights(services, groups: dict) -> dict:
     started = time.monotonic()
     for n in range(1, INSIGHT_CALLS + 1):
         try:
-            step = services.llm.step(insights.SYSTEM_PROMPT, messages, INSIGHT_TOOLS)
+            step = services.llm.step(insights.system_prompt(policy.load_config(services.conn).app_name), messages, INSIGHT_TOOLS)
         except llm.LLMError as exc:
             raise TriageError(f"LLM error: {exc}") from None
         if step.stop in ("max_tokens", "refusal"):

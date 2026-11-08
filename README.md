@@ -25,9 +25,9 @@ cp .env.example .env          # fill in the keys (see the comments in the file)
 python -m resolve --port 8010 # http://127.0.0.1:8010/ui · closing screen: /impact
 ```
 
-`.env`: `ADAPTY_SECRET_KEY` (the Lumen app), and either `ANTHROPIC_API_KEY` or `OPENAI_API_KEY` + `OPENAI_MODEL` (+ `OPENAI_BASE_URL`, e.g. DeepSeek `https://api.deepseek.com` with `OPENAI_EXTRA_BODY={"thinking": {"type": "disabled"}}`). `LLM_PROVIDER=auto` picks the provider whose keys are set; the Agent settings page can switch it.
+`.env`: `ADAPTY_SECRET_KEY` (the demo app, seeded from the organisers' Lumen dataset), and either `ANTHROPIC_API_KEY` or `OPENAI_API_KEY` + `OPENAI_MODEL` (+ `OPENAI_BASE_URL`, e.g. DeepSeek `https://api.deepseek.com` with `OPENAI_EXTRA_BODY={"thinking": {"type": "disabled"}}`). `LLM_PROVIDER=auto` picks the provider whose keys are set; the Agent settings page can switch it.
 
-Demo users: tickets and test cases use the team's seeded Lumen users (`lumen_443814_…`). To use another teammate's Adapty app, copy exactly those users into it (same ids, dates and purchases, with the organisers' seeder code): `python scripts/seed_demo_profiles.py --yes` (`--one` first to check). Then `python scripts/import_feedback.py` adds our 12 hard cases.
+Demo users: tickets and test cases use the team's seeded demo users (`lumen_443814_…`). To use another teammate's Adapty app, copy exactly those users into it (same ids, dates and purchases, with the organisers' seeder code): `python scripts/seed_demo_profiles.py --yes` (`--one` first to check). Then `python scripts/import_feedback.py` adds our 12 hard cases.
 
 The phone app and the mock APK (`mobile-mock/`) call `POST /chat` on `http://<laptop-LAN-IP>:8010`: start the server with `--host 0.0.0.0` only for the demo, the API has no auth. Keyless: `DEMO_MODE=1 python -m resolve` serves a snapshot and calls nothing. `RESOLVE_DB=path` runs on another SQLite file (we demo on a copy without the untriaged seed tickets).
 
@@ -35,7 +35,7 @@ Tests (no network, no keys): `python -m pytest`. Contract: `docs/openapi.json` (
 
 Insights (`static/ui/Insights.dc.html`, the Insights tab between Analyze and Impact): triaged complaints by category, product and the paywall the user saw, a hypothesis from the model and a draft A/B test in Adapty (a draft only; nothing starts). It updates live: the screen polls `GET /api/insights` every 2.5 s, and when the top issue, the top paywall or a share (5 points) moves, the hypothesis re-runs on its own after 3 s of quiet, at most one run at a time, 20 s apart and 10 an hour; the old one stays under "Before". Each run is a paid model call: `INSIGHTS_AUTO=0` turns the auto runs off, Run stays. Drafts are only ever made by the Draft button. Keyless: `?mock=1` (design sample data), `?mock=1&sim=1` (new tickets every 3 s, canned hypothesis).
 
-`/impact` is the last screen of the demo: how big the problem is (2026 review studies and benchmark reports), the Lumen numbers from the organisers' dataset, what Resolve changes and what Adapty gets, with every source linked and the assumptions stated. Static, numbers baked in, works keyless: shown inside the support UI's shell (`static/ui/Impact.dc.html`, same layout and text, our colours; the Impact tab); Milos's standalone original stays at `/static/impact.html`.
+`/impact` is the last screen of the demo: how big the problem is (2026 review studies and benchmark reports), the FitBuddy numbers from the organisers' dataset, what Resolve changes and what Adapty gets, with every source linked and the assumptions stated. Static, numbers baked in, works keyless: shown inside the support UI's shell (`static/ui/Impact.dc.html`, same layout and text, our colours; the Impact tab); Milos's standalone original stays at `/static/impact.html`.
 
 ## What is real and what is mocked
 
