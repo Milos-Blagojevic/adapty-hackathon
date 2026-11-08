@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pydantic
 from fastapi import FastAPI, Form, HTTPException, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
@@ -114,6 +114,11 @@ def create_app(
         if ticket is None:
             raise HTTPException(404, f"no ticket {ticket_id}")
         return ticket
+
+    @app.get("/ui", include_in_schema=False)
+    def ui_home():
+        """The support web UI (Claude Design screens in static/ui, wired to the JSON API)."""
+        return RedirectResponse("/static/ui/Main.dc.html")
 
     @app.get("/", response_class=HTMLResponse)
     def inbox(request: Request, status: str | None = None):

@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Adapty · Incoming</title>
+<script src="./api.js"></script>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#f6f6f4}
+*{box-sizing:border-box}
+a{color:#5b3cf0;text-decoration:none}
+a:hover{color:#4527d6}
+button,input,select,textarea{font-family:Inter,system-ui,-apple-system,sans-serif}
+:focus-visible{outline:2px solid #6247f5;outline-offset:2px}
+input::placeholder{color:#8b8b94}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.nl{display:inline-flex;align-items:center;gap:6px;height:38px;padding:0 13px;border-radius:9px;border:0;background:transparent;font-size:14.5px;font-weight:500;color:#3f3f46;cursor:pointer;transition:background .15s,color .15s}
+.nl:hover{background:#ededef;color:#18181b}
+.nl.on{background:#efedfb;color:#5b3cf0}
+.nl svg{transition:transform .2s}
+.nl.open{background:#ededef;color:#18181b}
+.nl.open svg{transform:rotate(180deg)}
+.btn{display:inline-flex;align-items:center;gap:8px;height:38px;padding:0 14px 0 12px;border-radius:10px;background:#fff;color:#18181b;font-size:14px;font-weight:500;border:1px solid #e4e4e7;box-shadow:0 1px 2px rgba(24,24,27,.04);transition:border-color .15s,box-shadow .15s}
+.btn:hover{border-color:#d4d4d8;color:#18181b;box-shadow:0 2px 6px rgba(24,24,27,.06)}
+.btn svg{color:#6247f5}
+.tile{flex:0 0 auto;width:40px;height:40px;border-radius:10px;background:#fff;border:1px solid #e7e7ea;box-shadow:0 1px 2px rgba(24,24,27,.05);display:flex;align-items:center;justify-content:center;color:#3f3f46;transition:border-color .15s,color .15s}
+.mi{display:flex;align-items:center;gap:14px;padding:8px 10px;margin:0 -10px;border-radius:12px;color:#18181b;font-size:15.5px;font-weight:500;transition:background .15s}
+.mi:hover{background:#f6f6f7;color:#18181b}
+.mi:hover .tile{border-color:#d9d6f5;color:#5b3cf0}
+.kicker{margin:0;font-size:12px;font-weight:500;letter-spacing:.09em;text-transform:uppercase;color:#71717a}
+.pop{animation:pop .18s ease-out}
+@keyframes pop{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+.tab{position:relative;height:36px;background:none;border:0;padding:0;color:#71717a;font-size:15px;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;gap:7px;transition:color .15s}
+.tab:hover{color:#18181b}
+.tab.on{color:#18181b;font-weight:600}
+.tab.on::after{content:"";position:absolute;left:0;right:0;bottom:0;height:2px;border-radius:2px;background:#6247f5}
+.cnt-red{color:#d63a3f;font-weight:600;font-variant-numeric:tabular-nums}
+.cnt-green{color:#15803d;font-weight:600;font-variant-numeric:tabular-nums}
+.find{display:flex;align-items:center;gap:10px;width:300px;max-width:100%;height:40px;padding:0 6px 0 13px;border-radius:10px;background:#fff;border:1px solid #e4e4e7;color:#71717a;transition:width .22s ease, border-color .15s, box-shadow .15s}
+.find:focus-within{width:420px;border-color:#cbc3fb;box-shadow:0 0 0 4px rgba(98,71,245,.10);color:#6247f5}
+.row{display:grid;grid-template-columns:10px minmax(120px,200px) minmax(0,1fr) 18px 44px;align-items:center;column-gap:18px;height:50px;padding:0 24px;border-top:1px solid #f1f1f3;color:#52525b;font-size:14.5px;font-weight:400;transition:background .12s}
+.row:hover{background:#faf9ff;color:#52525b}
+.row.bold{color:#18181b;font-weight:600}
+.row .subj{color:#27272a}
+.row.bold .subj{color:#18181b}
+.row .age{font-size:13px;color:#8b8b94;font-weight:500;text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+.row.bold .age{color:#18181b;font-weight:600}
+.row .cont{color:#8b8b94;font-weight:400}
+.row .src{color:#a1a1aa;display:flex}
+.cell{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%}
+.dot-ready{background:#6247f5;box-shadow:0 0 0 3px rgba(98,71,245,.14)}
+.dot-triage{border:1.5px solid #a1a1aa}
+.dot-closed{background:#16a34a}
+.dot-dismissed{background:#c4c4cc}
+mark{background:#ece7ff;color:#3b1fc2;border-radius:4px;padding:0 2px}
+.linkbtn{background:none;border:0;padding:0;color:#5b3cf0;font-size:14px;font-weight:500;cursor:pointer}
+.linkbtn:hover{color:#4527d6}
+.backdrop{position:fixed;inset:0;border:0;padding:0;background:transparent;cursor:default;z-index:20}
+</style>
+</helmet>
+<div style="min-height: 100vh; background: #f6f6f4; color: #18181b; font-family: Inter, system-ui, -apple-system, sans-serif; font-size: 14.5px; line-height: 1.5; -webkit-font-smoothing: antialiased">
+
+<sc-if value="{{ menu }}" hint-placeholder-val="{{ false }}">
+<button type="button" class="backdrop" aria-label="Close menu" onClick="{{ closeMenu }}"></button>
+</sc-if>
+
+<header style="position: relative; z-index: 30; max-width: 1200px; margin: 0 auto; padding: 14px 24px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 28px">
+<a href="Main.dc.html" style="font-size: 19px; font-weight: 700; letter-spacing: -0.03em; color: #18181b">Adapty</a>
+<nav aria-label="Main" style="display: flex; flex-wrap: wrap; align-items: center; gap: 2px; flex: 1 1 auto; min-width: 0">
+<a href="Main.dc.html" class="nl on" aria-current="page">Incoming</a>
+<a href="Chat.dc.html" class="nl">Chat</a>
+<a href="Settings.dc.html" class="nl">Agent settings</a>
+<a href="Analyze.dc.html" class="nl">Analyze</a>
+<button type="button" class="{{ menuCls }}" aria-expanded="{{ menu }}" aria-controls="catalogue" onClick="{{ toggleMenu }}">Screens<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg></button>
+</nav>
+<a href="NewFeedback.dc.html" class="btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>New feedback</a>
+
+<sc-if value="{{ menu }}" hint-placeholder-val="{{ false }}">
+<div id="catalogue" class="pop" style="position: absolute; top: 64px; left: 24px; right: 24px; padding: 6px; border-radius: 18px; background: #f7f7f8; border: 1px solid #e7e7ea; box-shadow: 0 30px 70px -20px rgba(24,24,27,.26), 0 2px 6px rgba(24,24,27,.04); display: grid; grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr)); gap: 6px">
+<section style="background: #fff; border: 1px solid #efeff1; border-radius: 13px; padding: 20px 22px 14px; display: flex; flex-direction: column; gap: 10px">
+<p class="kicker">Support desk</p>
+<div style="display: flex; flex-direction: column; gap: 2px">
+<a href="Main.dc.html" class="mi"><span class="tile"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 13l2.5-7.5A2 2 0 0 1 7.4 4h9.2a2 2 0 0 1 1.9 1.5L21 13v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><path d="M3 13h5l1.5 2.5h5L16 13h5"></path></svg></span>Incoming</a>
+<a href="Ticket.dc.html" class="mi"><span class="tile"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9l9-6 9 6v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><path d="M3 9l9 6 9-6"></path></svg></span>Ticket</a>
+<a href="NewFeedback.dc.html" class="mi"><span class="tile"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"></path><path d="M13.5 6.5l4 4"></path></svg></span>New feedback</a>
+<a href="Reopen.dc.html" class="mi"><span class="tile"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"></path><path d="M3 3v5h5"></path></svg></span>Reopen ticket</a>
+</div>
+</section>
+<section style="background: #fff; border: 1px solid #efeff1; border-radius: 13px; padding: 20px 22px 14px; display: flex; flex-direction: column; gap: 10px">
+<p class="kicker">In-app agent</p>
+<div style="display: flex; flex-direction: column; gap: 2px">
+<a href="Chat.dc.html" class="mi"><span class="tile"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 12a8 8 0 0 1-11.6 7.1L4 20l1-4.1A8 8 0 1 1 20 12z"></path></svg></span>Test chat</a>
+<a href="Settings.dc.html" class="mi"><span class="tile"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"></path><circle cx="16" cy="7" r="2"></circle><circle cx="10" cy="17" r="2"></circle></svg></span>Agent settings</a>
+</div>
+</section>
+<section style="background: #fff; border: 1px solid #efeff1; border-radius: 13px; padding: 20px 22px 14px; display: flex; flex-direction: column; gap: 10px">
+<p class="kicker">Numbers</p>
+<div style="display: flex; flex-direction: column; gap: 2px">
+<a href="Analyze.dc.html" class="mi"><span class="tile"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 20V11M11 20V5M17 20v-6M3 20h18"></path></svg></span>Analyze</a>
+<a href="States.dc.html" class="mi"><span class="tile"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l9 5-9 5-9-5z"></path><path d="M3 13l9 5 9-5"></path></svg></span>States and motion</a>
+<a href="Catalogue.dc.html" class="mi"><span class="tile"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="3" width="7" height="7" rx="1.5"></rect><rect x="3" y="14" width="7" height="7" rx="1.5"></rect><rect x="14" y="14" width="7" height="7" rx="1.5"></rect></svg></span>All screens</a>
+</div>
+</section>
+</div>
+</sc-if>
+</header>
+
+<main style="max-width: 1200px; margin: 0 auto; padding: 28px 24px 64px; display: flex; flex-direction: column; gap: 18px">
+<div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px 24px">
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px 32px">
+<h1 style="margin: 0; font-size: 28px; font-weight: 600; letter-spacing: -0.03em; line-height: 1.1">Incoming</h1>
+<div role="tablist" aria-label="Ticket status" style="display: flex; align-items: center; gap: 22px">
+<button type="button" role="tab" aria-selected="{{ openSel }}" class="{{ openCls }}" onClick="{{ toOpen }}">Open <span class="cnt-red">{{ openCount }}</span></button>
+<button type="button" role="tab" aria-selected="{{ closedSel }}" class="{{ closedCls }}" onClick="{{ toClosed }}">Closed <span class="cnt-green">{{ closedCount }}</span></button>
+</div>
+</div>
+<form role="search" class="find" onSubmit="{{ noSubmit }}">
+<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"></circle><path d="M20 20l-4-4"></path></svg>
+<label for="q" class="sr">Search tickets and chats</label>
+<input id="q" type="text" autocomplete="off" placeholder="Search tickets and chats" value="{{ q }}" onChange="{{ onQ }}" onKeyDown="{{ onKey }}" style="flex: 1; min-width: 0; height: 100%; background: transparent; border: 0; outline: none; color: #18181b; font-size: 14.5px">
+<sc-if value="{{ hasQ }}" hint-placeholder-val="{{ false }}">
+<button type="button" aria-label="Clear search" onClick="{{ clearQ }}" style="flex: 0 0 auto; width: 28px; height: 28px; border-radius: 7px; border: 0; background: #f4f4f5; color: #52525b; cursor: pointer; display: flex; align-items: center; justify-content: center"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
+</sc-if>
+</form>
+</div>
+
+<section aria-label="Tickets" style="background: #fff; border: 1px solid #e9e9ec; border-radius: 16px; box-shadow: 0 1px 2px rgba(24,24,27,.04); overflow: hidden">
+<sc-for list="{{ groups }}" as="g" hint-placeholder-count="2">
+<div style="display: flex; flex-direction: column">
+<p class="kicker" style="padding: 18px 24px 10px">{{ g.label }}</p>
+<div role="list" style="display: flex; flex-direction: column">
+<sc-for list="{{ g.rows }}" as="t" hint-placeholder-count="4">
+<a href="Ticket.dc.html" role="listitem" class="{{ t.cls }}">
+<span class="{{ t.dotCls }}"><span class="sr">{{ t.stateWord }}</span></span>
+<span class="cell">{{ t.user }}</span>
+<span class="cell"><span class="subj"><sc-for list="{{ t.subj }}" as="p"><sc-if value="{{ p.hit }}"><mark>{{ p.t }}</mark></sc-if><sc-if value="{{ p.miss }}"><span>{{ p.t }}</span></sc-if></sc-for></span><span class="cont">  ·  <sc-for list="{{ t.cont }}" as="p"><sc-if value="{{ p.hit }}"><mark>{{ p.t }}</mark></sc-if><sc-if value="{{ p.miss }}"><span>{{ p.t }}</span></sc-if></sc-for></span></span>
+<span class="src" title="{{ t.srcWord }}">
+<sc-if value="{{ t.isChat }}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 12a8 8 0 0 1-11.6 7.1L4 20l1-4.1A8 8 0 1 1 20 12z"></path></svg></sc-if>
+<sc-if value="{{ t.isEmail }}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="M3 7l9 6 9-6"></path></svg></sc-if>
+<sc-if value="{{ t.isForm }}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"></path><path d="M14 3v5h5M9 13h6M9 17h4"></path></svg></sc-if>
+<span class="sr">{{ t.srcWord }}</span>
+</span>
+<span class="age">{{ t.age }}</span>
+</a>
+</sc-for>
+</div>
+</div>
+</sc-for>
+
+<sc-if value="{{ emptyOpen }}" hint-placeholder-val="{{ false }}">
+<div style="padding: 80px 24px; display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center">
+<p style="margin: 0; font-size: 17px; font-weight: 600">Nothing waiting.</p>
+<p style="margin: 0; color: #71717a">Level 2 is handling the chats.</p>
+</div>
+</sc-if>
+<sc-if value="{{ noResults }}" hint-placeholder-val="{{ false }}">
+<div style="padding: 72px 24px; display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center">
+<p style="margin: 0; font-size: 17px; font-weight: 600">No tickets match “{{ q }}”</p>
+<p style="margin: 0; color: #71717a">Search looks in subjects, users, messages and chat text.</p>
+<button type="button" class="linkbtn" onClick="{{ clearQ }}">Clear search</button>
+</div>
+</sc-if>
+</section>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+var TICKETS = [
+  { id: 'f-0019', status: 'triaging', source: 'chat', user: 'lumen_771204_33018', subject: 'Charged after free trial', action: 'Agent is looking into it', age: '1m', text: 'I never wanted the weekly plan, the trial just charged me this morning without asking.' },
+  { id: 'f-0018', status: 'triaging', source: 'chat', user: 'lumen_588102_17733', subject: 'Restore purchases does nothing', action: 'Agent is looking into it', age: '2m', text: 'New phone, pressed restore, still the free version. Same Google account as before.' },
+  { id: 'f-0013', status: 'ready', source: 'chat', user: 'lumen_443814_02380', subject: 'Wants another free week after compensation', action: 'Reply, no action', age: '4m', text: 'Hi, the trial thing again, I still feel tricked by the weekly charge. Give me another week for free then. Or a month.' },
+  { id: 'f-0017', status: 'triaging', source: 'email', user: 'dusan.p@outlook.com', subject: 'Lifetime but filters broken', action: 'Agent is looking into it', age: '6m', text: 'Bought lifetime last year, now the film filters say Premium only.' },
+  { id: 'f-0016', status: 'triaging', source: 'form', user: 'lumen_209331_50127', subject: 'Trial did not start on iPad', action: 'Agent is looking into it', age: '9m', text: 'It asked me to pay right away, there was no 7 day trial on my iPad.' },
+  { id: 'f-0012', status: 'ready', source: 'email', user: 'maria.k@gmail.com', subject: 'Refund for annual plan, threatens chargeback', action: 'Send App Store refund steps', age: '18m', text: 'I want my money back for the annual plan or I will dispute it with my bank.' },
+  { id: 'f-0011', status: 'ready', source: 'chat', user: 'lumen_120977_44410', subject: 'Paid but still locked', action: 'Grant 3 days while the store syncs', age: '32m', text: 'I paid for monthly an hour ago but premium is still locked.' },
+  { id: 'f-0010', status: 'ready', source: 'form', user: 'unknown user', subject: 'Where is my money', action: 'Ask for the store receipt', age: '1h', text: 'You took money from my card and I do not even know what for.' },
+  { id: 'f-0008', status: 'closed', source: 'chat', user: 'lumen_301455_90021', subject: 'How do I cancel? (Serbian)', action: 'Sent cancel steps · App Store, in Serbian', age: 'Nov 6', text: 'Kako da otkažem pretplatu? Ne želim više da plaćam.' },
+  { id: 'f-0007', status: 'dismissed', source: 'form', user: 'unknown user', subject: 'Test from the feedback form', action: 'Closed without a reply', age: 'Nov 6', text: 'test test 123' }
+];
+var WORD = { ready: 'Waiting for a person', triaging: 'Agent is triaging', closed: 'Closed', dismissed: 'Dismissed' };
+var DOT = { ready: 'dot dot-ready', triaging: 'dot dot-triage', closed: 'dot dot-closed', dismissed: 'dot dot-dismissed' };
+var SRC = { chat: 'Chat handoff', email: 'Email', form: 'Form' };
+
+function plain(s) { return [{ t: s, hit: false, miss: true }]; }
+function mark(s, q, around) {
+  var i = s.toLowerCase().indexOf(q.toLowerCase());
+  if (i < 0) return null;
+  var start = around ? Math.max(0, i - 32) : 0;
+  var pre = (start > 0 ? '…' : '') + s.slice(start, i);
+  var out = [];
+  if (pre) out.push({ t: pre, hit: false, miss: true });
+  out.push({ t: s.slice(i, i + q.length), hit: true, miss: false });
+  var post = s.slice(i + q.length);
+  if (post) out.push({ t: post, hit: false, miss: true });
+  return out;
+}
+
+class Component extends DCLogic {
+  renderVals() {
+    var s = this.state || {};
+    var self = this;
+    var tab = s.tab || 'open';
+    var q = (s.q || '').trim();
+    var isOpen = function (t) { return t.status === 'ready' || t.status === 'triaging'; };
+    var matches = function (t) {
+      if (!q) return true;
+      return (t.subject + ' ' + t.user + ' ' + t.text + ' ' + t.action).toLowerCase().indexOf(q.toLowerCase()) >= 0;
+    };
+    var shape = function (t) {
+      var subj = (q && mark(t.subject, q, false)) || plain(t.subject);
+      var cont = plain(t.action);
+      if (q) cont = mark(t.text, q, true) || mark(t.action, q, false) || plain(t.action);
+      return {
+        cls: t.status === 'ready' ? 'row bold' : 'row',
+        dotCls: DOT[t.status],
+        stateWord: WORD[t.status],
+        user: t.user, subj: subj, cont: cont, age: t.age,
+        isChat: t.source === 'chat', isEmail: t.source === 'email', isForm: t.source === 'form',
+        srcWord: SRC[t.source]
+      };
+    };
+    var openList = TICKETS.filter(function (t) { return isOpen(t) && matches(t); });
+    var closedList = TICKETS.filter(function (t) { return !isOpen(t) && matches(t); });
+    var groups = [];
+    if (tab === 'open') {
+      var waiting = openList.filter(function (t) { return t.status === 'ready'; }).map(shape);
+      var triaging = openList.filter(function (t) { return t.status === 'triaging'; }).map(shape);
+      if (waiting.length) groups.push({ label: 'Waiting for you', rows: waiting });
+      if (triaging.length) groups.push({ label: 'Agent is triaging', rows: triaging });
+    } else if (closedList.length) {
+      groups.push({ label: 'Closed', rows: closedList.map(shape) });
+    }
+    var shown = tab === 'open' ? openList.length : closedList.length;
+    var menu = !!s.menu;
+    return {
+      q: s.q || '',
+      hasQ: !!q,
+      groups: groups,
+      openCount: openList.length,
+      closedCount: closedList.length,
+      openSel: tab === 'open',
+      closedSel: tab === 'closed',
+      openCls: tab === 'open' ? 'tab on' : 'tab',
+      closedCls: tab === 'closed' ? 'tab on' : 'tab',
+      emptyOpen: !q && tab === 'open' && shown === 0,
+      noResults: !!q && shown === 0,
+      menu: menu,
+      menuCls: menu ? 'nl open' : 'nl',
+      onQ: function (e) { self.setState({ q: e.target.value }); },
+      onKey: function (e) { if (e.key === 'Escape') self.setState({ q: '' }); },
+      clearQ: function () { self.setState({ q: '' }); },
+      noSubmit: function (e) { e.preventDefault(); },
+      toggleMenu: function () { self.setState({ menu: !menu }); },
+      closeMenu: function () { self.setState({ menu: false }); },
+      toOpen: function () { self.setState({ tab: 'open' }); },
+      toClosed: function () { self.setState({ tab: 'closed' }); }
+    };
+  }
+}
+</script>
+</body>
+</html>

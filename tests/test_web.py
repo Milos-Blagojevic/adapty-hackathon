@@ -35,3 +35,15 @@ def test_insights_groups_by_agent_category_and_store_product():
     assert groups["by_category"] == [{"category": "charged_after_trial", "count": 2}]
     assert groups["by_category_product"]["charged_after_trial"] == {"weekly": 2}
     assert (groups["top_category"], groups["top_flow"], groups["top_placement"]) == ("charged_after_trial", "onb_weekly", "onboarding")
+
+
+def test_ui_redirects_to_the_design_screens(tmp_path):
+    from fastapi.testclient import TestClient
+
+    from resolve.web import create_app
+
+    client = TestClient(create_app(tmp_path / "ui.sqlite", demo=True))
+    r = client.get("/ui", follow_redirects=False)
+    assert r.status_code in (302, 307) and r.headers["location"] == "/static/ui/Main.dc.html"
+    page = client.get("/static/ui/Main.dc.html")
+    assert page.status_code == 200 and "support.js" in page.text

@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Adapty · New feedback</title>
+<script src="./api.js"></script>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#f6f6f4}
+*{box-sizing:border-box}
+a{color:#5b3cf0;text-decoration:none}
+a:hover{color:#4527d6}
+button,input,select,textarea{font-family:Inter,system-ui,-apple-system,sans-serif}
+:focus-visible{outline:2px solid #6247f5;outline-offset:2px}
+input::placeholder,textarea::placeholder{color:#8b8b94}
+.nl{display:inline-flex;align-items:center;gap:6px;height:38px;padding:0 13px;border-radius:9px;font-size:14.5px;font-weight:500;color:#3f3f46;transition:background .15s,color .15s}
+.nl:hover{background:#ededef;color:#18181b}
+.btn{display:inline-flex;align-items:center;gap:8px;height:38px;padding:0 14px 0 12px;border-radius:10px;background:#efedfb;color:#5b3cf0;font-size:14px;font-weight:500;border:1px solid #e2ddfb}
+.card{background:#fff;border:1px solid #e9e9ec;border-radius:16px;box-shadow:0 1px 2px rgba(24,24,27,.04)}
+.lbl{display:flex;flex-direction:column;gap:6px;font-size:13.5px;font-weight:500;color:#3f3f46}
+.inp{height:40px;padding:0 12px;border-radius:10px;border:1px solid #e4e4e7;background:#fff;color:#18181b;font-size:14.5px}
+.inp:focus,.ta:focus{outline:none;border-color:#b9aefb;box-shadow:0 0 0 3px rgba(98,71,245,.10)}
+.ta{min-height:170px;padding:12px 14px;border-radius:10px;border:1px solid #e4e4e7;background:#fff;color:#18181b;font-size:15px;line-height:1.55;resize:vertical}
+.bad{border-color:#f0a3a6}
+.seg{display:inline-flex;padding:3px;border-radius:10px;background:#f1f1f3;gap:2px}
+.seg button{height:34px;padding:0 16px;border-radius:8px;border:0;background:transparent;color:#52525b;font-size:14px;font-weight:500;cursor:pointer}
+.seg button.on{background:#fff;color:#18181b;box-shadow:0 1px 2px rgba(24,24,27,.12)}
+.primary{height:40px;padding:0 20px;border-radius:10px;border:1px solid #5235e8;background:#6247f5;color:#fff;font-size:14.5px;font-weight:600;cursor:pointer;box-shadow:inset 0 1px 0 rgba(255,255,255,.2)}
+.primary:hover{background:#5638ee}
+.done{animation:in .24s ease-out}
+@keyframes in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+</style>
+</helmet>
+<div style="min-height: 100vh; background: #f6f6f4; color: #18181b; font-family: Inter, system-ui, -apple-system, sans-serif; font-size: 14.5px; line-height: 1.5; -webkit-font-smoothing: antialiased">
+<header style="max-width: 1200px; margin: 0 auto; padding: 14px 24px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 28px">
+<a href="Main.dc.html" style="font-size: 19px; font-weight: 700; letter-spacing: -0.03em; color: #18181b">Adapty</a>
+<nav aria-label="Main" style="display: flex; flex-wrap: wrap; align-items: center; gap: 2px; flex: 1 1 auto; min-width: 0">
+<a href="Main.dc.html" class="nl">Incoming</a>
+<a href="Chat.dc.html" class="nl">Chat</a>
+<a href="Settings.dc.html" class="nl">Agent settings</a>
+<a href="Analyze.dc.html" class="nl">Analyze</a>
+<a href="Catalogue.dc.html" class="nl">Screens</a>
+</nav>
+<span class="btn" aria-current="page"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>New feedback</span>
+</header>
+
+<main style="max-width: 680px; margin: 0 auto; padding: 20px 24px 80px; display: flex; flex-direction: column; gap: 18px">
+<a href="Main.dc.html" style="display: inline-flex; align-items: center; gap: 6px; align-self: flex-start; font-size: 13.5px; font-weight: 500; color: #52525b"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5M11 6l-6 6 6 6"></path></svg>Incoming</a>
+<div style="display: flex; flex-direction: column; gap: 4px">
+<h1 style="margin: 0; font-size: 28px; font-weight: 600; letter-spacing: -0.03em; line-height: 1.1">New feedback</h1>
+<p style="margin: 0; color: #52525b; font-size: 15px">Add a message from a form or an email. The agent triages it like any other ticket.</p>
+</div>
+
+<sc-if value="{{ editing }}" hint-placeholder-val="{{ true }}">
+<form class="card" onSubmit="{{ submit }}" style="padding: 24px; display: flex; flex-direction: column; gap: 18px">
+<label class="lbl">What the user wrote
+<textarea class="{{ msgCls }}" placeholder="Paste the message as it came in" value="{{ msg }}" onChange="{{ onMsg }}"></textarea>
+<sc-if value="{{ msgErr }}"><span style="font-size: 13px; color: #d63a3f">Add the user's message.</span></sc-if>
+</label>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr)); gap: 16px">
+<label class="lbl">From<input class="inp" type="text" placeholder="User id or email" value="{{ from }}" onChange="{{ onFrom }}"></label>
+<div class="lbl"><span id="src-l">Source</span>
+<div class="seg" role="radiogroup" aria-labelledby="src-l">
+<button type="button" role="radio" aria-checked="{{ isForm }}" class="{{ formCls }}" onClick="{{ toForm }}">Form</button>
+<button type="button" role="radio" aria-checked="{{ isEmail }}" class="{{ emailCls }}" onClick="{{ toEmail }}">Email</button>
+</div>
+</div>
+</div>
+<label class="lbl">Subject<input class="inp" type="text" placeholder="Short summary, optional" value="{{ subject }}" onChange="{{ onSubject }}"></label>
+<div style="display: flex; align-items: center; gap: 16px; padding-top: 4px">
+<button type="submit" class="primary">Send to Incoming</button>
+<a href="Main.dc.html" style="font-size: 14px; font-weight: 500; color: #71717a">Cancel</a>
+</div>
+</form>
+</sc-if>
+
+<sc-if value="{{ sent }}" hint-placeholder-val="{{ false }}">
+<section class="card done" style="padding: 24px; display: flex; flex-direction: column; gap: 8px">
+<p style="margin: 0; display: inline-flex; align-items: center; gap: 8px; font-size: 16px; font-weight: 600"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.2 4.2L19 7"></path></svg>Added to Incoming</p>
+<p style="margin: 0; color: #52525b">The agent is triaging it now. It shows up in bold once it needs you.</p>
+<div style="display: flex; gap: 18px; margin-top: 6px"><a href="Main.dc.html" style="font-weight: 500">Open Incoming</a><button type="button" onClick="{{ again }}" style="background: none; border: 0; padding: 0; color: #5b3cf0; font-size: 14.5px; font-weight: 500; cursor: pointer">Add another</button></div>
+</section>
+</sc-if>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":820}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var self = this;
+    var s = this.state || {};
+    var src = s.src || 'form';
+    var msg = s.msg || '';
+    var err = !!s.tried && !msg.trim();
+    return {
+      editing: !s.sent, sent: !!s.sent,
+      msg: msg, from: s.from || '', subject: s.subject || '',
+      msgErr: err, msgCls: err ? 'ta bad' : 'ta',
+      onMsg: function (e) { self.setState({ msg: e.target.value }); },
+      onFrom: function (e) { self.setState({ from: e.target.value }); },
+      onSubject: function (e) { self.setState({ subject: e.target.value }); },
+      isForm: src === 'form', isEmail: src === 'email',
+      formCls: src === 'form' ? 'on' : '', emailCls: src === 'email' ? 'on' : '',
+      toForm: function () { self.setState({ src: 'form' }); },
+      toEmail: function () { self.setState({ src: 'email' }); },
+      submit: function (e) { e.preventDefault(); if (!msg.trim()) { self.setState({ tried: true }); return; } self.setState({ sent: true }); },
+      again: function () { self.setState({ sent: false, tried: false, msg: '', from: '', subject: '' }); }
+    };
+  }
+}
+</script>
+</body>
+</html>

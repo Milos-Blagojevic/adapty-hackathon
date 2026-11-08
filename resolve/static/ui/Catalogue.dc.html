@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Support · All screens</title>
+<script src="./api.js"></script>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#f6f6f4}
+*{box-sizing:border-box}
+a{color:#5b3cf0;text-decoration:none}
+a:hover{color:#4527d6}
+:focus-visible{outline:2px solid #6247f5;outline-offset:2px}
+.nl{display:inline-flex;align-items:center;gap:6px;height:40px;padding:0 14px;border-radius:10px;font-size:15px;font-weight:500;color:#27272a;transition:background .15s,color .15s}
+.nl:hover{background:#efeff1;color:#18181b}
+.nl.on{background:#efedfb;color:#5b3cf0}
+.btn{display:inline-flex;align-items:center;gap:8px;height:38px;padding:0 14px 0 12px;border-radius:10px;background:#fff;color:#18181b;font-size:14px;font-weight:500;border:1px solid #e4e4e7;box-shadow:0 1px 2px rgba(24,24,27,.04)}
+.btn:hover{border-color:#d4d4d8;color:#18181b}
+.btn svg{color:#6247f5}
+.halftone{background:radial-gradient(rgba(255,255,255,.38) 0.8px, transparent 1.3px) 0 0/5px 5px, radial-gradient(circle at 30% 20%, #8e74ff, #4a22e0 60%, #2a0fa0)}
+.tile{flex:0 0 auto;width:44px;height:44px;border-radius:11px;background:#fff;border:1px solid #e7e7ea;box-shadow:0 1px 2px rgba(24,24,27,.05);display:flex;align-items:center;justify-content:center;color:#3f3f46;transition:border-color .15s,color .15s}
+.mi{display:flex;align-items:center;gap:16px;padding:10px 12px;margin:0 -12px;border-radius:12px;color:#18181b;transition:background .15s}
+.mi:hover{background:#f6f6f7;color:#18181b}
+.mi:hover .tile{border-color:#d9d6f5;color:#5b3cf0}
+.mi .name{font-size:16px;font-weight:500;color:#18181b}
+.mi .desc{font-size:13.5px;color:#71717a}
+.mi .route{margin-left:auto;font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;color:#71717a;white-space:nowrap}
+.kicker{margin:0 0 8px;font-size:12px;font-weight:500;letter-spacing:.09em;text-transform:uppercase;color:#71717a}
+.badge-new{font-size:12px;font-weight:600;color:#5b3cf0;background:#efedfb;padding:2px 7px;border-radius:6px}
+</style>
+</helmet>
+<div style="min-height: 100vh; background: #f6f6f4; color: #18181b; font-family: Inter, system-ui, -apple-system, sans-serif; font-size: 14.5px; line-height: 1.5; -webkit-font-smoothing: antialiased">
+
+<header style="max-width: 1200px; margin: 0 auto; padding: 14px 24px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 28px">
+<a href="Main.dc.html" style="font-size: 19px; font-weight: 700; letter-spacing: -0.03em; color: #18181b">Adapty</a>
+<nav aria-label="Main" style="display: flex; flex-wrap: wrap; align-items: center; gap: 2px; flex: 1 1 auto; min-width: 0">
+<a href="Main.dc.html" class="nl">Incoming</a>
+<a href="Chat.dc.html" class="nl">Chat</a>
+<a href="Settings.dc.html" class="nl">Agent settings</a>
+<a href="Analyze.dc.html" class="nl">Analyze</a>
+<a href="Catalogue.dc.html" class="nl on" aria-current="page">Screens</a>
+</nav>
+<a href="NewFeedback.dc.html" class="btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>New feedback</a>
+</header>
+
+<section aria-labelledby="cat-title" style="position: relative; overflow: hidden; margin-top: 8px; padding: 72px 24px 240px; background: linear-gradient(180deg, #12064f 0%, #2a0fa0 38%, #4a22e0 70%, #7b5cff 92%, #9f88ff 100%)">
+<div aria-hidden="true" style="position: absolute; inset: 0; background: radial-gradient(rgba(255,255,255,.30) 0.9px, transparent 1.4px) 0 0/7px 7px; -webkit-mask-image: linear-gradient(90deg, #000 0%, transparent 28%, transparent 72%, #000 100%); mask-image: linear-gradient(90deg, #000 0%, transparent 28%, transparent 72%, #000 100%)"></div>
+<div aria-hidden="true" style="position: absolute; inset: 0; background: radial-gradient(60% 70% at 50% 100%, rgba(186,170,255,.45), transparent 70%)"></div>
+<div style="position: relative; max-width: 1320px; margin: 0 auto; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 14px">
+<p style="margin: 0; font-size: 12px; font-weight: 500; letter-spacing: .12em; text-transform: uppercase; color: rgba(255,255,255,.72)">Built on Adapty · hackathon</p>
+<h1 id="cat-title" style="margin: 0; font-size: 52px; font-weight: 600; letter-spacing: -0.035em; line-height: 1.05; color: #fff; text-wrap: balance">Every screen of the support desk</h1>
+<p style="margin: 0; max-width: 620px; font-size: 18px; color: rgba(255,255,255,.80); text-wrap: pretty">Two agents work on the user's live subscription profile. People only step in for what the agents should not decide alone.</p>
+</div>
+</section>
+
+<div style="position: relative; max-width: 1240px; margin: -190px auto 72px; padding: 0 24px">
+<div style="padding: 10px; border-radius: 26px; background: rgba(255,255,255,.22); border: 1px solid rgba(255,255,255,.45); box-shadow: 0 40px 90px -30px rgba(30,10,120,.45); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px)">
+<div style="padding: 6px; border-radius: 18px; background: #f7f7f8; border: 1px solid #e7e7ea; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(460px, 100%), 1fr)); gap: 6px">
+
+<section style="background: #fff; border: 1px solid #efeff1; border-radius: 13px; padding: 22px 26px 16px">
+<p class="kicker">Support desk</p>
+<div style="display: flex; flex-direction: column; gap: 4px">
+<a href="Main.dc.html" class="mi"><span class="tile"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 13l2.5-7.5A2 2 0 0 1 7.4 4h9.2a2 2 0 0 1 1.9 1.5L21 13v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><path d="M3 13h5l1.5 2.5h5L16 13h5"></path></svg></span><span style="display: flex; flex-direction: column; min-width: 0"><span class="name">Incoming</span><span class="desc">Open and closed tickets, full-text search</span></span><span class="route">#/incoming</span></a>
+<a href="Ticket.dc.html" class="mi"><span class="tile"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9l9-6 9 6v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><path d="M3 9l9 6 9-6"></path></svg></span><span style="display: flex; flex-direction: column; min-width: 0"><span class="name">Ticket</span><span class="desc">What the agent found, three answers, the Send stamp</span></span><span class="route">#/incoming/{id}</span></a>
+<a href="NewFeedback.dc.html" class="mi"><span class="tile"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"></path><path d="M13.5 6.5l4 4"></path></svg></span><span style="display: flex; flex-direction: column; min-width: 0"><span class="name">New feedback</span><span class="desc">Add a ticket from a form or an email</span></span><span class="route">#/new</span></a>
+<a href="Reopen.dc.html" class="mi"><span class="tile"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"></path><path d="M3 3v5h5"></path></svg></span><span style="display: flex; flex-direction: column; min-width: 0"><span class="name">Reopen ticket</span><span class="desc">Bring a closed ticket back to Incoming</span></span><span class="route">#/reopen/{id}</span></a>
+</div>
+</section>
+
+<section style="background: #fff; border: 1px solid #efeff1; border-radius: 13px; padding: 22px 26px 16px">
+<p class="kicker">In-app agent</p>
+<div style="display: flex; flex-direction: column; gap: 4px">
+<a href="Chat.dc.html" class="mi"><span class="tile"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 12a8 8 0 0 1-11.6 7.1L4 20l1-4.1A8 8 0 1 1 20 12z"></path></svg></span><span style="display: flex; flex-direction: column; min-width: 0"><span class="name">Test chat</span><span class="desc">What the app's user sees, with a debug drawer</span></span><span class="route">#/chat/{session}</span></a>
+<a href="Settings.dc.html" class="mi"><span class="tile"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"></path><circle cx="16" cy="7" r="2"></circle><circle cx="10" cy="17" r="2"></circle></svg></span><span style="display: flex; flex-direction: column; min-width: 0"><span class="name">Agent settings</span><span class="desc">Limits, hand-off rules, tone and model</span></span><span class="route">#/settings</span></a>
+</div>
+</section>
+
+<section style="background: #fff; border: 1px solid #efeff1; border-radius: 13px; padding: 22px 26px 16px">
+<p class="kicker">Numbers</p>
+<div style="display: flex; flex-direction: column; gap: 4px">
+<a href="Analyze.dc.html" class="mi"><span class="tile"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 20V11M11 20V5M17 20v-6M3 20h18"></path></svg></span><span style="display: flex; flex-direction: column; min-width: 0"><span class="name">Analyze</span><span class="desc">Agents vs people, free days, blocked actions</span></span><span class="route">#/analyze</span></a>
+<a href="States.dc.html" class="mi"><span class="tile"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l9 5-9 5-9-5z"></path><path d="M3 13l9 5 9-5"></path></svg></span><span style="display: flex; flex-direction: column; min-width: 0"><span class="name">States and motion</span><span class="desc">Loading, empty, errors, the stamp and the letter</span></span><span class="route">design only</span></a>
+</div>
+</section>
+
+<section style="background: #fff; border: 1px solid #efeff1; border-radius: 13px; padding: 22px 26px 16px">
+<p class="kicker">Hand-off to code</p>
+<div style="display: flex; flex-direction: column; gap: 4px">
+<div class="mi"><span class="tile"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 7l-5 5 5 5M16 7l5 5-5 5"></path></svg></span><span style="display: flex; flex-direction: column; min-width: 0"><span class="name">Static HTML, no build step</span><span class="desc">Vanilla JS with hash routes</span></span><span class="route">/static/ui-alex/</span></div>
+<div class="mi"><span class="tile"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"></path><path d="M14 3v5h5M9 13h6M9 17h4"></path></svg></span><span style="display: flex; flex-direction: column; min-width: 0"><span class="name">Data contract</span><span class="desc">Tickets, chat, config and analytics endpoints</span></span><span class="route">docs/openapi.json</span></div>
+</div>
+</section>
+
+</div>
+</div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1180}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

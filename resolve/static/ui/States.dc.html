@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Adapty · States and motion</title>
+<script src="./api.js"></script>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#f6f6f4}
+*{box-sizing:border-box}
+.kicker{margin:0;font-size:12px;font-weight:500;letter-spacing:.09em;text-transform:uppercase;color:#71717a}
+.card{background:#fff;border:1px solid #e9e9ec;border-radius:16px;box-shadow:0 1px 2px rgba(24,24,27,.04)}
+.cap{margin:0 0 10px;font-size:13.5px;font-weight:600;color:#18181b}
+.tab{position:relative;display:inline-flex;align-items:center;gap:7px;height:36px;font-size:15px;font-weight:500;color:#71717a}
+.tab.on{color:#18181b;font-weight:600}
+.tab.on::after{content:"";position:absolute;left:0;right:0;bottom:0;height:2px;border-radius:2px;background:#6247f5}
+.sk{height:10px;border-radius:5px;background:linear-gradient(90deg,#f0f0f2 0%,#f7f7f8 40%,#f0f0f2 80%);background-size:200% 100%;animation:sh 1.4s linear infinite}
+@keyframes sh{from{background-position:100% 0}to{background-position:-100% 0}}
+.skrow{display:grid;grid-template-columns:10px 160px minmax(0,1fr) 40px;gap:18px;align-items:center;height:50px;padding:0 24px;border-top:1px solid #f1f1f3}
+.stamp{position:relative;width:104px;height:104px;border-radius:50%;background:#e5484d;color:#fff;transform:rotate(-8deg);display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;letter-spacing:.14em;box-shadow:0 12px 28px -10px rgba(229,72,77,.6)}
+.stamp::before{content:"";position:absolute;inset:8px;border-radius:50%;border:2px dashed rgba(255,255,255,.62)}
+.m{display:grid;grid-template-columns:minmax(0,1fr) 80px minmax(0,1.4fr);gap:16px;padding:11px 0;border-top:1px solid #f1f1f3;font-size:14px;align-items:baseline}
+.m:first-of-type{border-top:0}
+</style>
+</helmet>
+<div style="width: 1440px; height: 1560px; box-sizing: border-box; padding: 56px 64px; background: #f6f6f4; color: #18181b; font-family: Inter, system-ui, -apple-system, sans-serif; font-size: 14.5px; line-height: 1.5; -webkit-font-smoothing: antialiased; display: flex; flex-direction: column; gap: 28px">
+<div style="display: flex; flex-direction: column; gap: 4px">
+<h1 style="margin: 0; font-size: 28px; font-weight: 600; letter-spacing: -0.03em">States and motion</h1>
+<p style="margin: 0; color: #52525b; font-size: 15px">The moments between the main screens. Errors are one plain red line; motion stays between 150 and 300 ms.</p>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px 32px">
+
+<div>
+<p class="cap">Incoming · nothing waiting</p>
+<div class="card" style="overflow: hidden">
+<div style="display: flex; gap: 22px; padding: 6px 24px 0; border-bottom: 1px solid #f1f1f3"><span class="tab on">Open <span style="color: #d63a3f; font-weight: 600">0</span></span><span class="tab">Closed <span style="color: #15803d; font-weight: 600">2</span></span></div>
+<div style="padding: 64px 24px; display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center">
+<p style="margin: 0; font-size: 17px; font-weight: 600">Nothing waiting.</p>
+<p style="margin: 0; color: #71717a">Level 2 is handling the chats.</p>
+</div>
+</div>
+</div>
+
+<div>
+<p class="cap">Incoming · search with no results</p>
+<div class="card" style="overflow: hidden">
+<div style="display: flex; align-items: center; gap: 10px; margin: 16px 24px; height: 40px; padding: 0 13px; border-radius: 10px; border: 1px solid #cbc3fb; box-shadow: 0 0 0 4px rgba(98,71,245,.10); color: #6247f5"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"></circle><path d="M20 20l-4-4"></path></svg><span style="color: #18181b">chargeback lifetime</span></div>
+<div style="padding: 36px 24px 52px; display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center">
+<p style="margin: 0; font-size: 17px; font-weight: 600">No tickets match “chargeback lifetime”</p>
+<p style="margin: 0; color: #71717a">Search looks in subjects, users, messages and chat text.</p>
+<span style="color: #5b3cf0; font-weight: 500; font-size: 14px">Clear search</span>
+</div>
+</div>
+</div>
+
+<div>
+<p class="cap">Incoming · loading</p>
+<div class="card" style="overflow: hidden; padding-top: 8px">
+<div style="padding: 10px 24px"><div class="sk" style="width: 120px"></div></div>
+<div class="skrow"><span style="width: 8px; height: 8px; border-radius: 50%; background: #ececef"></span><div class="sk" style="width: 130px"></div><div class="sk" style="width: 78%"></div><div class="sk"></div></div>
+<div class="skrow"><span style="width: 8px; height: 8px; border-radius: 50%; background: #ececef"></span><div class="sk" style="width: 110px"></div><div class="sk" style="width: 64%"></div><div class="sk"></div></div>
+<div class="skrow"><span style="width: 8px; height: 8px; border-radius: 50%; background: #ececef"></span><div class="sk" style="width: 140px"></div><div class="sk" style="width: 86%"></div><div class="sk"></div></div>
+<div class="skrow"><span style="width: 8px; height: 8px; border-radius: 50%; background: #ececef"></span><div class="sk" style="width: 100px"></div><div class="sk" style="width: 58%"></div><div class="sk"></div></div>
+</div>
+</div>
+
+<div>
+<p class="cap">Ticket · send failed, the selection stays</p>
+<div class="card" style="padding: 28px; display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; align-items: center; justify-content: space-between; gap: 20px">
+<div style="display: flex; align-items: center; gap: 22px">
+<span aria-hidden="true" style="position: relative; width: 92px; height: 92px; border-radius: 50%; border: 3px solid #16a34a; color: #15803d; transform: rotate(-9deg); display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 800; letter-spacing: .16em; padding-left: .16em"><span style="position: absolute; inset: 5px; border-radius: 50%; border: 1.5px dashed #15803d; opacity: .75"></span>SEND</span>
+<span style="display: flex; flex-direction: column"><span style="font-size: 15px; font-weight: 600">Stamp it to send</span><span style="font-size: 13.5px; color: #71717a">Grant 7 days of access → lumen_443814_02380</span></span>
+</div>
+<span style="font-size: 13.5px; color: #71717a; text-decoration: underline; text-decoration-color: #d4d4d8; text-underline-offset: 3px">Close without a reply</span>
+</div>
+<p style="margin: 0 0 0 4px; font-size: 14px; font-weight: 500; color: #d63a3f">Adapty did not accept the grant: try again.</p>
+</div>
+</div>
+
+<div>
+<p class="cap">Ticket · closed without a reply, and a toast</p>
+<div class="card" style="position: relative; height: 196px; padding: 28px">
+<p style="margin: 0 0 8px; font-size: 20px; font-weight: 600; letter-spacing: -0.02em">Test from the feedback form</p>
+<p style="margin: 0; display: flex; gap: 14px; font-size: 15px"><span style="font-weight: 600">Closed without a reply</span><span style="color: #52525b">Nov 6, 18:04</span><span style="color: #5b3cf0; font-weight: 500">Reopen</span></p>
+<div style="position: absolute; left: 50%; bottom: 22px; transform: translateX(-50%); padding: 11px 16px; border-radius: 11px; background: #18181b; color: #fff; font-size: 14px; font-weight: 500; white-space: nowrap; box-shadow: 0 12px 30px -10px rgba(0,0,0,.4)">Sent to maria.k@gmail.com</div>
+</div>
+</div>
+
+<div>
+<p class="cap">Analyze · no chats yet</p>
+<div class="card" style="height: 196px; padding: 22px 24px; display: flex; flex-direction: column">
+<p style="margin: 0; font-size: 15px; font-weight: 600">Chats and tickets by hour</p>
+<div style="flex: 1; display: flex; align-items: center; justify-content: center; color: #71717a">No chats yet: try one in <span style="color: #5b3cf0; font-weight: 500; margin-left: 4px">Chat</span></div>
+<div style="height: 1px; background: #d4d4d8"></div>
+<div style="display: flex; justify-content: space-between; padding-top: 6px; font-size: 11.5px; color: #71717a"><span>11:00</span><span>15:00</span><span>19:00</span><span>23:00</span></div>
+</div>
+</div>
+
+<div>
+<p class="cap">Analyze · one hour of data is one column</p>
+<div class="card" style="height: 220px; padding: 22px 24px; display: flex; flex-direction: column">
+<p style="margin: 0; font-size: 15px; font-weight: 600">Chats and tickets by hour</p>
+<div style="flex: 1; display: flex; align-items: flex-end; justify-content: center; gap: 0">
+<div style="display: flex; flex-direction: column; width: 56px">
+<div style="height: 22px; background: #2f7ae0; border-radius: 4px 4px 0 0; margin-bottom: 2px"></div>
+<div style="height: 22px; background: #d6408a; margin-bottom: 2px"></div>
+<div style="height: 66px; background: #6247f5"></div>
+</div>
+</div>
+<div style="height: 1px; background: #d4d4d8"></div>
+<div style="display: flex; justify-content: center; padding-top: 6px; font-size: 11.5px; color: #71717a">21:00</div>
+</div>
+</div>
+
+<div>
+<p class="cap">Motion</p>
+<div class="card" style="padding: 12px 24px">
+<div class="m"><span style="font-weight: 500">OK stamp lands on a pick</span><span style="color: #71717a">300 ms</span><span style="color: #52525b">Drops from 2.4×, slight overshoot, settles at −11°</span></div>
+<div class="m"><span style="font-weight: 500">SEND stamp press</span><span style="color: #71717a">320 ms</span><span style="color: #52525b">Squashes to 0.84 and fills with green ink</span></div>
+<div class="m"><span style="font-weight: 500">Ticket drops into Closed</span><span style="color: #71717a">340 ms</span><span style="color: #52525b">Fades and sinks 14 px, then the closed line and letter</span></div>
+<div class="m"><span style="font-weight: 500">Letter unfolds the ballot</span><span style="color: #71717a">260 ms</span><span style="color: #52525b">Grows down from the letter, fades in</span></div>
+<div class="m"><span style="font-weight: 500">Toast</span><span style="color: #71717a">220 ms</span><span style="color: #52525b">Rises 8 px, stays 2.6 s</span></div>
+<div class="m"><span style="font-weight: 500">Screens menu, save bar</span><span style="color: #71717a">180 ms</span><span style="color: #52525b">Drops 6 px and fades in</span></div>
+</div>
+</div>
+
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1560}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Adapty · Reopen ticket</title>
+<script src="./api.js"></script>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#f6f6f4}
+*{box-sizing:border-box}
+a{color:#5b3cf0;text-decoration:none}
+a:hover{color:#4527d6}
+button,textarea{font-family:Inter,system-ui,-apple-system,sans-serif}
+:focus-visible{outline:2px solid #6247f5;outline-offset:2px}
+textarea::placeholder{color:#8b8b94}
+.nl{display:inline-flex;align-items:center;gap:6px;height:38px;padding:0 13px;border-radius:9px;font-size:14.5px;font-weight:500;color:#3f3f46;transition:background .15s,color .15s}
+.nl:hover{background:#ededef;color:#18181b}
+.nl.on{background:#efedfb;color:#5b3cf0}
+.btn{display:inline-flex;align-items:center;gap:8px;height:38px;padding:0 14px 0 12px;border-radius:10px;background:#fff;color:#18181b;font-size:14px;font-weight:500;border:1px solid #e4e4e7;box-shadow:0 1px 2px rgba(24,24,27,.04)}
+.btn:hover{border-color:#d4d4d8;color:#18181b}
+.btn svg{color:#6247f5}
+.card{background:#fff;border:1px solid #e9e9ec;border-radius:16px;box-shadow:0 1px 2px rgba(24,24,27,.04)}
+.ta{width:100%;min-height:120px;padding:12px 14px;border-radius:10px;border:1px solid #e4e4e7;background:#fff;color:#18181b;font-size:15px;line-height:1.55;resize:vertical}
+.ta:focus{outline:none;border-color:#b9aefb;box-shadow:0 0 0 3px rgba(98,71,245,.10)}
+.dark{height:40px;padding:0 20px;border-radius:10px;border:0;background:#18181b;color:#fff;font-size:14.5px;font-weight:600;cursor:pointer}
+.dark:hover{background:#27272a}
+.done{animation:in .24s ease-out}
+@keyframes in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+</style>
+</helmet>
+<div style="min-height: 100vh; background: #f6f6f4; color: #18181b; font-family: Inter, system-ui, -apple-system, sans-serif; font-size: 14.5px; line-height: 1.5; -webkit-font-smoothing: antialiased">
+<header style="max-width: 1200px; margin: 0 auto; padding: 14px 24px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 28px">
+<a href="Main.dc.html" style="font-size: 19px; font-weight: 700; letter-spacing: -0.03em; color: #18181b">Adapty</a>
+<nav aria-label="Main" style="display: flex; flex-wrap: wrap; align-items: center; gap: 2px; flex: 1 1 auto; min-width: 0">
+<a href="Main.dc.html" class="nl on">Incoming</a>
+<a href="Chat.dc.html" class="nl">Chat</a>
+<a href="Settings.dc.html" class="nl">Agent settings</a>
+<a href="Analyze.dc.html" class="nl">Analyze</a>
+<a href="Catalogue.dc.html" class="nl">Screens</a>
+</nav>
+<a href="NewFeedback.dc.html" class="btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>New feedback</a>
+</header>
+
+<main style="max-width: 680px; margin: 0 auto; padding: 20px 24px 80px; display: flex; flex-direction: column; gap: 18px">
+<a href="Ticket.dc.html" style="display: inline-flex; align-items: center; gap: 6px; align-self: flex-start; font-size: 13.5px; font-weight: 500; color: #52525b"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5M11 6l-6 6 6 6"></path></svg>Ticket</a>
+<div style="display: flex; flex-direction: column; gap: 6px">
+<h1 style="margin: 0; font-size: 26px; font-weight: 600; letter-spacing: -0.025em; line-height: 1.2; text-wrap: balance">Wants another free week after compensation</h1>
+<p style="margin: 0; display: inline-flex; align-items: center; gap: 8px; color: #52525b; font-size: 14px"><span aria-hidden="true" style="width: 8px; height: 8px; border-radius: 50%; background: #16a34a"></span>Closed Nov 7 · Granted 7 days</p>
+</div>
+
+<sc-if value="{{ editing }}" hint-placeholder-val="{{ true }}">
+<form class="card" onSubmit="{{ submit }}" style="padding: 24px; display: flex; flex-direction: column; gap: 16px">
+<p style="margin: 0; display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; border-radius: 10px; background: #fdf6ea; color: #7a4a06; font-size: 14px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#c2770f" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: 0 0 auto; margin-top: 1px"><path d="M12 9v4M12 17h.01"></path><path d="M10.3 3.9L2.4 18a2 2 0 0 0 1.7 3h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"></path></svg>Access granted earlier stays in Adapty. Reopening does not take it back.</p>
+<label style="display: flex; flex-direction: column; gap: 6px; font-size: 13.5px; font-weight: 500; color: #3f3f46">Note
+<textarea class="ta" placeholder="Why it needs another look, optional" value="{{ note }}" onChange="{{ onNote }}"></textarea>
+</label>
+<div style="display: flex; align-items: center; gap: 16px">
+<button type="submit" class="dark">Reopen ticket</button>
+<a href="Ticket.dc.html" style="font-size: 14px; font-weight: 500; color: #71717a">Cancel</a>
+</div>
+</form>
+</sc-if>
+
+<sc-if value="{{ done }}" hint-placeholder-val="{{ false }}">
+<section class="card done" style="padding: 24px; display: flex; flex-direction: column; gap: 8px">
+<p style="margin: 0; font-size: 16px; font-weight: 600">Reopened</p>
+<p style="margin: 0; color: #52525b">The ticket is back in Incoming, waiting for you.</p>
+<a href="Main.dc.html" style="font-weight: 500; margin-top: 6px">Open Incoming</a>
+</section>
+</sc-if>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":820}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var self = this;
+    var s = this.state || {};
+    return {
+      editing: !s.done, done: !!s.done,
+      note: s.note || '',
+      onNote: function (e) { self.setState({ note: e.target.value }); },
+      submit: function (e) { e.preventDefault(); self.setState({ done: true }); }
+    };
+  }
+}
+</script>
+</body>
+</html>

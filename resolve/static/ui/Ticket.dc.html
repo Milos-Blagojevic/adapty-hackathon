@@ -1,0 +1,522 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Adapty · Ticket</title>
+<script src="./api.js"></script>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#f6f6f4}
+*{box-sizing:border-box}
+a{color:#5b3cf0;text-decoration:none}
+a:hover{color:#4527d6}
+button,input,select,textarea{font-family:Inter,system-ui,-apple-system,sans-serif}
+:focus-visible{outline:2px solid #6247f5;outline-offset:2px}
+input::placeholder,textarea::placeholder{color:#8b8b94}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.nl{display:inline-flex;align-items:center;gap:6px;height:38px;padding:0 13px;border-radius:9px;border:0;background:transparent;font-size:14.5px;font-weight:500;color:#3f3f46;cursor:pointer;transition:background .15s,color .15s}
+.nl:hover{background:#ededef;color:#18181b}
+.nl.on{background:#efedfb;color:#5b3cf0}
+.nl svg{transition:transform .2s}
+.nl.open{background:#ededef;color:#18181b}
+.nl.open svg{transform:rotate(180deg)}
+.btn{display:inline-flex;align-items:center;gap:8px;height:38px;padding:0 14px 0 12px;border-radius:10px;background:#fff;color:#18181b;font-size:14px;font-weight:500;border:1px solid #e4e4e7;box-shadow:0 1px 2px rgba(24,24,27,.04);cursor:pointer;transition:border-color .15s,box-shadow .15s}
+.btn:hover{border-color:#d4d4d8;color:#18181b;box-shadow:0 2px 6px rgba(24,24,27,.06)}
+.btn svg{color:#6247f5}
+.btn-dark{display:inline-flex;align-items:center;height:36px;padding:0 14px;border-radius:9px;background:#18181b;color:#fff;font-size:13.5px;font-weight:600;border:0;cursor:pointer}
+.btn-dark:hover{background:#27272a}
+.tile{flex:0 0 auto;width:40px;height:40px;border-radius:10px;background:#fff;border:1px solid #e7e7ea;box-shadow:0 1px 2px rgba(24,24,27,.05);display:flex;align-items:center;justify-content:center;color:#3f3f46;transition:border-color .15s,color .15s}
+.mi{display:flex;align-items:center;gap:14px;padding:8px 10px;margin:0 -10px;border-radius:12px;color:#18181b;font-size:15.5px;font-weight:500;transition:background .15s}
+.mi:hover{background:#f6f6f7;color:#18181b}
+.mi:hover .tile{border-color:#d9d6f5;color:#5b3cf0}
+.kicker{margin:0;font-size:12px;font-weight:500;letter-spacing:.09em;text-transform:uppercase;color:#71717a}
+.pop{animation:pop .18s ease-out}
+@keyframes pop{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+.backdrop{position:fixed;inset:0;border:0;padding:0;background:transparent;cursor:default;z-index:20}
+.card{background:#fff;border:1px solid #e9e9ec;border-radius:16px;box-shadow:0 1px 2px rgba(24,24,27,.04)}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%}
+.dot-ready{background:#6247f5;box-shadow:0 0 0 3px rgba(98,71,245,.14)}
+.dot-closed{background:#16a34a}
+.dot-dismissed{background:#c4c4cc}
+.linkbtn{background:none;border:0;padding:0;color:#5b3cf0;font-size:14px;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;gap:4px}
+.linkbtn:hover{color:#4527d6}
+.linkbtn svg{transition:transform .2s}
+.linkbtn.open svg{transform:rotate(180deg)}
+.quiet{background:none;border:0;padding:0;color:#71717a;font-size:13.5px;font-weight:500;cursor:pointer;text-decoration:underline;text-decoration-color:#d4d4d8;text-underline-offset:3px}
+.quiet:hover{color:#18181b}
+.kv{display:grid;grid-template-columns:minmax(0,150px) minmax(0,1fr);gap:6px 16px;margin:12px 0 0;padding:12px 0 0;border-top:1px solid #f1f1f3;font-size:13px}
+.kv dt{color:#71717a;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px}
+.kv dd{margin:0;color:#18181b}
+.b{position:relative;max-width:78%;padding:8px 12px 8px 14px;border-radius:18px;font-size:14.5px;line-height:1.45}
+.b-u{background:#6247f5;color:#fff;border-bottom-right-radius:5px}
+.b-a{background:#f1f0f4;color:#18181b;border-bottom-left-radius:5px}
+.b .t{float:right;margin:7px -2px -5px 12px;font-size:11px;opacity:.72;font-variant-numeric:tabular-nums}
+.ans{position:relative;border-radius:12px;transition:background .15s, box-shadow .15s}
+.ans:hover{background:#fafafa}
+.ans.sel{background:#f6f4ff;box-shadow:inset 0 0 0 1.5px #c9bffb}
+.ans-main{display:grid;grid-template-columns:56px minmax(0,1fr) 96px;gap:14px;align-items:start;padding:16px 18px;cursor:pointer}
+.emo{display:inline-block;font-size:42px;line-height:1;margin-top:-4px;transition:transform .2s cubic-bezier(.3,1.6,.5,1)}
+.ans:hover .emo{transform:rotate(-10deg) scale(1.1)}
+.ans.sel .emo{transform:scale(1.12)}
+.ttl{font-size:15px;font-weight:600;color:#18181b}
+.pick{font-size:12.5px;color:#71717a;font-weight:500}
+.risk-high{font-size:12.5px;font-weight:600;color:#c2410c}
+.risk-medium{font-size:12.5px;font-weight:600;color:#a16207}
+.txt{display:block;margin-top:4px;color:#3f3f46;font-size:14.5px;line-height:1.55;text-wrap:pretty}
+.okstamp{align-self:center;justify-self:end;display:inline-flex;align-items:center;gap:5px;padding:3px 10px 3px 8px;border:4px double #16a34a;border-radius:9px;color:#15803d;font-size:16px;font-weight:800;letter-spacing:.14em;line-height:1.2;white-space:nowrap;transform:rotate(-11deg);opacity:0;transition:opacity .15s;-webkit-mask-image:radial-gradient(circle,#000 58%,rgba(0,0,0,.7) 62%);-webkit-mask-size:3px 3px;mask-image:radial-gradient(circle,#000 58%,rgba(0,0,0,.7) 62%);mask-size:3px 3px}
+.ans:hover .okstamp{opacity:.16}
+.ans.sel .okstamp{opacity:.95;animation:stampIn .3s cubic-bezier(.2,1.5,.4,1)}
+@keyframes stampIn{0%{opacity:0;transform:rotate(-26deg) scale(2.4)}70%{opacity:.95;transform:rotate(-9deg) scale(.94)}100%{opacity:.95;transform:rotate(-11deg) scale(1)}}
+.hov{position:absolute;top:13px;right:124px;height:30px;padding:0 12px;border-radius:8px;border:1px solid #e4e4e7;background:#fff;color:#18181b;font-size:13px;font-weight:500;cursor:pointer;opacity:0;transition:opacity .15s}
+.ans:hover .hov,.hov:focus-visible{opacity:1}
+.field{display:flex;flex-direction:column;gap:5px;font-size:12.5px;color:#71717a;font-weight:500}
+.inp{height:36px;padding:0 10px;border-radius:8px;border:1px solid #e4e4e7;background:#fff;color:#18181b;font-size:14px}
+.inp:focus{outline:none;border-color:#b9aefb;box-shadow:0 0 0 3px rgba(98,71,245,.10)}
+.ta{width:100%;min-height:92px;padding:10px 12px;border-radius:10px;border:1px solid #e4e4e7;background:#fff;color:#18181b;font-size:14.5px;line-height:1.5;resize:vertical}
+.ta:focus{outline:none;border-color:#b9aefb;box-shadow:0 0 0 3px rgba(98,71,245,.10)}
+.stamp{position:relative;flex:0 0 auto;width:128px;height:128px;border-radius:50%;border:0;background:#e5484d;color:#fff;cursor:pointer;transform:rotate(-8deg);box-shadow:0 12px 28px -10px rgba(229,72,77,.6), inset 0 -3px 0 rgba(0,0,0,.08);display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:700;letter-spacing:.14em;transition:transform .15s ease, box-shadow .15s ease, opacity .2s}
+.stamp::before{content:"";position:absolute;inset:9px;border-radius:50%;border:2px dashed rgba(255,255,255,.62)}
+.stamp:hover{transform:rotate(-8deg) scale(1.03)}
+.stamp:active{transform:rotate(-8deg) scale(.9);box-shadow:0 4px 10px -6px rgba(229,72,77,.6)}
+.stamp:disabled{opacity:.28;cursor:not-allowed;transform:rotate(-8deg);box-shadow:none}
+.gstamp{position:relative;flex:0 0 auto;width:92px;height:92px;border-radius:50%;border:3px solid #16a34a;background:#fff;color:#15803d;cursor:pointer;transform:rotate(-9deg);display:flex;align-items:center;justify-content:center;box-shadow:0 8px 18px -12px rgba(21,128,61,.7);transition:transform .15s, background .15s, color .15s, border-color .15s}
+.gstamp::before{content:"";position:absolute;inset:5px;border-radius:50%;border:1.5px dashed currentColor;opacity:.75}
+.gstamp .ink{font-size:18px;font-weight:800;letter-spacing:.16em;padding-left:.16em}
+.gstamp:hover{transform:rotate(-9deg) scale(1.05);box-shadow:0 0 0 6px rgba(22,163,74,.08), 0 8px 18px -12px rgba(21,128,61,.7)}
+.gstamp:active{transform:rotate(-9deg) scale(.88)}
+.gstamp:disabled{border-color:#d4d4d8;color:#a1a1aa;cursor:not-allowed;box-shadow:none;transform:rotate(-9deg)}
+.gstamp.on{background:#16a34a;color:#fff;animation:press .32s ease-out}
+@keyframes press{0%{transform:rotate(-9deg) scale(1)}35%{transform:rotate(-9deg) scale(.84)}100%{transform:rotate(-9deg) scale(1)}}
+.vanish{animation:vanish .34s ease-in forwards}
+@keyframes vanish{to{opacity:0;transform:translateY(14px) scale(.98)}}
+.letter{position:relative;overflow:hidden;display:flex;align-items:center;gap:16px;width:100%;padding:18px 22px;border-radius:14px;border:1px solid #e9e9ec;background:#fff;box-shadow:0 1px 2px rgba(24,24,27,.04), 0 12px 30px -18px rgba(24,24,27,.25);cursor:pointer;text-align:left;color:#18181b;font-size:14.5px;animation:fold .3s ease-out}
+.letter:hover{border-color:#dcdce1}
+@keyframes fold{from{opacity:0;transform:scaleY(1.8) translateY(-24px)}to{opacity:1;transform:none}}
+.postmark{flex:0 0 auto;width:62px;height:62px;border-radius:50%;border:2px solid #16a34a;color:#16a34a;display:flex;flex-direction:column;align-items:center;justify-content:center;transform:rotate(12deg);font-size:12px;font-weight:700;letter-spacing:.1em;line-height:1.1;opacity:.9}
+.postmark small{font-size:9px;letter-spacing:.06em;font-weight:600}
+.ballot{animation:unfold .26s ease-out;transform-origin:top center}
+@keyframes unfold{from{opacity:0;transform:scaleY(.85)}to{opacity:1;transform:none}}
+.bl{display:grid;grid-template-columns:36px minmax(0,1fr) 22px;gap:12px;align-items:start;padding:12px 4px;border-top:1px solid #f1f1f3}
+.bl:first-child{border-top:0}
+.bl.off{opacity:.45}
+.toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);padding:11px 16px;border-radius:11px;background:#18181b;color:#fff;font-size:14px;font-weight:500;box-shadow:0 12px 30px -10px rgba(0,0,0,.4);animation:toast .22s ease-out;z-index:40}
+@keyframes toast{from{opacity:0;transform:translate(-50%,8px)}to{opacity:1;transform:translate(-50%,0)}}
+</style>
+</helmet>
+<div style="min-height: 100vh; background: #f6f6f4; color: #18181b; font-family: Inter, system-ui, -apple-system, sans-serif; font-size: 14.5px; line-height: 1.5; -webkit-font-smoothing: antialiased">
+
+<sc-if value="{{ menu }}" hint-placeholder-val="{{ false }}">
+<button type="button" class="backdrop" aria-label="Close menu" onClick="{{ closeMenu }}"></button>
+</sc-if>
+
+<header style="position: relative; z-index: 30; max-width: 1200px; margin: 0 auto; padding: 14px 24px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 28px">
+<a href="Main.dc.html" style="font-size: 19px; font-weight: 700; letter-spacing: -0.03em; color: #18181b">Adapty</a>
+<nav aria-label="Main" style="display: flex; flex-wrap: wrap; align-items: center; gap: 2px; flex: 1 1 auto; min-width: 0">
+<a href="Main.dc.html" class="nl on">Incoming</a>
+<a href="Chat.dc.html" class="nl">Chat</a>
+<a href="Settings.dc.html" class="nl">Agent settings</a>
+<a href="Analyze.dc.html" class="nl">Analyze</a>
+<button type="button" class="{{ menuCls }}" aria-expanded="{{ menu }}" aria-controls="catalogue" onClick="{{ toggleMenu }}">Screens<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg></button>
+</nav>
+<a href="NewFeedback.dc.html" class="btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>New feedback</a>
+
+<sc-if value="{{ menu }}" hint-placeholder-val="{{ false }}">
+<div id="catalogue" class="pop" style="position: absolute; top: 64px; left: 24px; right: 24px; padding: 6px; border-radius: 18px; background: #f7f7f8; border: 1px solid #e7e7ea; box-shadow: 0 30px 70px -20px rgba(24,24,27,.26), 0 2px 6px rgba(24,24,27,.04); display: grid; grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr)); gap: 6px">
+<section style="background: #fff; border: 1px solid #efeff1; border-radius: 13px; padding: 20px 22px 14px; display: flex; flex-direction: column; gap: 10px">
+<p class="kicker">Support desk</p>
+<div style="display: flex; flex-direction: column; gap: 2px">
+<a href="Main.dc.html" class="mi"><span class="tile"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 13l2.5-7.5A2 2 0 0 1 7.4 4h9.2a2 2 0 0 1 1.9 1.5L21 13v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><path d="M3 13h5l1.5 2.5h5L16 13h5"></path></svg></span>Incoming</a>
+<a href="Ticket.dc.html" class="mi"><span class="tile"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9l9-6 9 6v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><path d="M3 9l9 6 9-6"></path></svg></span>Ticket</a>
+<a href="NewFeedback.dc.html" class="mi"><span class="tile"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"></path><path d="M13.5 6.5l4 4"></path></svg></span>New feedback</a>
+<a href="Reopen.dc.html" class="mi"><span class="tile"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"></path><path d="M3 3v5h5"></path></svg></span>Reopen ticket</a>
+</div>
+</section>
+<section style="background: #fff; border: 1px solid #efeff1; border-radius: 13px; padding: 20px 22px 14px; display: flex; flex-direction: column; gap: 10px">
+<p class="kicker">In-app agent</p>
+<div style="display: flex; flex-direction: column; gap: 2px">
+<a href="Chat.dc.html" class="mi"><span class="tile"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 12a8 8 0 0 1-11.6 7.1L4 20l1-4.1A8 8 0 1 1 20 12z"></path></svg></span>Test chat</a>
+<a href="Settings.dc.html" class="mi"><span class="tile"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"></path><circle cx="16" cy="7" r="2"></circle><circle cx="10" cy="17" r="2"></circle></svg></span>Agent settings</a>
+</div>
+</section>
+<section style="background: #fff; border: 1px solid #efeff1; border-radius: 13px; padding: 20px 22px 14px; display: flex; flex-direction: column; gap: 10px">
+<p class="kicker">Numbers</p>
+<div style="display: flex; flex-direction: column; gap: 2px">
+<a href="Analyze.dc.html" class="mi"><span class="tile"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 20V11M11 20V5M17 20v-6M3 20h18"></path></svg></span>Analyze</a>
+<a href="States.dc.html" class="mi"><span class="tile"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l9 5-9 5-9-5z"></path><path d="M3 13l9 5 9-5"></path></svg></span>States and motion</a>
+<a href="Catalogue.dc.html" class="mi"><span class="tile"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="3" width="7" height="7" rx="1.5"></rect><rect x="3" y="14" width="7" height="7" rx="1.5"></rect><rect x="14" y="14" width="7" height="7" rx="1.5"></rect></svg></span>All screens</a>
+</div>
+</section>
+</div>
+</sc-if>
+</header>
+
+<main style="max-width: 1200px; margin: 0 auto; padding: 20px 24px 80px; display: flex; flex-direction: column; gap: 22px">
+
+<div style="display: flex; flex-direction: column; gap: 10px">
+<a href="Main.dc.html" style="display: inline-flex; align-items: center; gap: 6px; align-self: flex-start; font-size: 13.5px; font-weight: 500; color: #52525b"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5M11 6l-6 6 6 6"></path></svg>Incoming</a>
+<h1 style="margin: 0; font-size: 26px; font-weight: 600; letter-spacing: -0.025em; line-height: 1.2; text-wrap: balance">Wants another free week after compensation</h1>
+<p style="margin: 0; font-size: 14px; color: #71717a">lumen_443814_02380 · 21:40</p>
+</div>
+
+<sc-if value="{{ isOpen }}" hint-placeholder-val="{{ true }}">
+<div class="{{ openCls }}" style="display: flex; flex-wrap: wrap; align-items: flex-start; gap: 20px">
+
+<div style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column; gap: 20px">
+
+<section class="card" aria-labelledby="h-wrote" style="padding: 20px 24px 18px; display: flex; flex-direction: column; gap: 14px">
+<p id="h-wrote" class="kicker">The user wrote</p>
+<div style="display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px">
+<div class="b b-u">Hi, the trial thing again, I still feel tricked by the weekly charge<span class="t">21:38</span><svg aria-hidden="true" width="11" height="16" viewBox="0 0 11 16" style="position: absolute; right: -5px; bottom: 0"><path d="M0 0 Q0 12 11 16 L0 16 Z" fill="#6247f5"></path></svg></div>
+</div>
+<div style="display: flex; align-items: flex-end; gap: 8px">
+<span aria-hidden="true" style="flex: 0 0 auto; width: 26px; height: 26px; border-radius: 50%; background: #efedfb; color: #5b3cf0; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center">L</span>
+<div style="display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1">
+<span style="font-size: 12px; color: #71717a; padding-left: 14px">Lumen assistant</span>
+<div class="b b-a">I'm sorry you feel that way. I can see your weekly plan renews on Nov 13 and we added 7 days of premium on Nov 5.<span class="t">21:38</span><svg aria-hidden="true" width="11" height="16" viewBox="0 0 11 16" style="position: absolute; left: -5px; bottom: 0"><path d="M11 0 Q11 12 0 16 L11 16 Z" fill="#f1f0f4"></path></svg></div>
+</div>
+</div>
+<div style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px">
+<div class="b b-u">Give me another week for free then. Or a month.<span class="t">21:39</span><svg aria-hidden="true" width="11" height="16" viewBox="0 0 11 16" style="position: absolute; right: -5px; bottom: 0"><path d="M0 0 Q0 12 11 16 L0 16 Z" fill="#6247f5"></path></svg></div>
+</div>
+<div style="display: flex; align-items: flex-end; gap: 8px">
+<span aria-hidden="true" style="flex: 0 0 auto; width: 26px; height: 26px; border-radius: 50%; background: #efedfb; color: #5b3cf0; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center">L</span>
+<div class="b b-a">I can't add more days myself, but I've sent your request to our support team. They'll get back to you here.<span class="t">21:39</span><svg aria-hidden="true" width="11" height="16" viewBox="0 0 11 16" style="position: absolute; left: -5px; bottom: 0"><path d="M11 0 Q11 12 0 16 L11 16 Z" fill="#f1f0f4"></path></svg></div>
+</div>
+</div>
+</section>
+
+<section class="card" aria-labelledby="h-ans" style="padding: 18px 8px 8px; display: flex; flex-direction: column; gap: 6px">
+<p id="h-ans" class="kicker" style="padding: 0 16px 4px">Answers</p>
+<div role="radiogroup" aria-labelledby="h-ans" style="display: flex; flex-direction: column; gap: 2px">
+<sc-for list="{{ answers }}" as="a" hint-placeholder-count="4">
+<div class="{{ a.cls }}">
+<label class="ans-main">
+<input type="radio" name="answer" class="sr" checked="{{ a.selected }}" onChange="{{ a.pick }}">
+<span class="emo" aria-hidden="true">{{ a.emoji }}</span>
+<span style="min-width: 0">
+<span style="display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px">
+<span class="ttl">{{ a.title }}</span>
+<sc-if value="{{ a.isPick }}"><span class="pick">agent's pick</span></sc-if>
+<sc-if value="{{ a.edited }}"><span class="pick">edited</span></sc-if>
+<sc-if value="{{ a.hasRisk }}"><span class="{{ a.riskCls }}">{{ a.risk }}</span></sc-if>
+</span>
+<sc-if value="{{ a.showText }}"><span class="txt">{{ a.reply }}</span></sc-if>
+</span>
+<span class="okstamp" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.2 4.2L19 7"></path></svg>OK</span>
+</label>
+<sc-if value="{{ a.showEditBtn }}"><button type="button" class="hov" onClick="{{ a.edit }}">Edit</button></sc-if>
+<sc-if value="{{ a.showScratchBtn }}"><button type="button" class="hov" onClick="{{ a.pick }}">Write from scratch</button></sc-if>
+
+<sc-if value="{{ a.showOwnBox }}">
+<div style="padding: 0 18px 16px 88px">
+<label for="own" class="sr">Your reply</label>
+<textarea id="own" class="ta" placeholder="Write the reply the user will see" value="{{ own }}" onChange="{{ onOwn }}"></textarea>
+</div>
+</sc-if>
+
+<sc-if value="{{ a.editing }}">
+<div style="padding: 2px 18px 18px 88px; display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; flex-wrap: wrap; gap: 12px">
+<label class="field">Action
+<select class="inp" value="{{ a.action }}" onChange="{{ a.onAction }}">
+<option value="reply">Reply only</option>
+<option value="grant">Grant access</option>
+<option value="store_steps">Store steps</option>
+<option value="ask">Ask the user</option>
+</select>
+</label>
+<sc-if value="{{ a.isGrant }}"><label class="field">Days<input class="inp" type="number" min="1" max="30" value="{{ a.days }}" onChange="{{ a.onDays }}" style="width: 90px"></label></sc-if>
+<sc-if value="{{ a.isSteps }}"><label class="field">Store<select class="inp" value="{{ a.store }}" onChange="{{ a.onStore }}"><option>Google Play</option><option>App Store</option></select></label></sc-if>
+<sc-if value="{{ a.isSteps }}"><label class="field">Kind<select class="inp" value="{{ a.kind }}" onChange="{{ a.onKind }}"><option>Cancel</option><option>Refund</option><option>Restore</option></select></label></sc-if>
+<sc-if value="{{ a.isAsk }}"><label class="field" style="flex: 1 1 260px">Question<input class="inp" type="text" value="{{ a.question }}" onChange="{{ a.onQuestion }}"></label></sc-if>
+</div>
+<label class="field">Reply<textarea class="ta" value="{{ a.reply }}" onChange="{{ a.onReply }}"></textarea></label>
+<div style="display: flex; align-items: center; gap: 16px">
+<button type="button" class="btn-dark" onClick="{{ a.done }}">Done</button>
+<button type="button" class="quiet" onClick="{{ a.reset }}">Back to the agent's version</button>
+</div>
+</div>
+</sc-if>
+</div>
+</sc-for>
+</div>
+</section>
+
+<div style="display: flex; flex-direction: column; gap: 10px; padding: 0 4px">
+<div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 24px">
+<div style="display: flex; align-items: center; gap: 22px; min-width: 0">
+<button type="button" class="{{ okCls }}" disabled="{{ cantSend }}" onClick="{{ send }}" aria-label="Stamp and send the picked answer"><span class="ink">SEND</span></button>
+<span style="display: flex; flex-direction: column; min-width: 0">
+<span style="font-size: 15px; font-weight: 600">{{ okLabel }}</span>
+<span style="font-size: 13.5px; color: #71717a">{{ okSub }}</span>
+</span>
+</div>
+<button type="button" class="quiet" onClick="{{ dismiss }}">Close without a reply</button>
+</div>
+<sc-if value="{{ hasError }}" hint-placeholder-val="{{ false }}">
+<p role="alert" style="margin: 0 0 0 4px; font-size: 14px; font-weight: 500; color: #d63a3f">{{ error }}</p>
+</sc-if>
+</div>
+</div>
+
+<aside style="flex: 1 1 320px; min-width: 0; display: flex; flex-direction: column; gap: 20px">
+<section class="card" aria-labelledby="h-found" style="padding: 20px 22px; display: flex; flex-direction: column; gap: 10px">
+<p id="h-found" class="kicker">What we found</p>
+<p style="margin: 0; font-size: 15px; line-height: 1.5; color: #18181b; text-wrap: pretty">The user wants more free days after already being compensated for the trial conversion.</p>
+<p style="margin: 0; font-size: 13.5px; line-height: 1.5; color: #52525b; text-wrap: pretty">Second complaint about the same trial conversion two days after a 7-day grant; no new problem in the profile.</p>
+<p style="margin: 2px 0 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; font-size: 13.5px; color: #52525b">
+<span><strong style="color: #18181b; font-weight: 600">88%</strong> confidence</span><span aria-hidden="true">·</span><span>Charged after trial</span><span aria-hidden="true">·</span>
+<button type="button" class="{{ evCls }}" style="font-size: 13.5px" aria-expanded="{{ evidence }}" onClick="{{ toggleEvidence }}">Evidence<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg></button>
+</p>
+<sc-if value="{{ evidence }}" hint-placeholder-val="{{ false }}">
+<dl class="kv ballot">
+<dt>last_grant</dt><dd>7 days · Nov 5</dd>
+<dt>grants_30d</dt><dd>1 of 1 allowed</dd>
+<dt>trial_converted</dt><dd>Oct 30 → lumen_weekly</dd>
+<dt>renews_at</dt><dd>Nov 13 2026</dd>
+<dt>new_issue</dt><dd>none in the profile</dd>
+</dl>
+</sc-if>
+</section>
+
+<section class="card" aria-labelledby="h-acc" style="padding: 20px 22px; display: flex; flex-direction: column; gap: 6px">
+<p id="h-acc" class="kicker" style="margin-bottom: 4px">Account</p>
+<p style="margin: 0; font-size: 15px; font-weight: 500; color: #18181b">Premium · active until Nov 20 2026</p>
+<p style="margin: 0; font-size: 13.5px; color: #52525b">Google Play · lumen_weekly · $18.90 revenue</p>
+<p style="margin: 0; font-size: 13.5px; color: #71717a">Found by the user id from the chat.</p>
+<button type="button" class="{{ detCls }}" style="font-size: 13.5px; align-self: flex-start; margin-top: 4px" aria-expanded="{{ details }}" onClick="{{ toggleDetails }}">Details<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg></button>
+<sc-if value="{{ details }}" hint-placeholder-val="{{ false }}">
+<dl class="kv ballot">
+<dt>customer_user_id</dt><dd>lumen_443814_02380</dd>
+<dt>access_level</dt><dd>premium · active</dd>
+<dt>expires_at</dt><dd>Nov 20 2026, 21:00</dd>
+<dt>store</dt><dd>Google Play</dd>
+<dt>product</dt><dd>lumen_weekly</dd>
+<dt>renews_at</dt><dd>Nov 13 2026</dd>
+<dt>trial_converted</dt><dd>Oct 30 2026</dd>
+<dt>revenue</dt><dd>$18.90</dd>
+<dt>grants_30d</dt><dd>1 · 7 days on Nov 5</dd>
+</dl>
+</sc-if>
+</section>
+</aside>
+</div>
+</sc-if>
+
+<sc-if value="{{ isClosed }}" hint-placeholder-val="{{ false }}">
+<div style="max-width: 760px; display: flex; flex-direction: column; gap: 18px">
+<p style="margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; font-size: 15px; color: #18181b">
+<span style="display: inline-flex; align-items: center; gap: 8px; font-weight: 600"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.2 4.2L19 7"></path></svg>Ticket closed</span>
+<span style="color: #52525b">{{ outcome }} · Nov 7, 21:52</span>
+<a href="Reopen.dc.html" style="font-weight: 500">Reopen</a>
+</p>
+<button type="button" class="letter" aria-expanded="{{ ballot }}" onClick="{{ toggleBallot }}">
+<svg aria-hidden="true" viewBox="0 0 100 20" preserveAspectRatio="none" style="position: absolute; left: 0; top: 0; width: 100%; height: 26px"><path d="M0 0 L50 18 L100 0" fill="none" stroke="#ececef" stroke-width="1" vector-effect="non-scaling-stroke"></path></svg>
+<span aria-hidden="true" style="font-size: 26px; line-height: 1">{{ chosenEmoji }}</span>
+<span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; padding-top: 6px">
+<span style="font-size: 13px; color: #71717a">Sent to lumen_443814_02380 · 21:52</span>
+<span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #18181b; font-weight: 500">{{ firstLine }}</span>
+</span>
+<span class="postmark" aria-hidden="true">SENT<small>NOV 7</small></span>
+</button>
+<sc-if value="{{ ballot }}" hint-placeholder-val="{{ false }}">
+<section class="card ballot" aria-label="All answers" style="padding: 10px 20px">
+<sc-for list="{{ ballotRows }}" as="r" hint-placeholder-count="4">
+<div class="{{ r.cls }}">
+<span aria-hidden="true" style="font-size: 22px; line-height: 1.2">{{ r.emoji }}</span>
+<span style="min-width: 0">
+<span style="display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px"><span style="font-weight: 600; color: #18181b">{{ r.title }}</span><sc-if value="{{ r.edited }}"><span class="pick">edited</span></sc-if></span>
+<span style="display: block; margin-top: 2px; color: #3f3f46; font-size: 14px; line-height: 1.5">{{ r.text }}</span>
+</span>
+<sc-if value="{{ r.chosen }}"><span aria-label="Sent" style="width: 22px; height: 22px; border-radius: 50%; background: #6247f5; display: flex; align-items: center; justify-content: center"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.2 4.2L19 7"></path></svg></span></sc-if>
+</div>
+</sc-for>
+</section>
+</sc-if>
+</div>
+</sc-if>
+
+<sc-if value="{{ isDismissed }}" hint-placeholder-val="{{ false }}">
+<p style="margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; font-size: 15px; color: #18181b">
+<span style="font-weight: 600">Closed without a reply</span>
+<span style="color: #52525b">Nov 7, 21:52</span>
+<a href="Reopen.dc.html" style="font-weight: 500">Reopen</a>
+</p>
+</sc-if>
+
+<sc-if value="{{ hasToast }}" hint-placeholder-val="{{ false }}">
+<div class="toast" role="status">{{ toast }}</div>
+</sc-if>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"startState":{"editor":"enum","options":["open","closed","dismissed"],"default":"open"},"failFirstSend":{"editor":"boolean","default":false},"$preview":{"width":1440,"height":1640}}'>
+var USER = 'lumen_443814_02380';
+var BASE = {
+  reply: { emoji: '🥶', action: 'reply', days: 7, store: 'Google Play', kind: 'Cancel', question: '', reply: "Hi! We added 7 days of premium on Nov 5 for the trial charge, so your access now runs to Nov 20. We can't add more, but you can cancel any time in Google Play → Subscriptions." },
+  steps: { emoji: '👋', action: 'store_steps', days: 7, store: 'Google Play', kind: 'Cancel', question: '', reply: 'You can cancel the weekly plan any time: Google Play → Profile → Payments & subscriptions → Subscriptions → Lumen → Cancel. Premium stays until Nov 20.' },
+  grant: { emoji: '🎁', action: 'grant', days: 7, store: 'Google Play', kind: 'Cancel', question: '', reply: "As a one-off, we've added 7 more days of premium to your account." }
+};
+var ORDER = ['reply', 'steps', 'grant'];
+var MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+function merged(id, edits) { return Object.assign({}, BASE[id], edits[id] || {}); }
+function titleOf(v) {
+  if (v.action === 'grant') return 'Grant ' + v.days + ' days of access';
+  if (v.action === 'store_steps') return v.kind + ' steps · ' + v.store;
+  if (v.action === 'ask') return 'Ask the user';
+  return 'Reply, no action';
+}
+function isEdited(id, edits) {
+  var e = edits[id]; if (!e) return false;
+  for (var k in e) { if (e[k] !== BASE[id][k]) return true; }
+  return false;
+}
+function until(days) {
+  var d = new Date(Date.UTC(2026, 10, 20));
+  d.setUTCDate(d.getUTCDate() + Number(days || 0));
+  return MONTHS[d.getUTCMonth()] + ' ' + d.getUTCDate();
+}
+function outcomeOf(v) {
+  if (v.action === 'grant') return 'Granted ' + v.days + ' days, until ' + until(v.days);
+  if (v.action === 'store_steps') return 'Sent ' + v.kind.toLowerCase() + ' steps · ' + v.store;
+  if (v.action === 'ask') return 'Asked the user';
+  return 'Replied, no action';
+}
+
+class Component extends DCLogic {
+  componentWillUnmount() { if (this.tt) clearTimeout(this.tt); }
+  renderVals() {
+    var self = this;
+    var s = this.state || {};
+    var p = this.props || {};
+    var start = p.startState || 'open';
+    var phase = s.phase || start;
+    var selected = s.selected !== undefined ? s.selected : (start === 'closed' ? 'grant' : null);
+    var editing = s.editing || null;
+    var edits = s.edits || {};
+    var own = s.own || '';
+    var setEdit = function (id, key, value) {
+      var next = Object.assign({}, edits);
+      next[id] = Object.assign({}, next[id] || {}); next[id][key] = value;
+      self.setState({ edits: next, selected: id });
+    };
+
+    var answers = ORDER.map(function (id, i) {
+      var v = merged(id, edits);
+      var isGrant = v.action === 'grant';
+      return {
+        cls: selected === id ? 'ans sel' : 'ans',
+        selected: selected === id,
+        emoji: v.emoji,
+        title: titleOf(v),
+        isPick: i === 0,
+        edited: isEdited(id, edits),
+        hasRisk: isGrant,
+        risk: isGrant ? (Number(v.days) > 7 ? 'High risk · more than 7 days, second grant' : 'High risk · second grant in 30 days') : '',
+        riskCls: 'risk-high',
+        showText: editing !== id,
+        reply: v.reply,
+        action: v.action, days: v.days, store: v.store, kind: v.kind, question: v.question,
+        isGrant: isGrant, isSteps: v.action === 'store_steps', isAsk: v.action === 'ask',
+        editing: editing === id,
+        showEditBtn: editing !== id,
+        showScratchBtn: false,
+        showOwnBox: false,
+        pick: function () { self.setState({ selected: id, error: null }); },
+        edit: function () { self.setState({ editing: id, selected: id, error: null }); },
+        done: function () { self.setState({ editing: null }); },
+        reset: function () { var n = Object.assign({}, edits); delete n[id]; self.setState({ edits: n }); },
+        onAction: function (e) { setEdit(id, 'action', e.target.value); },
+        onDays: function (e) { setEdit(id, 'days', e.target.value); },
+        onStore: function (e) { setEdit(id, 'store', e.target.value); },
+        onKind: function (e) { setEdit(id, 'kind', e.target.value); },
+        onQuestion: function (e) { setEdit(id, 'question', e.target.value); },
+        onReply: function (e) { setEdit(id, 'reply', e.target.value); }
+      };
+    });
+    answers.push({
+      cls: selected === 'own' ? 'ans sel' : 'ans',
+      selected: selected === 'own',
+      emoji: '🧠', title: 'Write your own',
+      isPick: false, edited: false, hasRisk: false, risk: '', riskCls: '',
+      showText: false, reply: '', editing: false,
+      showEditBtn: false,
+      showScratchBtn: selected !== 'own',
+      showOwnBox: selected === 'own',
+      pick: function () { self.setState({ selected: 'own', editing: null, error: null }); }
+    });
+
+    var chosenVal = selected && selected !== 'own' ? merged(selected, edits) : null;
+    var summary = selected === 'own' ? 'Your own reply' : (chosenVal ? titleOf(chosenVal) : '');
+    var cantSend = !selected || (selected === 'own' && !own.trim());
+    var sentText = selected === 'own' ? own : (chosenVal ? chosenVal.reply : '');
+    var firstLine = sentText.split(/(?<=[.!?])\s/)[0] || sentText;
+
+    var ballotRows = ORDER.map(function (id) {
+      var v = merged(id, edits);
+      var chosen = selected === id;
+      return { cls: chosen ? 'bl' : 'bl off', emoji: v.emoji, title: titleOf(v), edited: chosen && isEdited(id, edits), chosen: chosen, text: chosen ? v.reply : v.reply.slice(0, 64) + (v.reply.length > 64 ? '…' : '') };
+    });
+    if (selected === 'own') ballotRows.push({ cls: 'bl', emoji: '🧠', title: 'Your own reply', edited: false, chosen: true, text: own });
+
+    var dot = phase === 'closed' ? 'dot dot-closed' : (phase === 'dismissed' ? 'dot dot-dismissed' : 'dot dot-ready');
+    var word = phase === 'closed' ? 'Closed' : (phase === 'dismissed' ? 'Dismissed' : 'Waiting for a person');
+    var menu = !!s.menu;
+    return {
+      isOpen: phase === 'open', isClosed: phase === 'closed', isDismissed: phase === 'dismissed',
+      dotCls: dot, stateWord: word,
+      answers: answers,
+      own: own,
+      onOwn: function (e) { self.setState({ own: e.target.value }); },
+      hasSel: !!selected, noSel: !selected,
+      summary: summary,
+      cantSend: cantSend,
+      okCls: s.checking ? 'gstamp on' : 'gstamp',
+      okLabel: selected ? 'Stamp it to send' : 'Pick an answer',
+      okSub: selected ? summary + ' → ' + USER : 'It gets an OK stamp, then stamp here to send',
+      openCls: s.vanish ? 'vanish' : '',
+      hasError: !!s.error, error: s.error || '',
+      send: function () {
+        if (s.checking) return;
+        self.setState({ checking: true, error: null });
+        if (self.tt) clearTimeout(self.tt);
+        self.tt = setTimeout(function () {
+          if (p.failFirstSend && !s.tried) {
+            self.setState({ checking: false, tried: true, error: chosenVal && chosenVal.action === 'grant' ? 'Adapty did not accept the grant: try again.' : 'The reply was not sent: try again.' });
+            return;
+          }
+          self.setState({ vanish: true });
+          self.tt = setTimeout(function () {
+            self.setState({ phase: 'closed', vanish: false, checking: false, editing: null, toast: 'Sent · moved to Closed', ballot: false });
+            self.tt = setTimeout(function () { self.setState({ toast: '' }); }, 2600);
+          }, 340);
+        }, 480);
+      },
+      dismiss: function () { self.setState({ phase: 'dismissed' }); },
+      outcome: selected === 'own' ? 'Sent your own reply' : (chosenVal ? outcomeOf(chosenVal) : ''),
+      chosenEmoji: selected === 'own' ? '🧠' : (chosenVal ? chosenVal.emoji : ''),
+      firstLine: firstLine,
+      ballot: !!s.ballot,
+      toggleBallot: function () { self.setState({ ballot: !s.ballot }); },
+      ballotRows: ballotRows,
+      evidence: !!s.evidence, evCls: s.evidence ? 'linkbtn open' : 'linkbtn',
+      toggleEvidence: function () { self.setState({ evidence: !s.evidence }); },
+      details: !!s.details, detCls: s.details ? 'linkbtn open' : 'linkbtn',
+      toggleDetails: function () { self.setState({ details: !s.details }); },
+      hasToast: !!s.toast, toast: s.toast || '',
+      menu: menu, menuCls: menu ? 'nl open' : 'nl',
+      toggleMenu: function () { self.setState({ menu: !menu }); },
+      closeMenu: function () { self.setState({ menu: false }); }
+    };
+  }
+}
+</script>
+</body>
+</html>
