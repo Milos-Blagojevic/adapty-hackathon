@@ -26,11 +26,12 @@ These files run inside the Design canvas runtime, not as standalone pages. For s
 
 ## Tokens
 
-- Page `#f6f6f4`, cards `#fff` with `1px #e9e9ec`, radius 16; controls radius 8–10.
-- Text `#18181b`, secondary `#52525b`, muted `#71717a`.
-- Brand violet `#6247f5` (active nav `#efedfb` / `#5b3cf0`).
-- Hero band: `#12064f → #2a0fa0 → #4a22e0 → #7b5cff` with a white dot texture (7px grid).
-- Analyze: machines `#2563eb`, humans `#e5484d`, closed by humans `#8f1d3a`, still open `#c2770f`, other feedback `#52525b` (checked for colour-blind readers).
-- Counts: Open red `#d63a3f`, Closed green `#15803d`. Send / OK stamps green `#16a34a`.
-- Type: Inter 400/500/600/700; page titles 26–32px, body 14.5px, labels 12px uppercase +0.09em.
+- Base: white. Page `#fafafa` with a soft violet haze (radial `rgba(124,92,255,.12)` top-left, `rgba(176,148,255,.11)` top-right, `rgba(124,92,255,.07)` bottom).
+- Cards `#fff`, border `#ebe8f6`, radius 10, a lavender wash at the top (`#faf8ff` → `#fff` over 180px). Controls radius 6.
+- Text `#18181b`, secondary `#52525b`, muted `#6b6b75`; hairlines `#ececf0` / `#f2f2f4`.
+- Brand violet `#6247f5`, active nav `#ece6ff → #f5f2ff` with `#5b3cf0` text. Hovers fade a violet haze in from the left.
+- New feedback button: dark hazy violet, radial `#5b3fd4 → #33198f → #1d0f55`, white text.
+- Type: Inter for UI; Newsreader (serif) for page titles, numbers and section labels (italic); Bodoni Moda italic, double-ruled, for risk words.
+- Ticket: "What we found" is the hero panel (violet radial haze, serif headline, 88 dial). Answer probabilities are 60-tick dials; tones `#3d6b52` ≥75, `#8a6a2e` 55–74, `#8e3b36` below; ∞ for "Write your own". SEND is a horizontal double-ruled stamp, 184×64, −4°.
+- Analyze: machines `#2563eb`, humans `#e5484d`, closed by humans `#8f1d3a`, still open `#c2770f`, other feedback `#52525b`.
 - Motion 150–340 ms: OK stamp 300 ms, SEND press 320 ms, ticket → Closed 340 ms, toast 220 ms, menus 180 ms.
