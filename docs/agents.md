@@ -275,3 +275,35 @@ Level 1:
 - `triage.ungrounded_evidence(ticket, facts_text) -> list[str]`: evidence lines whose value (after the first `: `) has a token with a digit, `_` or `.` (amounts, dates, ids, versions) that does not occur, case-insensitively, in the facts the run loaded (the model merges facts into one line, so whole-line matching is useless). Used by eval only; the run does not drop them.
 
 Decided by the owner after the review (2026-11-08): keep `confidence` (the models are DeepSeek and Opus, not a small model), keep three equal options, no keyword backstop for hand-off rules.
+
+### Insights: JSON API and live screen (binding)
+
+The side screen of Level 1 (open question 3: yes, it stays one). Grouping is `insights.group_tickets` (code, no model); the hypothesis is `triage.run_insights` (≤2 model calls per run, cached in the `insights` table); the draft is `insights.draft_ab_test` (Adapty CLI `ab-tests create`, draft only). The JSON layer is `resolve/insights_live.py`; it shapes, decides when to run, and never changes those three.
+
+Endpoints (tag `insights`):
+
+```
+GET  /api/insights               → InsightsView (read only, no model call; may schedule an auto run, below)
+POST /api/insights/run           → InsightsView after one run (a person's click). 409 if a run is in flight
+POST /api/insights/ab-draft      {placement, goal?} → InsightsView with the new draft first in `drafts`
+```
+
+`InsightsView`:
+- `updated_at` (server time of this answer), `demo`, `llm` (a model client is configured), `auto` (auto refresh on: not demo, `llm`, `INSIGHTS_AUTO` ≠ 0).
+- `total`, `triaged`, `untriaged`; `categories: [{category, count, share, products: [{product, count}], flows: [{flow, title, count}]}]`, largest first (share = count / triaged); `top: {category, flow, title, count} | null` (the largest category and the flow most of it saw: the highlighted cell).
+- `report: {headline, hypothesis, placement, placement_title, control_flow, variant, expected_effect, evidence[], created_at, trigger: "manual"|"auto"|null, reason: str|null} | null`; `previous`: the report it replaced, same shape without `previous`, or null.
+- `run: {state: "idle"|"running"|"error", trigger, reason, started_at, finished_at, error}`; `pending: {reason, since, due_in_s, blocked} | null` (a material change waiting for the debounce; `blocked` names why it will not run, e.g. the hourly cap).
+- `placements: [{key, title, flows: [title], draftable}]` (draftable = two or more flows); `drafts: [{ab_test_id, title, state, placement, placement_id, arms: [{title, weight}], goal, created_at}]`, newest first.
+
+Paywall seen: the flow comes from the offline dataset stored on the seeded ticket (`context.flow`); the live profile has no such field. A ticket without it (chat handoff, form, email) takes the context of another ticket of the same `customer_user_id` (the offline mapping is per user); otherwise its flow is `unknown`.
+
+Run (manual and auto): one at a time (a lock; a manual click while a run is in flight → 409, an auto run is skipped). Errors are not HTTP errors: demo mode, no LLM, no triaged tickets, an LLM failure → `run.state = "error"`, `run.error` = the `TriageError` text, the last good report stays. A success stores the report with `trigger`, `reason`, the grouping it was built from (`basis`: top category, top flow, triaged, shares) and the replaced report as `previous`.
+
+Auto refresh (only while someone has the screen open: it is evaluated on `GET /api/insights`, which the screen polls every 2.5 s; nothing runs in the background otherwise):
+- Material change against the report's `basis`: the top category changed (`top issue changed: A → B`), else the top cell's flow changed (`top paywall changed: A → B`), else some category's share moved by ≥ 5 points (`Refund request share 20% → 31%`). No report, or a report without `basis` (built before this, or in the snapshot) → never auto (the person clicks Run once).
+- Debounce: the grouping must stay identical for 3 s after a material change is first seen; then one run starts in a background task, `trigger = "auto"`, `reason` = the text above.
+- Caps (code): at least 20 s between auto starts, at most 10 auto runs per rolling hour (then `pending.blocked = "hourly cap"`), none in demo mode or without an LLM. Each run is still `run_insights` (≤2 model calls).
+
+Draft: `placement` must be one of `insights.PLACEMENTS` (else 422); a single-flow placement → 422 with the `DraftError` text; the CLI failing (not installed, non-zero exit) → 502 with its text; demo mode or no CLI runner → 409. Nothing ever starts, stops or edits a test.
+
+Screen (`resolve/static/ui/Insights.dc.html`, ported from the design hand-off, wired through `api.js`/`support.js` like the other `static/ui` screens): By category (bars), Category × product, Category × paywall seen (top cell highlighted), Hypothesis (Run / Re-run, `Generated … · trigger`), Draft A/B test (placement, goal prefilled from the hypothesis, drafts created). States: no triaged tickets; not run yet; running (skeleton, or the old hypothesis dimmed with "Updating · reason"); error (line under the header, the last good report stays); demo (no Run button, "No cached analysis in the snapshot" when there is none, Draft disabled with "Demo mode"); drafting; draft error (line under the button, button stays on); no drafts yet (block hidden). Live: poll every 2.5 s, "Live · updated N s ago"; changed counts tick up and their cell flashes, the top cell's highlight moves to its new row, 150–340 ms. After an auto run the previous hypothesis stays under "Before". `?mock=1`: the design's sample data, no API calls; `?mock=1&state=<design state>` picks one of the nine design states (e.g. `Analysis running`, `Draft error`); `?mock=1&sim=1` adds a ticket every 3 s and replays the auto rule in the browser with a canned hypothesis (no model). Nav on every `static/ui` screen: Incoming · Chat · Agent settings · Analyze · Insights · Impact; the Screens menu lists Analyze, Insights, Impact under Numbers.

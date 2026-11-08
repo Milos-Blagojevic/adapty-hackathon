@@ -9,12 +9,13 @@ from typing import Literal
 from fastapi import APIRouter, BackgroundTasks, FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 
-from resolve import analytics, config, db, frontline, llm, policy, triage, workflow
+from resolve import analytics, config, db, frontline, insights, insights_live, llm, policy, triage, workflow
 from resolve.adapty import access_level
 from resolve.models import (
     API_STATUSES,
     DB_TO_API_STATUS,
     SOURCES,
+    AbDraftRequest,
     AgentConfig,
     ChatRequest,
     ChatResult,
@@ -23,6 +24,7 @@ from resolve.models import (
     FeedbackCreated,
     FeedbackRequest,
     Analytics,
+    InsightsView,
     ErrorDetail,
     LlmInfo,
     Rejection,
@@ -34,6 +36,8 @@ from resolve.models import (
 
 E404 = {404: {"model": ErrorDetail, "description": "Unknown id"}}
 E409 = {409: {"model": ErrorDetail, "description": "Wrong ticket status for this call"}}
+E409_RUN = {409: {"model": ErrorDetail, "description": "A hypothesis run is already in flight"}}
+E409_DRAFT = {409: {"model": ErrorDetail, "description": "Demo mode or no Adapty CLI: nothing is created"}}
 from resolve.tickets import CATEGORIES
 
 ACCEPT_STATUSES = ("proposed",)
@@ -54,7 +58,9 @@ def _switch_llm(services, choice: str) -> None:
 def install(app: FastAPI, services) -> None:
     """CORS for any origin (the APK and other UIs), then the JSON API routes."""
     app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
-    app.include_router(build_router(services))
+    live = insights_live.Live(services)
+    app.state.insights_live = live
+    app.include_router(build_router(services, live=live, ab_runner=lambda: getattr(app.state, "ab_runner", None)))
     choice = policy.load_config(services.conn).llm_provider
     if choice != "env" and not services.demo:
         try:
@@ -134,9 +140,10 @@ def ticket_full(conn: db.Database, ticket: dict) -> dict:
     }
 
 
-def build_router(services) -> APIRouter:
+def build_router(services, live: insights_live.Live | None = None, ab_runner=lambda: None) -> APIRouter:
     router = APIRouter()
     conn = services.conn
+    live = live or insights_live.Live(services)
 
     def ticket_or_404(ticket_id: str) -> dict:
         ticket = db.get_ticket(conn, ticket_id)
@@ -298,5 +305,40 @@ def build_router(services) -> APIRouter:
                 }
             )
         return out
+
+    @router.get("/api/insights", response_model=InsightsView, tags=["insights"],
+                summary="Grouping, the cached hypothesis and drafts; no model call (may schedule an auto run)")
+    def get_insights(background: BackgroundTasks):
+        groups = live.groups()
+        reason = live.poll(groups)
+        view = live.view(groups)
+        if reason:
+            background.add_task(live.run_auto, reason)
+        return view
+
+    @router.post("/api/insights/run", response_model=InsightsView, tags=["insights"], responses=E409_RUN,
+                 summary="Run the hypothesis now (one model call, ≤2 with the retry); errors come back in run.error")
+    def run_insights():
+        try:
+            live.run_manual()
+        except insights_live.Busy as exc:
+            raise HTTPException(409, str(exc)) from None
+        return live.view(live.groups())
+
+    @router.post("/api/insights/ab-draft", response_model=InsightsView, tags=["insights"],
+                 responses={**E409_DRAFT, 502: {"model": ErrorDetail, "description": "The Adapty CLI failed"}},
+                 summary="Create a draft A/B test in Adapty (never started)")
+    def ab_draft(body: AbDraftRequest):
+        runner = ab_runner()
+        if services.demo or runner is None:
+            raise HTTPException(409, "Demo mode: no A/B test is created; live mode runs `adapty ab-tests create` (draft only)")
+        if len(insights.PLACEMENTS[body.placement]["flows"]) < 2:
+            raise HTTPException(422, f"{insights.PLACEMENTS[body.placement]['title']} has one flow; an A/B test needs two arms")
+        try:
+            draft = insights.draft_ab_test(runner, body.placement, body.goal)
+        except insights.DraftError as exc:
+            raise HTTPException(502, str(exc)) from None
+        db.save_ab_draft(conn, body.placement, draft["ab_test_id"], draft["title"], draft)
+        return live.view(live.groups())
 
     return router
