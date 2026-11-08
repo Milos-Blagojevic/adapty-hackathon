@@ -623,7 +623,7 @@ function liveView(data, range, elapsed, updated, error) {
       var items = tasks.filter(function (t) { return t.kind === g[0]; }).sort(function (a, b) { return (a.age_s || 0) - (b.age_s || 0); }).slice(0, LIVE_ITEMS);
       return { label: g[1], dot: g[2], count: counts[g[0]], items: items.map(function (t) {
         return { title: t.title || '(no text)', user: t.user || 'unknown user', note: t.detail || t.note, age: fmtAge((t.age_s || 0) + elapsed),
-          href: t.kind === 'chat' ? 'Chat.dc.html?session=' + encodeURIComponent(t.id) : 'Ticket.dc.html?id=' + encodeURIComponent(t.id) };
+          href: t.kind === 'chat' ? 'Chat.dc.html?view=1&session=' + encodeURIComponent(t.id) : 'Ticket.dc.html?id=' + encodeURIComponent(t.id) };
       }) };
     }),
     updated: updated || '—'

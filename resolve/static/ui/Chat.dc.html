@@ -39,6 +39,9 @@ input::placeholder{color:#7b7b85}
 .card{background:linear-gradient(180deg,#faf8ff 0%,#ffffff 180px);border:1px solid #ebe8f6;border-radius:10px;box-shadow:0 1px 2px rgba(15,15,15,.04)}
 .linkbtn{background:none;border:0;padding:0;color:#5b3cf0;font-size:14px;font-weight:500;cursor:pointer;text-align:left}
 .linkbtn:hover{color:#4527d6}
+.idf{height:34px;width:240px;padding:0 10px;border-radius:6px;border:1px solid #e4e4e8;background:#ffffff;color:#18181b;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;outline:none}
+.idf:focus{border-color:#cbc3fb;box-shadow:0 0 0 4px rgba(98,71,245,.10)}
+.ro{font-size:12.5px;color:#8a6a2e;background:#fbf3db;border-radius:6px;padding:4px 9px}
 .pick{height:34px;padding:0 30px 0 10px;border-radius:6px;border:1px solid #e4e4e8;background:#ffffff;color:#18181b;font-size:14px;font-weight:500}
 .sw{position:relative;width:38px;height:22px;border-radius:999px;border:0;background:#d9d9de;cursor:pointer;transition:background .18s;flex:0 0 auto}
 .sw::after{content:"";position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#ffffff;box-shadow:0 1px 2px rgba(0,0,0,.2);transition:transform .18s}
@@ -133,7 +136,7 @@ input::placeholder{color:#7b7b85}
 
 <main style="max-width: 1200px; margin: 0 auto; padding: 16px 24px 48px; display: flex; flex-direction: column; gap: 16px">
 <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px 22px; font-size: 13.5px; color: #6b6b75">
-<sc-if value="{{ design }}"><span>as <span style="font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px; color: #3f3f46">{{ user }}</span></span></sc-if><sc-if value="{{ live }}"><span style="display: inline-flex; align-items: center; gap: 8px">as <label for="pick-user" class="sr">User</label><select id="pick-user" class="pick" value="{{ user }}" onChange="{{ onUser }}"><sc-for list="{{ users }}" as="u"><option value="{{ u.id }}">{{ u.label }}</option></sc-for></select><button type="button" class="linkbtn" style="font-size: 13.5px" onClick="{{ newSession }}">New chat</button></span></sc-if>
+<sc-if value="{{ design }}"><span>as <span style="font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px; color: #3f3f46">{{ user }}</span></span></sc-if><sc-if value="{{ live }}"><form onSubmit="{{ openById }}" style="display: inline-flex; align-items: center; gap: 8px; margin: 0"><label for="chat-id">Chat id</label><input id="chat-id" class="idf" type="text" autocomplete="off" spellcheck="false" placeholder="chat or ticket id, e.g. f-0004" value="{{ idDraft }}" onChange="{{ onIdDraft }}"><button type="submit" class="linkbtn" style="font-size: 13.5px">Open</button><sc-if value="{{ readOnly }}"><span class="ro">Read only · as <span style="font-family: ui-monospace, SFMono-Regular, Menlo, monospace">{{ user }}</span></span></sc-if><button type="button" class="linkbtn" style="font-size: 13.5px" onClick="{{ newSession }}">New chat</button></form></sc-if><sc-if value="{{ idErr }}"><span role="alert" style="color: #d63a3f">{{ idErr }}</span></sc-if>
 <span style="margin-left: auto; display: inline-flex; align-items: center; gap: 10px">
 <span id="dbg-l">Debug</span>
 <button type="button" role="switch" aria-checked="{{ debug }}" aria-labelledby="dbg-l" class="{{ swCls }}" onClick="{{ toggleDebug }}"></button>
@@ -167,7 +170,7 @@ input::placeholder{color:#7b7b85}
 <form onSubmit="{{ submit }}" style="flex: 0 0 auto; padding: 12px 20px 18px">
 <div class="composer" style="max-width: 720px; margin: 0 auto">
 <label for="msg" class="sr">Message</label>
-<input id="msg" type="text" autocomplete="off" placeholder="Message" value="{{ draft }}" onChange="{{ onDraft }}" style="flex: 1; min-width: 0; height: 100%; border: 0; outline: none; background: transparent; color: #18181b; font-size: 15px">
+<input id="msg" type="text" autocomplete="off" placeholder="{{ msgPh }}" disabled="{{ readOnly }}" value="{{ draft }}" onChange="{{ onDraft }}" style="flex: 1; min-width: 0; height: 100%; border: 0; outline: none; background: transparent; color: #18181b; font-size: 15px">
 <button type="submit" class="send" aria-label="Send" disabled="{{ noDraft }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6"></path></svg></button>
 </div>
 </form>
@@ -285,16 +288,6 @@ function planOf(user, users) {
   return BADGE[u.badge] + (u.product ? ' · ' + u.product : '');
 }
 
-// The user picker: every user from GET /api/users as "id · badge"; the current one kept even when not listed.
-function userOptions(user, users) {
-  var out = (users || []).map(function (u) {
-    return { id: u.customer_user_id, label: u.customer_user_id + ' · ' + (BADGE[u.badge] || 'No profile loaded yet') };
-  });
-  if (user && !out.some(function (o) { return o.id === user; })) out.unshift({ id: user, label: user });
-  if (!out.length) out.push({ id: '', label: users ? 'no user' : '' });
-  return out;
-}
-
 class Component extends DCLogic {
   componentWillUnmount() { if (this.tt) clearTimeout(this.tt); if (this.poll) clearInterval(this.poll); }
   componentDidMount() {
@@ -302,7 +295,7 @@ class Component extends DCLogic {
     var self = this;
     var p = this.props || {};
     var session = p.session || 'web-' + Date.now().toString(36);
-    this.setState({ session: session, user: p.user || '', loading: true, msgs: [], log: [], handoff: null });
+    this.setState({ session: session, user: p.user || '', loading: true, msgs: [], log: [], handoff: null, readOnly: p.view === '1' && !!p.session, idDraft: p.view === '1' ? session : '' });
     this.keepUrl();
     API.get('/api/config').then(function (c) { self.setState({ appName: c.app_name }); }, function () {});
     var users = API.get('/api/users').then(function (list) { self.setState({ users: list }); return list; }, function () { self.setState({ users: [] }); return []; });
@@ -326,13 +319,34 @@ class Component extends DCLogic {
     var q = new URLSearchParams(location.search);
     q.set('session', s.session);
     if (s.user) q.set('user', s.user);
+    if (s.readOnly) q.set('view', '1'); else q.delete('view');
     history.replaceState(null, '', location.pathname + '?' + q.toString() + location.hash);
   }
   // Another user or New chat: a fresh session id, an empty chat, the URL updated.
   fresh(user) {
     if (this.poll) { clearInterval(this.poll); this.poll = null; }
-    this.setState({ session: 'web-' + Date.now().toString(36), user: user, msgs: [], log: [], handoff: null, outcome: null, sendErr: null, openLog: {}, typing: false, sending: false, loading: false });
+    this.setState({ session: 'web-' + Date.now().toString(36), user: user, msgs: [], log: [], handoff: null, outcome: null, sendErr: null, openLog: {}, typing: false, sending: false, loading: false, readOnly: false, idDraft: '', idErr: '' });
     this.keepUrl();
+  }
+  // Open an existing chat to read it: a chat id, or a ticket id (its chat). Read only: nothing can be sent.
+  openById(raw) {
+    var self = this;
+    var id = (raw || '').trim();
+    if (!id) return;
+    if (this.poll) { clearInterval(this.poll); this.poll = null; }
+    this.setState({ idErr: '', loading: true });
+    var viaTicket = /^[a-z]+-\d+$/i.test(id) ? API.get('/api/tickets/' + encodeURIComponent(id)).then(function (t) {
+      if (!t.session_id) throw Object.assign(new Error('Ticket ' + id + ' did not come from a chat'), { status: 404, own: true });
+      return t.session_id;
+    }, function (err) { if (err.status === 404) return id; throw err; }) : Promise.resolve(id);
+    viaTicket.then(function (session) {
+      return API.get('/api/chat/' + encodeURIComponent(session)).then(function (c) {
+        self.setState({ session: session, readOnly: true, idDraft: session, msgs: [], log: [], handoff: null, outcome: null, sendErr: null, openLog: {}, typing: false, sending: false, loading: false, draft: '' });
+        self.apply(c);
+      });
+    }).catch(function (err) {
+      self.setState({ loading: false, idErr: err.own ? err.message : err.status === 404 ? 'No chat or ticket with id ' + id : 'Could not open ' + id + ': ' + err.message });
+    });
   }
   // A ChatSession from the server replaces what is on screen; after a handoff, poll for support replies.
   apply(c) {
@@ -366,7 +380,7 @@ class Component extends DCLogic {
   sayLive(text) {
     var self = this;
     var s = this.state || {};
-    if (s.sending || s.loading || !s.user) return;
+    if (s.sending || s.loading || !s.user || s.readOnly) return;
     var kept = s.msgs || [];
     this.setState({ msgs: kept.concat([{ role: 'user', text: text, ts: now() }]), draft: '', typing: true, sending: true, sendErr: null });
     this.toBottom();
@@ -452,7 +466,13 @@ class Component extends DCLogic {
       empty: msgs.length === 0 && !s.typing && !s.loading,
       typing: !!s.typing,
       draft: draft,
-      noDraft: !draft.trim() || (LIVE && (!user || !!s.sending || !!s.loading)),
+      noDraft: !draft.trim() || (LIVE && (!user || !!s.sending || !!s.loading || !!s.readOnly)),
+      readOnly: LIVE && !!s.readOnly,
+      msgPh: LIVE && s.readOnly ? 'Read only: this chat is open for viewing' : 'Message',
+      idDraft: s.idDraft || '',
+      idErr: LIVE ? s.idErr || '' : '',
+      onIdDraft: function (e) { self.setState({ idDraft: e.target.value }); },
+      openById: function (e) { e.preventDefault(); self.openById(self.state.idDraft); },
       onDraft: function (e) { self.setState({ draft: e.target.value }); },
       submit: function (e) { e.preventDefault(); if (draft.trim()) self.say(draft.trim()); },
       user: LIVE && !user ? (s.users ? 'no user' : '') : user,
@@ -460,7 +480,6 @@ class Component extends DCLogic {
       newSession: LIVE ? function () { self.fresh(self.state.user || ''); } : function () { self.setState({ msgs: [], log: [], handoff: null, session: 's-8c41d2', openLog: {} }); },
       live: LIVE,
       design: !LIVE,
-      users: LIVE ? userOptions(user, s.users) : [],
       debug: debug,
       swCls: debug ? 'sw on' : 'sw',
       toggleDebug: function () { self.setState({ debug: !debug }); },
