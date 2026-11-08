@@ -31,11 +31,35 @@ function errorText(error: unknown, status: number): string {
   return `HTTP ${status}`;
 }
 
+/**
+ * A failed request. `kind` tells the chat what to say:
+ * network = the server can't be reached, timeout = no answer in time, http = the server answered with an error.
+ */
+export class ApiError extends Error {
+  constructor(
+    readonly kind: 'network' | 'timeout' | 'http',
+    message: string,
+    readonly status?: number,
+  ) {
+    super(message);
+    this.name = 'ApiError';
+  }
+}
+
+/** Per request, in ms. A chat reply is up to a few model calls plus an Adapty read. */
+export const DEFAULT_TIMEOUTS = { chat: 60_000, read: 10_000 };
+
 /** Real backend, called through a client typed by the OpenAPI contract. */
 export class HttpAgentApi implements AgentApi {
   private client;
+  private timeouts: typeof DEFAULT_TIMEOUTS;
 
-  constructor(baseUrl: string, fetchImpl?: (req: Request) => Promise<Response>) {
+  constructor(
+    readonly baseUrl: string,
+    fetchImpl?: (req: Request) => Promise<Response>,
+    timeouts: Partial<typeof DEFAULT_TIMEOUTS> = {},
+  ) {
+    this.timeouts = { ...DEFAULT_TIMEOUTS, ...timeouts };
     this.client = createClient<paths>({
       baseUrl: baseUrl.replace(/\/$/, ''),
       // Resolve the global at call time so tests can replace it.
@@ -43,26 +67,44 @@ export class HttpAgentApi implements AgentApi {
     });
   }
 
-  async listUsers() {
-    const { data, error, response } = await this.client.GET('/api/users');
-    if (!data) throw new Error(errorText(error, response.status));
-    return data;
+  /** fetch has no timeout of its own (on Android a hung request never ends), so abort it ourselves. */
+  private async call<T>(
+    ms: number,
+    run: (signal: AbortSignal) => Promise<{ data?: T; error?: unknown; response: Response }>,
+  ): Promise<T> {
+    const controller = new AbortController();
+    let timedOut = false;
+    const timer = setTimeout(() => {
+      timedOut = true;
+      controller.abort();
+    }, ms);
+    try {
+      const { data, error, response } = await run(controller.signal);
+      if (data === undefined) throw new ApiError('http', errorText(error, response.status), response.status);
+      return data;
+    } catch (e) {
+      if (e instanceof ApiError) throw e;
+      if (timedOut) throw new ApiError('timeout', `no answer in ${Math.round(ms / 1000)} s`);
+      throw new ApiError('network', (e as Error)?.message || 'network error');
+    } finally {
+      clearTimeout(timer);
+    }
   }
 
-  async sendMessage(customerUserId: string, sessionId: string, message: string) {
-    const { data, error, response } = await this.client.POST('/chat', {
-      body: { customer_user_id: customerUserId, session_id: sessionId, message },
-    });
-    if (!data) throw new Error(errorText(error, response.status));
-    return data;
+  listUsers() {
+    return this.call(this.timeouts.read, (signal) => this.client.GET('/api/users', { signal }));
   }
 
-  async getSession(sessionId: string) {
-    const { data, error, response } = await this.client.GET('/api/chat/{session_id}', {
-      params: { path: { session_id: sessionId } },
-    });
-    if (!data) throw new Error(errorText(error, response.status));
-    return data;
+  sendMessage(customerUserId: string, sessionId: string, message: string) {
+    return this.call(this.timeouts.chat, (signal) =>
+      this.client.POST('/chat', { body: { customer_user_id: customerUserId, session_id: sessionId, message }, signal }),
+    );
+  }
+
+  getSession(sessionId: string) {
+    return this.call(this.timeouts.read, (signal) =>
+      this.client.GET('/api/chat/{session_id}', { params: { path: { session_id: sessionId } }, signal }),
+    );
   }
 }
 
@@ -124,7 +166,7 @@ export class MockAgentApi implements AgentApi {
 
   async getSession(sessionId: string): Promise<ChatSession> {
     const s = this.sessions.get(sessionId);
-    if (!s) throw new Error(`no session ${sessionId}`);
+    if (!s) throw new ApiError('http', `no session ${sessionId}`, 404);
     if (s.replyDueAt !== undefined && this.now() >= s.replyDueAt) {
       s.replyDueAt = undefined;
       // The teammate answers the latest user message, with the account as context.
@@ -140,7 +182,9 @@ export class MockAgentApi implements AgentApi {
   }
 }
 
+/** Base URL of the Resolve API from the env; empty = offline mock. */
+export const AGENT_API_URL = process.env.EXPO_PUBLIC_AGENT_API_URL ?? '';
+
 export function createAgentApi(): AgentApi {
-  const url = process.env.EXPO_PUBLIC_AGENT_API_URL;
-  return url ? new HttpAgentApi(url) : new MockAgentApi();
+  return AGENT_API_URL ? new HttpAgentApi(AGENT_API_URL) : new MockAgentApi();
 }

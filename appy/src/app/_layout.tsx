@@ -17,6 +17,8 @@ function AppTabs() {
     <Tabs
       screenOptions={{
         tabBarActiveTintColor: colors.primary,
+        // Android is edge-to-edge: without this the tab bar rides up above the keyboard under the input.
+        tabBarHideOnKeyboard: true,
         headerStyle: { backgroundColor: colors.bg },
         headerShadowVisible: false,
         sceneStyle: { backgroundColor: colors.bg },

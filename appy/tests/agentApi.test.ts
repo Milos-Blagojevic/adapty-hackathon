@@ -79,3 +79,24 @@ describe('MockAgentApi', () => {
     await expect(new MockAgentApi().getSession('nope')).rejects.toThrow('no session nope');
   });
 });
+
+describe('HttpAgentApi errors', () => {
+  it('a network failure is an ApiError of kind network', async () => {
+    const api = new HttpAgentApi('http://api.test', async () => {
+      throw new TypeError('Network request failed');
+    });
+    await expect(api.listUsers()).rejects.toMatchObject({ kind: 'network' });
+  });
+
+  it('a request with no answer is aborted after the timeout', async () => {
+    const hang = (req: Request) =>
+      new Promise<Response>((_, reject) => req.signal.addEventListener('abort', () => reject(new Error('aborted'))));
+    const api = new HttpAgentApi('http://api.test', hang, { chat: 20 });
+    await expect(api.sendMessage('c', 's', 'hi')).rejects.toMatchObject({ kind: 'timeout' });
+  });
+
+  it('an HTTP error keeps its status', async () => {
+    const api = new HttpAgentApi('http://api.test', async () => new Response('Internal Server Error', { status: 500 }));
+    await expect(api.sendMessage('c', 's', 'hi')).rejects.toMatchObject({ kind: 'http', status: 500 });
+  });
+});

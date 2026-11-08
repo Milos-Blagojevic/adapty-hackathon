@@ -1,10 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
+import { HeaderHeightContext } from 'expo-router/react-navigation';
+import { useContext, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
-  ScrollView,
   KeyboardAvoidingView,
-  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -12,23 +11,47 @@ import {
   View,
 } from 'react-native';
 
+import { RichText } from '../components/RichText';
 import { colors } from '../components/ui';
+import { UserPicker } from '../components/UserPicker';
 import { TRIAGE_DB } from '../data/triageDb';
 import { useSupport } from '../lib/support';
 import type { ChatMessage } from '../lib/types';
 
-const SUGGESTIONS = [
+/** Offline mock: FAQ answers plus billing problems that go to a teammate. */
+const MOCK_SUGGESTIONS = [
   TRIAGE_DB[0].question,
   TRIAGE_DB[1].question,
-  // Billing problems: these always go to a support agent.
   'I was charged twice this month',
   'I want a refund for a wrong charge',
   'I paid but Premium is not activated',
 ];
 
-function Bubble({ message }: { message: ChatMessage }) {
+/** Real backend: the agent answers from the user's subscription, so ask about that. */
+const LIVE_SUGGESTIONS = [
+  'When does my plan renew?',
+  'How do I cancel my subscription?',
+  'I paid but Premium is not activated',
+  'I want a refund',
+];
+
+function Bubble({ message, onRetry }: { message: ChatMessage; onRetry: (id: string) => void }) {
   if (message.author === 'system') {
-    return <Text style={styles.system}>{message.text}</Text>;
+    return (
+      <View style={styles.systemWrap}>
+        <Text style={[styles.system, message.error && styles.systemError]}>{message.text}</Text>
+        {!!message.retryText && (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Try again"
+            onPress={() => onRetry(message.id)}
+            style={({ pressed }) => [styles.retry, pressed && { opacity: 0.6 }]}
+          >
+            <Text style={styles.retryText}>Try again</Text>
+          </Pressable>
+        )}
+      </View>
+    );
   }
   const mine = message.author === 'user';
   const support = message.author === 'support';
@@ -36,22 +59,49 @@ function Bubble({ message }: { message: ChatMessage }) {
     <View style={[styles.bubbleWrap, mine && { alignItems: 'flex-end' }]}>
       {support && <Text style={styles.author}>Support teammate · {message.ticketId}</Text>}
       <View style={[styles.bubble, mine ? styles.mine : support ? styles.agent : styles.bot]}>
-        <Text style={[styles.text, mine && { color: '#fff' }]}>{message.text}</Text>
+        {mine ? (
+          <Text style={[styles.text, { color: '#fff' }]}>{message.text}</Text>
+        ) : (
+          <RichText text={message.text} style={styles.text} />
+        )}
+      </View>
+    </View>
+  );
+}
+
+function Typing() {
+  return (
+    <View style={styles.bubbleWrap} accessibilityLabel="Assistant is typing">
+      <View style={[styles.bubble, styles.bot, styles.typing]}>
+        <ActivityIndicator size="small" color={colors.primary} />
+        <Text style={styles.typingText}>Assistant is typing…</Text>
       </View>
     </View>
   );
 }
 
 export default function ChatScreen() {
-  const { messages, sending, sendMessage, users, userId, selectUser } = useSupport();
+  const {
+    live,
+    serverUrl,
+    messages,
+    sending,
+    sendMessage,
+    retry,
+    users,
+    usersError,
+    reloadUsers,
+    userId,
+    selectUser,
+    newChat,
+  } = useSupport();
   const ready = !!userId && !sending;
   const [draft, setDraft] = useState('');
   const list = useRef<FlatList<ChatMessage>>(null);
-
-  useEffect(() => {
-    const t = setTimeout(() => list.current?.scrollToEnd({ animated: true }), 50);
-    return () => clearTimeout(t);
-  }, [messages.length]);
+  // Header height incl. the status bar, so the keyboard offset is right on every phone (0 outside a navigator).
+  const headerHeight = useContext(HeaderHeightContext) ?? 0;
+  const started = messages.some((m) => m.author === 'user');
+  const suggestions = live ? LIVE_SUGGESTIONS : MOCK_SUGGESTIONS;
 
   const send = (text: string) => {
     if (!text.trim() || !ready) return;
@@ -60,32 +110,33 @@ export default function ChatScreen() {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1 }}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={90}
-    >
-      {users.length > 0 && (
-        <View style={styles.userBar}>
-          <Text style={styles.userLabel}>Chat as</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
-            {users.map((u) => {
-              const active = u.customer_user_id === userId;
-              return (
-                <Pressable
-                  key={u.customer_user_id}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: active }}
-                  onPress={() => !active && selectUser(u.customer_user_id)}
-                  style={[styles.userChip, active && styles.userChipActive]}
-                >
-                  <Text style={[styles.userChipText, active && { color: '#fff' }]}>
-                    {u.customer_user_id} · {u.badge}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </ScrollView>
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding" keyboardVerticalOffset={headerHeight}>
+      <View style={styles.userBar}>
+        <Text style={styles.userLabel}>Chat as</Text>
+        {users.length > 0 ? (
+          <>
+            <UserPicker users={users} userId={userId} onSelect={selectUser} />
+            <View style={{ flex: 1 }} />
+            {started && (
+              <Pressable accessibilityRole="button" onPress={newChat} hitSlop={8} disabled={sending}>
+                <Text style={[styles.newChat, sending && { opacity: 0.5 }]}>New chat</Text>
+              </Pressable>
+            )}
+          </>
+        ) : (
+          <Text style={styles.userLabel}>{usersError ? '—' : 'loading users…'}</Text>
+        )}
+      </View>
+
+      {usersError && (
+        <View style={styles.banner}>
+          <Text style={styles.bannerText}>
+            {usersError}
+            {serverUrl ? `\nServer: ${serverUrl}` : ''}
+          </Text>
+          <Pressable accessibilityRole="button" onPress={reloadUsers} hitSlop={8}>
+            <Text style={styles.retryText}>Retry now</Text>
+          </Pressable>
         </View>
       )}
 
@@ -93,14 +144,18 @@ export default function ChatScreen() {
         ref={list}
         data={messages}
         keyExtractor={(m) => m.id}
-        renderItem={({ item }) => <Bubble message={item} />}
+        renderItem={({ item }) => <Bubble message={item} onRetry={retry} />}
         contentContainerStyle={styles.list}
-        ListFooterComponent={sending ? <ActivityIndicator color={colors.primary} style={{ marginTop: 8 }} /> : undefined}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="interactive"
+        // The new content height, not scrollToEnd: its idea of the end can be one message behind.
+        onContentSizeChange={(_w, h) => list.current?.scrollToOffset({ offset: h, animated: true })}
+        ListFooterComponent={sending ? <Typing /> : undefined}
       />
 
-      {messages.length <= 1 && (
+      {!started && userId && (
         <View style={styles.suggestions}>
-          {SUGGESTIONS.map((q) => (
+          {suggestions.map((q) => (
             <Pressable key={q} style={styles.chip} onPress={() => send(q)}>
               <Text style={styles.chipText}>{q}</Text>
             </Pressable>
@@ -116,6 +171,7 @@ export default function ChatScreen() {
           placeholderTextColor={colors.muted}
           style={styles.input}
           onSubmitEditing={() => send(draft)}
+          submitBehavior="submit"
           returnKeyType="send"
           accessibilityLabel="Message"
         />
@@ -145,9 +201,18 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   userLabel: { color: colors.muted, fontSize: 13, fontWeight: '600', flexShrink: 0 },
-  userChip: { borderRadius: 999, paddingVertical: 5, paddingHorizontal: 10, backgroundColor: colors.border },
-  userChipActive: { backgroundColor: colors.text },
-  userChipText: { fontSize: 13, color: colors.text, fontWeight: '600' },
+  newChat: { color: colors.primary, fontSize: 13, fontWeight: '700' },
+  banner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    margin: 12,
+    marginBottom: 0,
+    padding: 12,
+    borderRadius: 12,
+    backgroundColor: '#FFF4E0',
+  },
+  bannerText: { flex: 1, color: colors.text, fontSize: 13, lineHeight: 18 },
   bubbleWrap: { alignItems: 'flex-start' },
   bubble: { maxWidth: '82%', borderRadius: 16, paddingVertical: 10, paddingHorizontal: 14 },
   mine: { backgroundColor: colors.primary, borderBottomRightRadius: 4 },
@@ -155,7 +220,13 @@ const styles = StyleSheet.create({
   agent: { backgroundColor: '#E8F0FF', borderBottomLeftRadius: 4 },
   author: { fontSize: 12, color: colors.info, fontWeight: '700', marginBottom: 2 },
   text: { fontSize: 15, color: colors.text, lineHeight: 21 },
+  typing: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  typingText: { color: colors.muted, fontSize: 14 },
+  systemWrap: { alignItems: 'center', gap: 6 },
   system: { textAlign: 'center', color: colors.muted, fontSize: 13, paddingHorizontal: 24 },
+  systemError: { color: '#B42318' },
+  retry: { borderRadius: 999, paddingVertical: 6, paddingHorizontal: 14, backgroundColor: colors.primarySoft },
+  retryText: { color: colors.primary, fontWeight: '700', fontSize: 13 },
   suggestions: { paddingHorizontal: 16, gap: 8, marginBottom: 8 },
   chip: {
     borderWidth: 1,

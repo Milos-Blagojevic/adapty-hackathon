@@ -31,6 +31,28 @@ npm start                           # w = web, i = iOS simulator, or scan with E
 
 On a phone, set `EXPO_PUBLIC_AGENT_API_URL` to the laptop's LAN IP (e.g. `http://192.168.1.20:8010`).
 
+### On a phone (live demo)
+
+1. Phone and laptop on the same Wi-Fi; the backend must listen on all interfaces: `python -m resolve --host 0.0.0.0 --port 8010`
+   (the default host is 127.0.0.1, which a phone cannot reach).
+   Check from the phone's browser: `http://<laptop-ip>:8010/api/users` returns JSON. If it hangs, allow incoming
+   connections for Python in the macOS firewall, or the Wi-Fi has client isolation (use a phone hotspot instead).
+2. `appy/.env.local`: `EXPO_PUBLIC_AGENT_API_URL=http://<laptop-ip>:8010`. The URL is baked into the bundle at start,
+   so restart `expo start` after changing it (with `-c` if the old URL sticks).
+3. `npx expo start --lan`, then scan the QR code with Expo Go (Android) or the Camera (iOS).
+4. Assistant tab: "Chat as" opens the user list (badge = plan state). Each user keeps their chat while you switch;
+   "New chat" starts a fresh session. If the server is unreachable, a yellow banner shows the URL the app uses and
+   retries every 5 s.
+
+### What the chat does with the live backend
+
+- Replies take 2–4 s; a typing bubble shows meanwhile. Light markdown (bold, lists, links) is rendered.
+- Requests time out (chat 60 s, reads 10 s). A failed message gets "Try again", which first checks the session
+  (`GET /api/chat/{session_id}`), so a reply that reached the server is shown instead of sending the message twice.
+- After a handoff, the chat polls the session every 3 s. A reply appears when someone in Incoming accepts the ticket
+  with a reply, or rejects it with a reply (`POST /api/tickets/{id}/accept|reject`).
+- Chats live in memory: reloading the app starts new sessions (old tickets stay in Incoming).
+
 Without `EXPO_PUBLIC_AGENT_API_URL` the app uses `MockAgentApi`, which follows the same contract offline.
 It answers FAQ questions from a local list (`src/data/triageDb.ts`) and hands off everything else. A simulated
 support teammate then replies using a fake billing history (`src/data/mockAccounts.ts`): duplicate charge,
@@ -50,6 +72,7 @@ npm run typecheck && npm run lint && npm test
 - `src/app/`: screens (Home, Workouts, Assistant)
 - `src/api/schema.d.ts`: generated from `../docs/openapi.json`, do not edit
 - `src/lib/agentApi.ts`: `HttpAgentApi` (real, typed by the contract) and `MockAgentApi` (offline)
-- `src/lib/support.tsx`: chat state, sessions, polling for support replies
+- `src/lib/support.tsx`: chat state, one session per user, retries, polling for support replies
+- `src/components/RichText.tsx`: light markdown in replies; `src/components/UserPicker.tsx`: "Chat as"
 - `src/lib/fitness.tsx`: workouts, weekly goal, streak
 - `src/lib/triage.ts`, `src/lib/mockAgent.ts`, `src/data/`: used by the mock only

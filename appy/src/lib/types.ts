@@ -21,4 +21,7 @@ export type ChatMessage = {
   text: string;
   createdAt: number;
   ticketId?: string | null;
+  /** A failed request; `retryText` is the user message to send again. */
+  error?: boolean;
+  retryText?: string;
 };
