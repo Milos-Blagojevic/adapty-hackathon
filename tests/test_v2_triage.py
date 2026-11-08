@@ -332,13 +332,19 @@ def test_legacy_to_ticket_keeps_the_reply():
 # --- insights ---------------------------------------------------------------------------------------
 
 INSIGHT = {
-    "headline": "16 of 60 tickets are charged_after_trial; 12 saw Onboarding - Weekly first.",
-    "hypothesis": "Disclose the 3-day trial end on Onboarding - Weekly first.",
+    "cited_cells": [{"category": "charged_after_trial", "flow": "onb_weekly", "tickets": 1, "users": 1}],
+    "ticket_ids": ["t-001"],
+    "evidence": ["charged_after_trial × onb_weekly: 1"],
+    "headline": "1 of 1 tickets is charged_after_trial; it saw Onboarding - Weekly first.",
     "placement": "onboarding",
     "control_flow": "Onboarding - Weekly first",
+    "variant_source": "edited_copy",
+    "variant_flow": None,
     "variant": "Add the trial end date next to the CTA.",
+    "hypothesis": "Disclose the 3-day trial end on Onboarding - Weekly first.",
     "expected_effect": "Fewer charged_after_trial tickets.",
-    "evidence": ["charged_after_trial: 16"],
+    "caveat": "One ticket.",
+    "what_changed": "First analysis.",
 }
 
 
@@ -352,3 +358,56 @@ def test_run_insights_uses_the_submit_insight_tool(http, conn):
     assert len(fake.calls) == 1 and "submit_insight" in fake.calls[0]["tools"]
     assert INSIGHT["headline"] in json.dumps(result)
     assert len(http.calls) == 0
+
+
+def _one_ticket_groups():
+    from resolve.insights import group_tickets
+    from tests.fakes import ACTIVE_WEEKLY, profile, ticket_row
+
+    return group_tickets([dict(ticket_row(), category="charged_after_trial", profile=profile(access_levels=[ACTIVE_WEEKLY]), triage={"summary": "Charged after the trial."})], seed={})
+
+
+def test_run_insights_returns_a_snapshot_and_retries_a_wrong_count(http, conn):
+    groups = _one_ticket_groups()
+    wrong = dict(INSIGHT, cited_cells=[dict(INSIGHT["cited_cells"][0], tickets=12)])
+    fake = FakeLLM([call("submit_insight", **wrong), call("submit_insight", **INSIGHT)])
+    result = triage.run_insights(services(conn, fake), groups)
+    assert len(fake.calls) == 2
+    retry = fake.calls[1]["messages"][-1]
+    assert retry["role"] == "tool" and "has tickets 1, users 1 in the facts" in retry["content"]
+    assert result["snapshot"]["main_cell"] == {"category": "charged_after_trial", "flow": "onb_weekly", "tickets": 1, "users": 1}
+    assert result["snapshot"]["categories"] == {"charged_after_trial": 1}
+
+
+def test_run_insights_stops_after_two_bad_insights(conn):
+    fake = FakeLLM([call("submit_insight", **dict(INSIGHT, control_flow="Main - 3 plans"))] * 2)
+    with pytest.raises(triage.TriageError, match="control_flow"):
+        triage.run_insights(services(conn, fake), _one_ticket_groups())
+    assert len(fake.calls) == 2
+
+
+def test_run_insights_gives_the_stored_insight_as_previous_with_changes(conn):
+    groups = _one_ticket_groups()
+    stored = dict(INSIGHT, headline="OLD HEADLINE 99 of 99", snapshot={"triaged": 3, "categories": {"refund_request": 3}, "main_cell": {"category": "refund_request", "flow": "main", "tickets": 3, "users": 2}})
+    db.save_insights(conn, stored)
+    fake = FakeLLM([call("submit_insight", **dict(INSIGHT, what_changed="Shifted."))])
+    triage.run_insights(services(conn, fake), groups)
+    facts = json.loads(fake.calls[0]["messages"][0]["content"].split("<inbox_facts>")[1].split("</inbox_facts>")[0])
+    assert facts["previous"]["hypothesis"] == INSIGHT["hypothesis"] and facts["previous"]["main_cell"] == "charged_after_trial × onb_weekly"
+    assert "OLD HEADLINE" not in json.dumps(facts), "old counts in the headline would be copied as current"
+    assert facts["changes"]["triaged"] == "3 → 1"
+    assert facts["changes"]["categories_changed"] == {"charged_after_trial": "0 → 1", "refund_request": "3 → 0"}
+    assert facts["changes"]["previous_main_cell"] == "refund_request × Main - 3 plans: 2 users, 3 tickets → 0 users, 0 tickets"
+    assert facts["changes"]["cells_now_larger_than_it"] == ["charged_after_trial × Onboarding - Weekly first: 1 users, 1 tickets"]
+
+
+def test_changes_list_no_larger_cell_on_a_tie():
+    from resolve import insights
+    from tests.fakes import ticket_row
+
+    rows = [dict(ticket_row(id=f"r{i}", customer=f"u{i}"), category="refund_request", triage={"summary": "s"}) for i in range(2)]
+    rows += [dict(ticket_row(id=f"n{i}", customer=f"v{i}"), category="no_access_after_purchase", context={"flow": "onb_trial", "placement": "onboarding"}, triage={"summary": "s"}) for i in range(2)]
+    groups = insights.group_tickets(rows, seed={})
+    snap = insights.snapshot(groups, {"category": "refund_request", "flow": "onb_weekly"})
+    assert snap["main_cell"] == {"category": "refund_request", "flow": "onb_weekly", "tickets": 2, "users": 2}
+    assert insights.changes(snap, groups)["cells_now_larger_than_it"] == "none"

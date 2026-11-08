@@ -22,7 +22,7 @@ from pydantic import BaseModel
 
 from resolve import config, db, insights, llm, models, policy
 from resolve.adapty import AdaptyError, access_level, compensation_expiry, format_datetime, is_active, parse_datetime
-from resolve.tickets import CATEGORIES
+from resolve.tickets import CATEGORIES, CATEGORY_MEANING
 from resolve.support_craft import REPLY_CRAFT, WINNING_OPTIONS
 
 log = logging.getLogger("resolve.triage")
@@ -118,6 +118,8 @@ def level_badge(level: dict | None, now: datetime) -> str:
 # --- Prompt --------------------------------------------------------------------------------------
 
 
+CATEGORY_LINES = "\n".join(f"- {c}: {m}" for c, m in CATEGORY_MEANING.items())
+
 SYSTEM_PROMPT = f"""You are the Level 1 support agent of Lumen, an AI photo editor sold by subscription through the App Store and Google Play. Subscriptions are managed in Adapty. You get one piece of user feedback (a support form, an email, or a chat the first-line bot handed off). The system has already loaded the user's profile, history and the app's config ("Facts loaded by the system" in the message). Find the problem and hand the support person a ticket with 2 or 3 ranked options by calling submit_ticket. The person accepts one option, edits it, or rejects all; you never act yourself.
 
 Products: weekly plan (3-day free trial), monthly, annual, annual with a 7-day free trial, lifetime, Pro annual.
@@ -130,13 +132,7 @@ Tools (usually you need only submit_ticket: the facts are already loaded):
 You have at most {MAX_TOOL_CALLS} tool calls in total, submit_ticket included.
 
 Categories (pick exactly one; a label for grouping): {", ".join(CATEGORIES)}.
-- charged_after_trial: the user did not expect the charge when a free trial converted.
-- no_access_after_purchase: the user paid and says premium features are still locked.
-- billing_issue: the store could not charge the user (billing_issue_detected_at set, grace period or expired) and the user lost access.
-- refund_request: the user wants money back.
-- cancel_how: the user asks how to cancel or asks you to cancel.
-- price_complaint: the user objects to the price or how it was shown.
-- other: anything else (bugs, feature requests, questions).
+{CATEGORY_LINES}
 
 Option actions:
 - grant_access: compensate with params.days of the configured access level (at most the config's max_days unless there is a strong reason; say so in risk_reason), added after the current expiry. For a paying user who was misled or blocked: charged_after_trial with billing fine, no_access_after_purchase where the profile shows an active paid access level (the app failed to unlock it; tell them to restore purchases), a refund request where keeping the user is realistic.
@@ -502,15 +498,21 @@ INSIGHT_CALLS = 2  # one corrective retry
 
 
 def run_insights(services, groups: dict) -> dict:
-    """All tickets aggregated → one `insights.Insight` dict. Raises TriageError; at most 2 model calls."""
+    """All tickets aggregated → one `insights.Insight` dict plus `snapshot`. Raises TriageError; at most 2 model calls.
+
+    The stored insight, if any, is the `previous` analysis the model keeps or moves away from.
+    """
     if services.demo:
         raise TriageError("Demo mode: insights come from the snapshot")
     if services.llm is None:
         raise TriageError("LLM is not configured")
     if not groups["triaged"]:
         raise TriageError("no triaged tickets yet; open tickets first")
-    data = {k: groups[k] for k in ("total", "triaged", "by_category", "by_category_product", "by_category_flow", "by_flow", "by_placement")}
-    messages: list[dict] = [{"role": "user", "content": f"<inbox_aggregates>\n{json.dumps(data, indent=1)}\n</inbox_aggregates>\nCall submit_insight."}]
+    previous = db.get_insights(services.conn)
+    if previous and "headline" not in previous:
+        previous = None
+    data = insights.facts(groups, previous)
+    messages: list[dict] = [{"role": "user", "content": f"<inbox_facts>\n{json.dumps(data, indent=1, ensure_ascii=False)}\n</inbox_facts>\nCall submit_insight."}]
     problem = "no call"
     for _ in range(INSIGHT_CALLS):
         try:
@@ -528,9 +530,12 @@ def run_insights(services, groups: dict) -> dict:
             messages.append({"role": "user", "content": "Call submit_insight."})
             continue
         try:
-            return insights.Insight.model_validate(calls[0].args).model_dump()
+            submitted = insights.Insight.model_validate(calls[0].args)
+            problem = insights.check_insight(submitted, data)
         except pydantic.ValidationError as exc:
             problem = f"the arguments do not match the schema: {_error_text(exc)}"
+        if problem is None:
+            return dict(submitted.model_dump(), snapshot=insights.snapshot(groups, submitted.cited_cells[0]))
         for call in step.tool_calls:
             messages.append(llm.tool_message(call, f"Rejected: {problem}. Call submit_insight again.", is_error=True))
     raise TriageError(f"no valid insight: {problem}")
