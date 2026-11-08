@@ -1,11 +1,14 @@
 """Level 2 limits, checked in code. The model can say anything; these functions decide.
 
 `load_config` reads the owner's agent settings (or the defaults). `check_grant` is pure: profile,
-config and our own grant rows in, (allowed, reason) out. Reasons are fixed strings (docs/agents.md).
+config and our own grant rows in, (allowed, reason) out. `check_store_steps` and `check_problem_quote`
+(v4) are pure too. Reasons are fixed strings (docs/agents.md).
 """
 
 from __future__ import annotations
 
+import re
+import unicodedata
 from datetime import datetime, timezone
 
 from resolve import db
@@ -76,3 +79,42 @@ def check_grant(
     if granted_this_session:
         return False, "already_granted_this_session"
     return True, None
+
+
+# --- v4: store steps and the grant's problem quote (docs/agents.md, v4) ----------------------------
+
+STORES = ("app_store", "play_store")
+MIN_QUOTE_CHARS = 10
+
+
+def purchase_stores(profile: dict | None) -> list[str]:
+    """Stores of every store purchase on the account (subscriptions and one-time purchases, refunded included)."""
+    profile = profile or {}
+    items = [*(profile.get("subscriptions") or []), *(profile.get("non_subscriptions") or [])]
+    return sorted({i.get("store") for i in items if i.get("store") in STORES})
+
+
+def check_store_steps(profile: dict | None, store: str) -> tuple[bool, str | None]:
+    """Store steps only for a store the account bought in; an account with no store purchase (or none found) gets any."""
+    stores = purchase_stores(profile)
+    if stores and store not in stores:
+        return False, "store_not_on_account"
+    return True, None
+
+
+def _normalise(text: str) -> str:
+    text = unicodedata.normalize("NFKC", text).casefold()
+    text = "".join(" " if unicodedata.category(ch).startswith(("P", "S")) else ch for ch in text)
+    return " ".join(text.split())
+
+
+def check_problem_quote(user_words: str, user_messages: list[str]) -> str | None:
+    """None when every part of `user_words` occurs in the user's messages (normalised), else 'no_problem_quote'."""
+    said = " \n ".join(_normalise(m) for m in user_messages)
+    parts = [_normalise(p) for p in re.split(r"\.\.\.|…", user_words or "")]
+    parts = [p for p in parts if p]
+    if sum(ch.isalnum() for p in parts for ch in p) < MIN_QUOTE_CHARS:
+        return "no_problem_quote"
+    if not all(p in said for p in parts):
+        return "no_problem_quote"
+    return None
