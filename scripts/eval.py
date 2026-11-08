@@ -12,7 +12,11 @@ customer id not in it = profile not found); --live-profiles reads them from Adap
 writes are never made: the client is wrapped so grant_access_level / update_profile raise AdaptyError,
 and a grant the code tried to make is counted as "allowed" (would grant).
 
-Level 1: triage.run(force=True) per case; scores category and options[0].action. Level 2: each
+Level 1: triage.run(force=True) per case; scores category and options[0].action, and reports the
+quality signals the score misses: a `forbidden_actions` option anywhere or a `forbidden_first` action
+first, reply length in words, pronoun slips, evidence not in the facts. Cases with `feedback` (and
+`chat`, for a handed-off chat) are inserted into the scratch DB; `profiles` in data/eval.json override
+the cached profile of those customers. Level 2: each
 scenario's user turns through frontline.chat with a fresh session id; scores the grant outcome
 (allowed / blocked:<reason> / none) and the handoff reason. Writes data/eval_results.json; the
 scratch DB is kept (path printed) so the transcripts can be inspected.
@@ -22,6 +26,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sqlite3
 import sys
 import tempfile
@@ -97,6 +102,50 @@ def matches(expected, got) -> bool:
     return got == expected
 
 
+def insert_cases(conn: db.Database, cases: list[dict], access_level: str) -> int:
+    """Hard cases that carry their own feedback (data/eval.json `feedback`, `chat`, `setup`) → tickets in the scratch DB."""
+    inserted = 0
+    for case in cases:
+        fb = case.get("feedback")
+        if not fb or db.get_ticket(conn, case["ticket_id"]) is not None:
+            continue
+        text, session_id = fb.get("text", ""), None
+        if case.get("chat"):
+            chat = case["chat"]
+            session_id = chat["session_id"]
+            db.ensure_conversation(conn, session_id, fb["customer_user_id"])
+            for role, content in chat["messages"]:
+                db.append_message(conn, session_id, role, content)
+            transcript = "\n".join(f"{role}: {content}" for role, content in chat["messages"])
+            text = f"Handoff reason: {chat['reason']}\nSummary: {chat['summary']}\n\nConversation:\n{transcript}\n\nTools tried:\n- none"
+        db.insert_feedback(
+            conn,
+            text,
+            source=fb["source"],
+            customer_user_id=fb.get("customer_user_id"),
+            email=fb.get("email"),
+            session_id=session_id,
+            subject=fb.get("subject") or (f"Chat: {case['chat']['reason']}" if case.get("chat") else None),
+            ticket_id=case["ticket_id"],
+        )
+        if session_id:
+            db.set_outcome(conn, session_id, "handed_off", case["ticket_id"])
+        prior = case.get("setup", {}).get("prior_grant")
+        if prior:
+            db.record_grant(conn, fb["customer_user_id"], access_level, prior["days"], prior.get("expires_at"), prior["source"], prior["ref"], {"eval_setup": True})
+        inserted += 1
+    return inserted
+
+
+PRONOUN = re.compile(r"\b(he|she|him|his|her|hers|himself|herself)\b", re.I)
+
+
+def pronoun_slips(result: dict) -> list[str]:
+    """Gendered pronouns in what the support person reads (summary, root cause, evidence); the spec says 'the user'."""
+    texts = [result.get("summary") or "", result.get("root_cause") or "", *(result.get("evidence") or [])]
+    return [m.group(0) for t in texts for m in PRONOUN.finditer(t)]
+
+
 def run_l1(services, conn: db.Database, ro: ReadOnlyAdapty, cases: list[dict]) -> list[dict]:
     from resolve import triage
 
@@ -126,6 +175,11 @@ def run_l1(services, conn: db.Database, ro: ReadOnlyAdapty, cases: list[dict]) -
         categories = case.get("acceptable_categories", [case["category"]])
         actions = case.get("acceptable_actions", [case["expected_action"]])
         got_category, got_action = result["category"], result["options"][0]["action"]
+        all_actions = [o["action"] for o in result["options"]]
+        forbidden = [a for a in all_actions if a in case.get("forbidden_actions", [])]
+        if got_action in case.get("forbidden_first", []):
+            forbidden.append(f"{got_action} first")
+        words = [len(o["reply"].split()) for o in result["options"] if o["action"] != "no_reply"]
         row.update(
             expected_category=case["category"],
             got_category=got_category,
@@ -137,10 +191,15 @@ def run_l1(services, conn: db.Database, ro: ReadOnlyAdapty, cases: list[dict]) -
             customer_user_id=result.get("customer_user_id"),
             evidence=len(result.get("evidence") or []),
             evidence_ungrounded=ungrounded(services, conn, ticket, result),
+            actions=all_actions,
+            forbidden=forbidden,
+            reply_words=words,
+            style=pronoun_slips(result),
         )
         rows.append(row)
         mark = ("✓" if row["category_ok"] else "✗") + ("✓" if row["action_ok"] else "✗")
-        print(f"{mark} {tid:7s} {case['category']:26s}→ {got_category:26s} {case['expected_action']:18s}→ {got_action:18s} {row['confidence']}")
+        flags = (f"  FORBIDDEN {forbidden}" if forbidden else "") + (f"  style {len(row['style'])}" if row["style"] else "")
+        print(f"{mark} {tid:7s} {case['category']:26s}→ {got_category:26s} {case['expected_action']:18s}→ {' / '.join(all_actions):52s} {row['confidence']}  words {max(words, default=0)}{flags}")
     return rows
 
 
@@ -248,12 +307,13 @@ def main() -> int:
     db.seed(conn, config.ROOT / "data" / "tickets.json")
     import_feedback.import_items(conn, import_feedback.load())
     seed_emails.index_only(conn)
+    insert_cases(conn, cases, AgentConfig(**(db.get_config(conn) or {})).grant.access_level)
     if args.live_profiles:
         from resolve.adapty import Client
 
         ro = ReadOnlyAdapty(Client(config.adapty_secret()).get_profile)
     else:
-        ro = ReadOnlyAdapty(profile_reader(cached_profiles(conn)))
+        ro = ReadOnlyAdapty(profile_reader({**cached_profiles(conn), **spec.get("profiles", {})}))
     model = llm.make_llm()
     services = workflow.Services(conn=conn, demo=False, adapty=ro, llm=model)
     print(f"model {model.provider}/{model.model}, scratch DB {scratch}\n")
@@ -278,12 +338,18 @@ def main() -> int:
         "model_calls_l1": sum(r.get("model_calls") or 0 for r in l1_rows),
         "evidence_lines": sum(r.get("evidence") or 0 for r in scored),
         "evidence_ungrounded": sum(len(r.get("evidence_ungrounded") or []) for r in scored),
+        "forbidden": sum(len(r["forbidden"]) for r in scored),
+        "reply_words_mean": round(sum(sum(r["reply_words"]) for r in scored) / max(1, sum(len(r["reply_words"]) for r in scored)), 1),
+        "reply_words_max": max((max(r["reply_words"], default=0) for r in scored), default=0),
+        "options_mean": round(sum(len(r["actions"]) for r in scored) / max(1, len(scored)), 2),
+        "style_issues": sum(len(r["style"]) for r in scored),
         "profiles": "live" if args.live_profiles else "cached",
         "ran_at": db.now_iso(),
     }
     n = len(scored)
     line = f"\ncategory {summary['category_correct']}/{n}  action {summary['action_correct']}/{n}  both {summary['both_correct']}/{n}"
     line += f"  evidence grounded {summary['evidence_lines'] - summary['evidence_ungrounded']}/{summary['evidence_lines']}"
+    line += f"\nforbidden {summary['forbidden']}  reply words mean {summary['reply_words_mean']} max {summary['reply_words_max']}  options {summary['options_mean']}  style {summary['style_issues']}  model calls {summary['model_calls_l1']}"
     if args.l2:
         line += f"  level 2 {summary['l2_correct']}/{len(scenarios)}"
     print(line)
