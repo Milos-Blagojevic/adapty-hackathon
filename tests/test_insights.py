@@ -223,6 +223,18 @@ def test_check_insight_keeps_the_previous_main_cell_on_a_tie_and_wants_the_main_
     assert "put the cell the test rests on first" in insights.check_insight(weaker_first, facts)
 
 
+def test_check_insight_lets_a_larger_cell_a_paywall_cannot_move_be_cited_after_the_main_cell():
+    tickets = [_t("t-1", "u1", "charged_after_trial", "onb_weekly"), _t("t-2", "u2", "no_access_after_purchase", "onb_trial"), _t("t-3", "u3", "no_access_after_purchase", "onb_trial"),
+               _t("t-4", "u4", "refund_request", "onb_trial"), _t("t-5", "u5", "refund_request", "onb_trial")]
+    facts = insights.facts(insights.group_tickets(tickets, seed={}))
+    main = {"category": "charged_after_trial", "flow": "onb_weekly", "tickets": 1, "users": 1}
+    unfixable = {"category": "no_access_after_purchase", "flow": "onb_trial", "tickets": 2, "users": 2}
+    movable = {"category": "refund_request", "flow": "onb_trial", "tickets": 2, "users": 2}
+    fields = {"headline": "1 user.", "evidence": ["x: 1"], "ticket_ids": []}
+    assert insights.check_insight(insight(cited_cells=[main, unfixable], **fields), facts) is None
+    assert "put the cell the test rests on first" in insights.check_insight(insight(cited_cells=[main, movable], **fields), facts)
+
+
 def test_check_insight_keeps_the_previous_test_while_the_main_cell_is_the_same():
     groups = insights.group_tickets(_tie_tickets(), seed={})
     previous = {"hypothesis": "h", "placement": "onboarding", "control_flow": "Onboarding - Weekly first", "variant_source": "existing_flow", "variant_flow": "Onboarding - Annual trial",

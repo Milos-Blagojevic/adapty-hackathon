@@ -414,6 +414,8 @@ def _observed_flows(groups: dict) -> dict[str, set[str]]:
     return seen
 
 
+# The prompt sends the test to the largest cell a paywall can move, so a larger cell of these may be cited beside it.
+PAYWALL_CANNOT_MOVE = {"no_access_after_purchase", "billing_issue", "other"}
 NUMBER = re.compile(r"(?<![\w.])\d+(?:\.\d+)?(?![\w.])")
 
 
@@ -427,7 +429,7 @@ def check_insight(insight: Insight, facts_: dict) -> str | None:
         if (cited.tickets, cited.users) != (cell["tickets"], cell["users"]):
             return f"cited_cells[{i}]: {cited.category} × {cited.flow} has tickets {cell['tickets']}, users {cell['users']} in the facts"
     main = insight.cited_cells[0]
-    bigger = [c for c in insight.cited_cells[1:] if c.users > main.users]
+    bigger = [c for c in insight.cited_cells[1:] if c.users > main.users and c.category not in PAYWALL_CANNOT_MOVE]
     if bigger:
         return f"cited_cells[0] is the main cell; {bigger[0].category} × {bigger[0].flow} has more users, so put the cell the test rests on first"
     previous_main = (facts_.get("previous") or {}).get("main_cell")
