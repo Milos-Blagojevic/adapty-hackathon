@@ -552,10 +552,29 @@ function editsFor(base, id, edits) {
   return out;
 }
 
+// The model copies evidence as "field: value"; the person reads a label, never the field name.
+var EV_PARENT = { access_levels: 'Access', subscriptions: 'Subscription', non_subscriptions: 'One-time purchase', history: 'History', compensation: 'Free days', free_days: 'Free days', config: 'Settings' };
+var EV_LEAF = { expires_at: 'expires', purchased_at: 'purchased', originally_purchased_at: 'first purchased', renewal_cancelled_at: 'renewal cancelled', billing_issue_detected_at: 'billing issue detected', is_in_grace_period: 'in grace period', cancellation_reason: 'cancellation reason', store_product_id: 'product', total_revenue_usd: 'total paid (USD)', total_paid_usd_all_time: 'total paid (USD)', simulated_install_date: 'install date', customer_user_id: 'user id', ticket_body: 'ticket text', tickets: 'earlier tickets', grants: 'earlier grants', sessions: 'earlier chats', always_to_a_human: 'always to a person' };
+var EV_PHRASE = { 'user says': 'User says', 'bot said': 'Assistant said', 'bot told the user': 'Assistant told the user', 'bot told the user in chat': 'Assistant told the user', 'history tickets': 'Earlier tickets', 'history sessions': 'Earlier chats', 'history grants': 'Earlier grants' };
+function evidenceLabel(key) {
+  var parts = key.replace(/^profile\./, '').replace(/^custom_attributes\./, '').split('.');
+  var leaf = parts.pop();
+  var m = /^(\w+)\[(\d+)\]$/.exec(leaf);
+  if (m || (EV_PARENT[leaf] && !parts.length)) { parts.push(leaf); leaf = ''; }
+  var parent = parts.pop() || '';
+  var pm = /^(\w+)(?:\[(\d+)\])?$/.exec(parent);
+  var head = pm ? (EV_PARENT[pm[1]] || pm[1].replace(/_/g, ' ')) + (Number(pm[2]) > 0 ? ' ' + (Number(pm[2]) + 1) : '') : parent;
+  // A leaf that already names the thing ("earlier tickets") reads alone.
+  var tail = EV_LEAF[leaf] || leaf.replace(/_/g, ' ');
+  if (head === 'History' && tail) return cap(tail);
+  return cap([head, tail].filter(Boolean).join(' '));
+}
 function evidenceRow(line) {
-  var i = String(line).indexOf(': ');
+  line = String(line);
+  var i = line.indexOf(': ');
   var key = i > 0 ? line.slice(0, i) : '';
-  return /^[\w.\[\]-]+$/.test(key) ? { k: key, v: line.slice(i + 2) } : { k: '', v: line };
+  if (EV_PHRASE[key.toLowerCase()]) return { k: EV_PHRASE[key.toLowerCase()], v: line.slice(i + 2) };
+  return /^[\w.\[\]-]+$/.test(key) ? { k: evidenceLabel(key), v: line.slice(i + 2) } : { k: '', v: line };
 }
 function money(n) { return '$' + Number(n).toFixed(2); }
 function account(t) {
@@ -653,7 +672,7 @@ function liveModel(t, cfg) {
     lang: lang, base: base, order: order, conf: conf, user: t.customer_user_id || t.email || 'unknown user', action: a, actionError: t.action_error,
     phase: t.status === 'dismissed' || noReply ? 'dismissed' : t.status === 'done' ? 'closed' : 'open',
     closed: closed,
-    title: t.subject, meta: (t.customer_user_id || t.email || 'unknown user') + ' · ' + when(t.created_at),
+    title: t.title, meta: (t.customer_user_id || t.email || 'unknown user') + ' · ' + when(t.created_at),
     messages: messages,
     hasTriage: !!tri, foundSummary: found, foundCause: tri && tri.root_cause !== tri.summary ? tri.root_cause : '',
     confidence: tri && typeof tri.confidence === 'number' ? Math.round(tri.confidence * 100) : null, category: tri ? CATEGORIES[tri.category] || tri.category : '',

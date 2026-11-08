@@ -144,7 +144,7 @@ def test_handed_off_chat_is_shown_once_with_who_wrote_it(http, conn):
     _, fake = run(conn, [submit(triage_ticket())], ticket_id=tid)
     first = fake.calls[0]["messages"][0]["content"]
     assert first.count("UNIQUE-USER-LINE") == 1 and first.count("UNIQUE-BOT-LINE") == 1
-    assert "bot (first-line AI" in first and "sent by the support teammate" in first and "Tools tried" in first
+    assert "assistant (first-line AI" in first and "sent by the support teammate" in first and "Tools tried" in first
     assert facts_of(fake)["history"]["sessions"] == [], "the ticket's own chat is not repeated as history"
 
 

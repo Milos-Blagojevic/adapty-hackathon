@@ -12,6 +12,7 @@ from __future__ import annotations
 import csv
 import gzip
 import random
+import re
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -334,3 +335,44 @@ CATEGORY_LABELS = {
     "price_complaint": "Price complaint",
     "other": "Other",
 }
+
+
+# --- The title a person reads (docs/agents.md, "Ticket title") ---------------------------------------
+
+TITLE_MAX = 90
+CHAT_REASON_TITLE = {
+    "refund": "Refund request from chat",
+    "chargeback": "Chargeback mentioned in chat",
+    "threat": "Escalation from chat",
+    "asks_for_human": "Asked for a person in chat",
+    "profile_mismatch": "Account does not match what the user says",
+    "repeat_after_grant": "Complaint again after free days",
+    "other": "Handed off from chat",
+}
+
+
+def short_title(summary: str) -> str:
+    """The triage summary as a headline: without "The user", its first clause, at most TITLE_MAX characters."""
+    text = re.sub(r"^(?:The user|User) (?=[a-z])", "", " ".join(summary.split())).rstrip(".")
+    text = text[:1].upper() + text[1:]
+    for m in re.finditer(r",(?!\s*\d)| — | – |; ", text):
+        head = text[: m.start()]
+        dangling = re.search(r"\b(?:and|or|but|then|so|because|while|when|after|before|that|who)$", head)
+        if 30 <= len(head) <= TITLE_MAX and head.count("(") == head.count(")") and not dangling:
+            return head
+    if len(text) <= TITLE_MAX:
+        return text
+    return text[:TITLE_MAX].rsplit(" ", 1)[0].rstrip(" ,;:") + "…"
+
+
+def ticket_title(subject: str, body: str, summary: str | None) -> str:
+    """A subject a person wrote stays. A machine subject ("Chat: refund") or a cut of the body gives way to the
+    triage summary, else to a readable line for the handoff reason."""
+    chat = re.fullmatch(r"Chat: (\w+)", subject or "")
+    if not chat and subject and subject != (body or "")[:60]:
+        return subject
+    if summary and summary.strip():
+        return short_title(summary)
+    if chat:
+        return CHAT_REASON_TITLE.get(chat.group(1), CHAT_REASON_TITLE["other"])
+    return subject or "(no text)"

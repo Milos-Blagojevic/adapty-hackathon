@@ -40,7 +40,7 @@ E409 = {409: {"model": ErrorDetail, "description": "Wrong ticket status for this
 E409_RUN = {409: {"model": ErrorDetail, "description": "A hypothesis run is already in flight"}}
 E409_DRAFT = {409: {"model": ErrorDetail, "description": "Demo mode or no Adapty CLI: nothing is created"}}
 E502 = {502: {"model": ErrorDetail, "description": "The person's English could not be translated to the user's language; nothing was sent"}}
-from resolve.tickets import CATEGORIES
+from resolve.tickets import CATEGORIES, ticket_title
 
 ACCEPT_STATUSES = ("proposed",)
 REJECT_STATUSES = ("new", "triaged", "proposed")
@@ -91,6 +91,7 @@ def ticket_summary(ticket: dict) -> dict:
         "customer_user_id": ticket["customer_user_id"],
         "email": ticket["email"],
         "subject": ticket["subject"],
+        "title": ticket_title(ticket["subject"], ticket["body"], (view or {}).get("summary")),
         "created_at": ticket["created_at"],
         "updated_at": ticket["updated_at"],
         "confidence": view.get("confidence") if view else None,

@@ -192,7 +192,8 @@ Legacy proposals (v1 `proposal_json`, e.g. in `data/demo.sqlite`) are shown as a
 
 ### JSON shapes (fixed)
 
-Ticket summary (`GET /api/tickets`): `{id, status, source, category, customer_user_id, email, subject, created_at, updated_at, confidence, top_action}`.
+Ticket title: `title` (`tickets.ticket_title`) is what the screens show. A subject a person wrote stays; a machine subject (`Chat: refund`) or a cut of the body gives way to the triage summary (without "The user", first clause, at most 90 characters), else to a readable line for the handoff reason. `subject` stays as stored.
+Ticket summary (`GET /api/tickets`): `{id, status, source, category, customer_user_id, email, subject, title, created_at, updated_at, confidence, top_action}`.
 Ticket (`GET /api/tickets/{id}`): summary fields + `{body, session_id, triage (TriageTicket | null), legacy (bool), profile (raw Adapty profile | null), decision, action, action_error, triage_error, conversation ([{role, content, ts}] | null)}`.
 `GET /api/users`: `[{customer_user_id, badge: "active"|"expired"|"lifetime"|"none"|"unknown", product: str | null}]`.
 `GET /api/chat/{session_id}`: `{session_id, customer_user_id, outcome, ticket_id, messages: [{role, content, ts}], events: [{ts, tool, args, allowed, blocked_reason, result}]}`; 404 if unknown.
@@ -230,6 +231,14 @@ Decisions: accept stores `decision_json = Decision.model_dump()`; reject always 
 ### After a handoff (binding, replaces "after handoff no model call")
 
 While the session is `handed_off`, each user message still gets a model reply, but only with tools `get_profile`, `store_instructions`, `cancel_handoff {note: str}`; any other tool call is logged as not run ("not run: a teammate has the conversation"); no second ticket. New messages are visible to the teammate through the ticket's conversation. Each such message also reruns Level 1 on the open ticket with the whole conversation (one run per ticket at a time, a message during a run gets one more run after it), so the summary, options and translations follow what the user said after the handoff. A ticket already decided is left as it is. The ticket's model-call budget is `MAX_CALLS` per user message in that chat. `POST /accept` takes `expected_action`, the action the person saw; if a rerun changed it, 409 and nothing runs. `cancel_handoff` dismisses the ticket if it is still new/triaged/proposed (`decision_json = {"rejected": true, "note": "user cancelled the handoff: …", "reply": null}`) and sets the outcome back to `open`. Demo mode / no LLM: fixed reply `HANDED_OFF_REPLY`.
+
+### Evidence labels (binding)
+
+The model keeps copying evidence as `field: value` (`ungrounded_evidence` depends on it). The Ticket screen shows a readable label for the field (`custom_attributes.simulated_install_date` → Install date, `access_levels[0].expires_at` → Access expires); the value is shown as written. Level 1's prompt calls the first-line agent "the assistant", so its summaries do too; stored tickets keep their text until they are triaged again.
+
+### Fixed replies in the user's language (binding)
+
+`HANDED_OFF_REPLY`, `TOO_LONG_REPLY`, `FALLBACK_REPLY`, `AUTO_HANDOFF_REPLY` and `ACCOUNT_DOWN_REPLY` have a Russian text, chosen in code with no model call, because they also cover a failed model. Russian means: most letters of the session's user messages are Cyrillic and none is a letter Russian does not use (`frontline.writes_russian`). Everyone else gets English, including other languages; a Cyrillic language with no letters of its own (Bulgarian) gets Russian. The demo stub `DEMO_REPLY` stays English.
 
 ### Reopen (binding)
 
@@ -355,7 +364,7 @@ Facts (code, `triage.model_profile`, used by the prefetch and by `get_profile`; 
 - `compensation` is replaced by `free_days`: `within_policy` and `why_not` from `policy.check_grant` (the Level 2 check, days = config max, our grants of the last 30 days), `days`, `would_run_to`; a `note` when premium already runs more than 60 days ahead.
 - `store_steps`: fixed paths (restore, cancel, update_payment, refund_request, purchase_history) for the stores on the profile (both when none).
 - History tickets carry `subject` and `triage_summary`; history sessions leave out the ticket's own chat.
-- A handed-off chat is shown once (the transcript inside the ticket body is cut), each message labelled user / bot / support teammate, with the line that the reply is the next message in that chat, sent by the support teammate.
+- A handed-off chat is shown once (the transcript inside the ticket body is cut), each message labelled user / assistant / support teammate, with the line that the reply is the next message in that chat, sent by the support teammate.
 
 Prompt (goals): what the app sells and where (nothing else exists: no web checkout, no other tier); how access works (premium lives on the app account and unlocks on any device signed in to it; Restore in the other store finds nothing); no prices on the profile; refunds by store (Apple only; Google Play: the user in 48 h, later a teammate from the Play Console). The diagnosis follows the field order: evidence copied as `field: value` plus `user says: …`, then a root cause that explains every fact and claim and names the claim the facts contradict (or what the bot got wrong), confidence, summary, category (with two issues, the one that needs the lead's decision). Options: 2–3 different strategies a lead would defend; a third only as a real alternative. Replies: written as the teammate; chat 25–60 words, email/form 40–90; a reply promises only what accepting its option does; store paths quoted from `store_steps`.
 

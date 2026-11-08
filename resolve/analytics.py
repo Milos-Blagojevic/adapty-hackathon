@@ -81,6 +81,7 @@ from datetime import datetime, timedelta, timezone
 from resolve.adapty import format_datetime, parse_datetime
 from resolve import config, db
 from resolve.models import DB_TO_API_STATUS
+from resolve.tickets import ticket_title
 
 EVAL_RESULTS = config.ROOT / "data" / "eval_results.json"
 BUCKETS = (("0-0.5", 0.5), ("0.5-0.7", 0.7), ("0.7-0.9", 0.9), ("0.9-1", None))
@@ -229,11 +230,11 @@ def open_tasks(conn: db.Database, now: datetime | None = None) -> list[dict]:
     for c in conn.execute("SELECT session_id, customer_user_id, updated_at FROM conversations WHERE outcome = 'open' ORDER BY updated_at DESC LIMIT 20"):
         first = conn.execute("SELECT content FROM messages WHERE session_id = ? AND role = 'user' ORDER BY id LIMIT 1", (c["session_id"],)).fetchone()
         tasks.append({"kind": "chat", "id": c["session_id"], "title": (first["content"] if first else "")[:80], "user": c["customer_user_id"], "since": c["updated_at"], "age_s": age(c["updated_at"]), "note": "Level 2 is talking", "detail": _chat_step(conn, c["session_id"])})
-    for t in conn.execute("SELECT id, subject, customer_user_id, created_at, triage_error FROM tickets WHERE status IN ('new', 'triaged') ORDER BY created_at DESC LIMIT 20"):
-        tasks.append({"kind": "triage", "id": t["id"], "title": t["subject"], "user": t["customer_user_id"], "since": t["created_at"], "age_s": age(t["created_at"]), "note": "triage failed" if t["triage_error"] else "not triaged yet", "detail": None})
-    for t in conn.execute("SELECT id, subject, customer_user_id, created_at, triage_at, triage_json, proposal_json FROM tickets WHERE status IN ('proposed', 'approved') ORDER BY COALESCE(triage_at, created_at) LIMIT 20"):
+    for t in conn.execute("SELECT id, subject, body, customer_user_id, created_at, triage_error FROM tickets WHERE status IN ('new', 'triaged') ORDER BY created_at DESC LIMIT 20"):
+        tasks.append({"kind": "triage", "id": t["id"], "title": ticket_title(t["subject"], t["body"], None), "user": t["customer_user_id"], "since": t["created_at"], "age_s": age(t["created_at"]), "note": "triage failed" if t["triage_error"] else "not triaged yet", "detail": None})
+    for t in conn.execute("SELECT id, subject, body, customer_user_id, created_at, triage_at, triage_json, proposal_json FROM tickets WHERE status IN ('proposed', 'approved') ORDER BY COALESCE(triage_at, created_at) LIMIT 20"):
         since = t["triage_at"] or t["created_at"]
-        tasks.append({"kind": "review", "id": t["id"], "title": t["subject"], "user": t["customer_user_id"], "since": since, "age_s": age(since), "note": "waiting for a person", "detail": _top_option(t)})
+        tasks.append({"kind": "review", "id": t["id"], "title": ticket_title(t["subject"], t["body"], json.loads(t["triage_json"] or "{}").get("summary")), "user": t["customer_user_id"], "since": since, "age_s": age(since), "note": "waiting for a person", "detail": _top_option(t)})
     return tasks
 
 
