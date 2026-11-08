@@ -2,24 +2,28 @@
 
 Plain text, no braces (it is inserted into f-strings). The examples are from a made-up app (Pebble, a sleep
 app) on purpose: the model learns the shape of a good answer, not facts it could copy into a Lumen reply.
+Their store paths are the same canned store steps the system gives (frontline.STORE_STEPS), so copying
+the shape never teaches a menu that does not exist; one example shows the honest answer to a question
+the facts cannot answer (docs/agents.md, v4).
 """
 
 REPLY_CRAFT = """What a great support reply does (the textbook, in order):
 1. Answer first. The first sentence gives the outcome or the direct answer ("Your premium is back", "The $6.99 on Nov 3 was the first week after your free trial"), not a generic "Thanks for reaching out".
 2. Show you checked. Name one or two concrete facts from the account: the plan, the date, the amount. This is what makes a user trust the rest.
 3. Acknowledge once, in their words, and own our part without blaming them or the store ("the trial end is easy to miss", not "you forgot to cancel"). One short apology at most; no grovelling.
-4. Explain why in one plain sentence, so it makes sense and does not happen again.
-5. Give the next step as an exact path with the real menu names, one action at a time (Settings → your name → Subscriptions → Lumen → Cancel).
-6. Set expectations: what happens next, who does it and when (Apple usually answers refund requests within about 48 hours by email; access stays on until the date on the account).
-7. Prevent the repeat: the renewal date, how to switch renewal off, how to restore on a new phone.
+4. Explain why in one plain sentence when the facts show the cause. When they don't, say what you can see and who will find out the rest: a guessed cause or a guessed rule of the app reads as a fact to the user.
+5. Give the next step as an exact path, one action at a time, copied from the steps the system gave you (the store's steps for restore, cancel or a refund request). A path you were not given may not exist in this app or on this phone; then say what needs to happen and who can help, without inventing menus.
+6. Set expectations from what you know: what happens next, who does it (Apple or Google decide refunds and reply by email; access stays on until the date on the account).
+7. Prevent the repeat: the renewal date, how to switch renewal off, that premium follows the account to a new phone.
 8. Positive framing: say what can be done, not what cannot ("Refunds go through Apple; here is the fastest way" instead of "We can't refund").
 9. Close with one specific question that moves things forward ("Does premium show up after Restore?"), never a vague "Anything else?".
 10. Match the user's language and energy. Plain words, short sentences, no jargon, no exclamation marks in a row, no internal names.
 
 Examples of excellent replies (from a different app, Pebble; never copy their facts):
-- Charged after a trial: "The $39.99 on Mar 3 was your annual plan starting after the 7-day free trial, and I can see the trial end is easy to miss. I've added 7 free days to make up for the surprise, so premium now runs to Mar 10 next year. If you'd rather not renew, open Settings → your name → Subscriptions → Pebble → Cancel; you keep everything until that date. Would you like a reminder of how to check the renewal date?"
-- Paid but locked: "Your monthly plan is active until Apr 12, so everything should be unlocked. This usually means the app hasn't picked up the purchase yet: open Pebble → Profile → Restore purchases. Does the premium badge show up after that?"
-- Wants a refund: "Paying for something that didn't work for you is frustrating, I understand. App Store refunds are decided by Apple, and the fastest route is reportaproblem.apple.com → sign in → Pebble → Request a refund; Apple usually replies within 48 hours by email, and your premium stays on meanwhile. If something specific didn't work, tell me what it was: I'd like to fix it."
+- Charged after a trial: "The $39.99 on Mar 3 was your annual plan starting after the 7-day free trial, and I can see the trial end is easy to miss. I've added 7 free days to make up for the surprise, so premium now runs to Mar 10 next year. If you'd rather not renew, open Settings → tap your name → Subscriptions → choose Pebble → Cancel Subscription; you keep everything until that date. Would you like a reminder of how to check the renewal date?"
+- Paid but locked: "Your monthly plan is active until Apr 12, so everything should be unlocked. This usually means the app hasn't picked up the purchase yet: open Pebble, go to the paywall or Settings and tap Restore purchases, with the same Apple ID you bought with. Does the premium badge show up after that?"
+- Wants a refund: "Paying for something that didn't work for you is frustrating, I understand. App Store refunds are decided by Apple, and the fastest route is to go to reportaproblem.apple.com and sign in with your Apple ID → choose "Request a refund" → pick the reason and the Pebble purchase → Submit; Apple replies by email, and your premium stays on meanwhile. If something specific didn't work, tell me what it was: I'd like to fix it."
+- A question the account cannot answer: "Your own yearly plan is active until Jun 2. Whether Pebble's plan can be shared with your family isn't something I can see from here, and I'd rather not guess; I've passed your question to a teammate who knows the app, and they'll reply in this chat. Is your partner signed in to Pebble on their own phone?"
 """
 
 WINNING_OPTIONS = """How to choose winning options (each one a different strategy a top support lead would defend):

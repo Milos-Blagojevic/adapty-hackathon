@@ -27,16 +27,16 @@ def test_l2_run_scores_code_outcomes_freezes_the_clock_and_writes_nothing(tmp_pa
     """--l2: scenario profile override, frozen clock, simulated grant, steps and log checks (offline)."""
     from resolve import frontline
     from resolve.llm import FakeLLM
-    from tests.fakes_v2 import ACTIVE_WEEKLY, call, paid_profile, say
+    from tests.fakes_v2 import ACTIVE_WEEKLY, SUB_WEEKLY, call, paid_profile, say
 
     conn = new_db(tmp_path, seed=False)
     prof = paid_profile(access_levels=(dict(ACTIVE_WEEKLY, expires_at="2026-11-08T06:00:00+00:00"),))
-    prof["subscriptions"][0]["expires_at"] = "2026-11-08T06:00:00+00:00"
+    prof["subscriptions"] = [dict(SUB_WEEKLY, expires_at="2026-11-08T06:00:00+00:00")]  # expired now, active at as_of
     overrides: dict = {}
     ro = eval_script.ReadOnlyAdapty(eval_script.profile_reader({}, overrides))
     fake = FakeLLM([
         call("store_instructions", kind="restore", store="play_store"),
-        call("grant_access", days=3, reason="paid but locked", **frontline_extra_grant_args()),
+        call("grant_access", days=3, reason="paid but locked", user_words="premium is locked"),
         say("Added 3 days."),
     ])
     scenario = {"id": "x", "customer_user_id": CUID, "setup": {"profile": prof}, "messages": ["I paid but premium is locked"],
@@ -48,9 +48,3 @@ def test_l2_run_scores_code_outcomes_freezes_the_clock_and_writes_nothing(tmp_pa
     assert len(ro.attempts) == 1 and overrides == {}, "the grant was simulated, the override removed"
     assert frontline.datetime.now().year >= 2026 and frontline.datetime.__name__ == "datetime", "the clock is restored"
 
-
-def frontline_extra_grant_args() -> dict:
-    """Arguments grant_access needs besides days and reason (none before the problem quote existed)."""
-    from resolve import frontline
-
-    return {"user_words": "premium is locked"} if "user_words" in frontline.GrantArgs.model_fields else {}

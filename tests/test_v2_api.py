@@ -241,7 +241,7 @@ def test_feedback_invalid_body_is_422(env, payload):
 
 def test_chat_shape_and_session(env, http):
     mock_grant_ok(http)
-    env.chat.steps.extend([call("get_profile"), call("grant_access", days=3, reason="paid but locked"), say("Added 3 days.")])
+    env.chat.steps.extend([call("get_profile"), call("grant_access", days=3, reason="paid but locked", user_words="premium locked"), say("Added 3 days.")])
     response = env.client.post("/chat", json={"customer_user_id": CUID, "session_id": "s-api", "message": "premium locked"})
     assert response.status_code == 200
     out = response.json()
@@ -297,7 +297,7 @@ def test_config_get_defaults_and_put(env, http):
     assert env.client.get("/api/config").json() == new
 
     mock_grant_ok(http)
-    env.chat.steps.extend([call("grant_access", days=5, reason="x"), say("Sorry.")])
+    env.chat.steps.extend([call("grant_access", days=5, reason="x", user_words="locked"), say("Sorry.")])
     out = env.client.post("/chat", json={"customer_user_id": CUID, "session_id": "s-cfg", "message": "locked"}).json()
     assert [a["blocked_reason"] for a in out["actions"] if a["tool"] == "grant_access"] == ["over_max_days"]
 

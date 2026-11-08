@@ -69,6 +69,8 @@ class ReadOnlyAdapty:
         raise AdaptyError("Adapty writes are disabled during eval", code=READ_ONLY)
 
     def update_profile(self, customer_user_id, custom_attributes):
+        if self.simulate_grants:  # the stamp after a simulated grant: not sent either
+            return {}
         raise AdaptyError("Adapty writes are disabled during eval", code=READ_ONLY)
 
     def update_email(self, customer_user_id, email):

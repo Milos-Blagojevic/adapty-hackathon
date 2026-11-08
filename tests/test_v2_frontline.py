@@ -26,6 +26,7 @@ from tests.fakes_v2 import (
 )
 
 SESSION = "s-1"
+QUOTE = "premium is locked"  # from the default message: the user's own words about the problem (v4)
 FIXED_REPLY = "I've passed this to a teammate who can help with this; they will reply here."
 ALWAYS_ON = {"get_profile", "store_instructions", "handoff", "mark_resolved"}
 
@@ -48,7 +49,7 @@ def action(result: ChatResult, tool: str):
 
 
 def grant_steps(days=3, reply="Done: I added a few days of premium."):
-    return [call("get_profile"), call("grant_access", days=days, reason="paid but locked"), say(reply)]
+    return [call("get_profile"), call("grant_access", days=days, reason="paid but locked", user_words=QUOTE), say(reply)]
 
 
 def test_grant_within_limits_is_allowed_executed_and_logged(http, conn):
@@ -61,7 +62,7 @@ def test_grant_within_limits_is_allowed_executed_and_logged(http, conn):
     assert result.handed_off is False and result.ticket_id is None
     (grant,) = action(result, "grant_access")
     assert grant.allowed is True and grant.blocked_reason is None
-    assert grant.args == {"days": 3, "reason": "paid but locked"}
+    assert grant.args == {"days": 3, "reason": "paid but locked", "user_words": QUOTE}
 
     assert len(http_calls(http, "POST")) == 1
     (row,) = all_grants(conn)
@@ -70,7 +71,7 @@ def test_grant_within_limits_is_allowed_executed_and_logged(http, conn):
     events = db.list_events(conn, SESSION)
     assert [e["tool"] for e in events] == ["get_profile", "grant_access"], "every tool call is logged, in order"
     assert events[1]["allowed"] is True and events[1]["blocked_reason"] is None
-    assert events[1]["args"] == {"days": 3, "reason": "paid but locked"}
+    assert events[1]["args"] == {"days": 3, "reason": "paid but locked", "user_words": QUOTE}
 
 
 def test_tools_offered_when_grant_enabled(http, conn):
@@ -149,7 +150,7 @@ def test_grant_over_max_days_is_blocked_once_and_the_model_may_answer(http, conn
 def test_over_max_days_retry_within_the_limit_is_allowed(http, conn):
     mock_profile(http, paid_profile())
     mock_grant_ok(http)
-    result, _ = chat(conn, [call("get_profile"), call("grant_access", days=30, reason="x"), call("grant_access", days=5, reason="x"), say("Added 5 days.")])
+    result, _ = chat(conn, [call("get_profile"), call("grant_access", days=30, reason="x", user_words=QUOTE), call("grant_access", days=5, reason="x", user_words=QUOTE), say("Added 5 days.")])
     assert [(a.allowed, a.blocked_reason) for a in action(result, "grant_access")] == [(False, "over_max_days"), (True, None)]
     assert len(http_calls(http, "POST")) == 1 and all_grants(conn)[0]["days"] == 5
     assert result.handed_off is False and result.reply == "Added 5 days."
@@ -158,7 +159,7 @@ def test_over_max_days_retry_within_the_limit_is_allowed(http, conn):
 def test_second_over_max_days_in_a_turn_hands_off(http, conn):
     mock_profile(http, paid_profile())
     mock_grant_ok(http)
-    result, fake = chat(conn, [call("get_profile"), call("grant_access", days=30, reason="x"), call("grant_access", days=14, reason="x"), say("unused")])
+    result, fake = chat(conn, [call("get_profile"), call("grant_access", days=30, reason="x", user_words=QUOTE), call("grant_access", days=14, reason="x", user_words=QUOTE), say("unused")])
     assert [a.blocked_reason for a in action(result, "grant_access")] == ["over_max_days", "over_max_days"]
     assert http_calls(http, "POST") == []
     handed_off_in_code(conn, result, fake, model_calls=3)
@@ -166,8 +167,8 @@ def test_second_over_max_days_in_a_turn_hands_off(http, conn):
 
 def test_over_max_days_counts_per_turn(http, conn):
     mock_profile(http, paid_profile())
-    chat(conn, [call("grant_access", days=30, reason="x"), say("No, sorry.")])
-    second, _ = chat(conn, [call("grant_access", days=30, reason="x"), say("Still no.")], message="please, 30 days")
+    chat(conn, [call("grant_access", days=30, reason="x", user_words=QUOTE), say("No, sorry.")])
+    second, _ = chat(conn, [call("grant_access", days=30, reason="x", user_words=QUOTE), say("Still no.")], message="please, 30 days")
     assert second.handed_off is False and second.reply == "Still no."
 
 
@@ -185,7 +186,7 @@ def test_lifetime_user_hands_off_in_code(http, conn):
     """lifetime → profile_mismatch, which is in the default always_handoff."""
     mock_profile(http, lifetime_profile())
     mock_grant_ok(http)
-    fake = FakeLLM([call("get_profile"), calls(("grant_access", {"days": 3, "reason": "x"}), ("store_instructions", {"kind": "restore", "store": "app_store"})), say("unused")])
+    fake = FakeLLM([call("get_profile"), calls(("grant_access", {"days": 3, "reason": "x", "user_words": QUOTE}), ("store_instructions", {"kind": "restore", "store": "app_store"})), say("unused")])
     result, _ = chat(conn, fake)
     (grant,) = action(result, "grant_access")
     assert grant.allowed is False and grant.blocked_reason == "lifetime"
@@ -285,7 +286,7 @@ def test_the_model_cannot_address_another_customer(http, conn):
     mock_grant_ok(http)
     chat(conn, [
         call("get_profile", customer_user_id=STRANGER),
-        call("grant_access", days=3, reason="x", customer_user_id=STRANGER),
+        call("grant_access", days=3, reason="x", user_words=QUOTE, customer_user_id=STRANGER),
         say("ok"),
     ])
     assert customer_headers(http) <= {CUID}
@@ -314,7 +315,7 @@ def test_after_handoff_the_agent_still_answers_without_account_actions(http, con
     mock_profile(http, paid_profile())
     fake = FakeLLM([
         call("handoff", reason="asks_for_human", summary="wants a person"), say("A person will reply."),
-        call("grant_access", days=3, reason="sneaky"), say("A teammate will help with that."),
+        call("grant_access", days=3, reason="sneaky", user_words=QUOTE), say("A teammate will help with that."),
     ])
     first, _ = chat(conn, fake, message="I want a human")
     tickets = len(db.list_tickets(conn))
@@ -408,11 +409,11 @@ def test_messages_are_stored(http, conn):
 @pytest.mark.parametrize(
     "setup,steps,mapped",
     [
-        ("lifetime", [call("get_profile"), call("grant_access", days=3, reason="x"), say("unused")], "profile_mismatch"),
-        ("unpaid", [call("get_profile"), call("grant_access", days=3, reason="x"), say("unused")], "profile_mismatch"),
-        ("granted", [call("get_profile"), call("grant_access", days=3, reason="x"), say("unused")], "repeat_after_grant"),
-        ("disabled", [call("grant_access", days=3, reason="x"), say("unused")], "other"),
-        ("paid", [call("grant_access", days=30, reason="x"), call("grant_access", days=20, reason="x"), say("unused")], "other"),
+        ("lifetime", [call("get_profile"), call("grant_access", days=3, reason="x", user_words=QUOTE), say("unused")], "profile_mismatch"),
+        ("unpaid", [call("get_profile"), call("grant_access", days=3, reason="x", user_words=QUOTE), say("unused")], "profile_mismatch"),
+        ("granted", [call("get_profile"), call("grant_access", days=3, reason="x", user_words=QUOTE), say("unused")], "repeat_after_grant"),
+        ("disabled", [call("grant_access", days=3, reason="x", user_words=QUOTE), say("unused")], "other"),
+        ("paid", [call("grant_access", days=30, reason="x", user_words=QUOTE), call("grant_access", days=20, reason="x", user_words=QUOTE), say("unused")], "other"),
     ],
     ids=["lifetime", "not_paid", "grant_limit_30d", "tool_disabled", "over_max_days-twice"],
 )

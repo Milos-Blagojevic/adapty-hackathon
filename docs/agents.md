@@ -176,8 +176,8 @@ Names in the 4-tab UI are free; endpoints and JSON shapes are not.
 
 Level 2 (`frontline`), the customer id is always the session's, never a model argument:
 - `get_profile {}` → profile summary
-- `grant_access {days: int, reason: str}`
-- `store_instructions {kind: "restore"|"cancel"|"refund_request", store: "app_store"|"play_store"}` → canned steps text
+- `grant_access {days: int, reason: str, user_words: str}` (`user_words` since v4, below)
+- `store_instructions {kind: "restore"|"cancel"|"refund_request", store: "app_store"|"play_store"}` → canned steps text, only for a store the account bought in (v4)
 - `handoff {reason: one of HANDOFF_RULES or "other", summary: str}`
 - `mark_resolved {note: str}`
 
@@ -257,3 +257,25 @@ Level 1:
 - `triage.ungrounded_evidence(ticket, facts_text) -> list[str]`: evidence lines whose value (after the first `: `) has a token with a digit, `_` or `.` (amounts, dates, ids, versions) that does not occur, case-insensitively, in the facts the run loaded (the model merges facts into one line, so whole-line matching is useless). Used by eval only; the run does not drop them.
 
 Decided by the owner after the review (2026-11-08): keep `confidence` (the models are DeepSeek and Opus, not a small model), keep three equal options, no keyword backstop for hand-off rules.
+
+### v4: Level 2 states only what it knows (binding, 2026-11-08)
+
+From real chats on DeepSeek on 8 Nov: a "dev team" sender got 7 free days on an account with nothing wrong; the agent said Family Sharing "isn't supported" and gave an iOS path "Settings → Lumen → clear cache" that does not exist; a lifetime bought on the App Store was sent to Google Play "Restore purchases" on a Pixel; refund steps were in a reply while the log said the store steps did not run. The causes were in what the model saw and what code checked; the fixes are there, not in single replies.
+
+What the model knows, and nothing else: the account facts (computed in code), the store steps (`store_instructions`, canned), the config and its instructions. For anything outside them (how the app works, its tiers and features, Family Sharing, device or in-app menus, why something breaks) the agent says what it cannot see and who will find out, and hands off when the user needs that answer. The prompt says this as the goal; `REPLY_CRAFT` (shared with Level 1) asks for paths only from the steps the system gave, and its examples use the canned store steps.
+
+Account facts (`profile_summary`, also the result of `get_profile`), additions:
+- `premium`: computed for the configured access level: `active`, `until` (date or null), `lifetime`, `paid_by` (the non-refunded store purchases that pay for it now: `{store, product, kind: subscription|one_time, renews}`), `added_on_account` (true when the access level was set on the account directly, by us or the developer, not bought in a store; the raw store value of such a level is never shown), `works_on` (fixed: every device signed in to this account, iPhone or Android; premium belongs to the account, not to the phone's store).
+- `purchase_stores`: the stores of all store purchases on the account (subscriptions and one-time purchases, refunded included), sorted.
+- `one_time_purchases[].store` (was missing). Access levels show `source` (`app_store` | `play_store` | `added_on_account`) and no internal product id for a level set on the account.
+- `this_chat`: fixed: the user writes from the app signed in to this account.
+
+Store steps, policy in code (`policy.check_store_steps(profile, store) -> (allowed, reason)`): steps (restore, cancel, refund request) are given only for a store where the account has a purchase; an account with no store purchase (or not found) gets any store. Otherwise the call is logged not allowed with `store_not_on_account` and the model gets `blocked: store_not_on_account (this account's purchases are in: app_store)`; no handoff in code. The canned restore steps say that a restore finds only purchases made with that store account.
+
+Free days, policy in code: `grant_access {days, reason, user_words}`. Free days make up for a problem the user has with their own premium or charge (they pay and premium is locked, a paid feature fails for them, a charge they did not expect); they go to the session's account only, so they never answer a request for access as such, whoever the sender says they are. `user_words` is the user's own sentence describing that problem, copied from their messages. Code checks it (`policy.check_problem_quote(user_words, user_messages) -> str | None`): every part of the quote (split on "..." / "…") must occur in this session's user messages after normalising (case, Unicode form, punctuation and quotes removed, whitespace collapsed), with at least 10 letters or digits in total; otherwise `no_problem_quote`, checked after the limits. Like `over_max_days`, it may be corrected once in a turn: the model gets `blocked: no_problem_quote (...)`; a second correctable block (`over_max_days` or `no_problem_quote`) in the same turn hands off `other`. `free_days_available` in the facts still means only that the limits allow a grant.
+
+Log and handoff in a turn:
+- After a handoff the model called in the same turn, `get_profile` and `store_instructions` still run (the same read-only tools as after a handoff); other calls are not run. After a handoff in code (a blocked grant) nothing more runs in that turn, as before. So the refund handoff and the store's refund steps can come in one reply, and the log shows the steps ran.
+- Every call that does not run is logged with a fixed `blocked_reason`: `after_handoff` (handed off in this turn or a teammate has the conversation), `call_limit` (the last model call of a message), `unknown_tool`, `invalid_arguments`. `allowed=false` with `blocked_reason=null` no longer occurs.
+
+Eval (`scripts/eval.py --l2-only --repeat N`): the Level 2 scenarios (`data/l2_scenarios.json`) are scored on the code outcomes (grant, handoff, store steps that must or must not run, the log rule above) and on `reply` checks judged by the model over the transcript, the tool results and the raw profile. The clock is frozen at the scenario's `as_of`; a scenario may carry a live profile snapshot; grants the code allows are simulated (nothing reaches Adapty, the agent sees a success).
