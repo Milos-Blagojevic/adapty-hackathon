@@ -59,18 +59,26 @@ input::placeholder,textarea::placeholder{color:#8b8b94}
 .ans{position:relative;border-radius:12px;transition:background .15s, box-shadow .15s}
 .ans:hover{background:#fafafa}
 .ans.sel{background:#f6f4ff;box-shadow:inset 0 0 0 1.5px #c9bffb}
-.ans-main{display:grid;grid-template-columns:56px minmax(0,1fr) 96px;gap:14px;align-items:start;padding:16px 18px;cursor:pointer}
+.ans-main{display:grid;grid-template-columns:84px minmax(0,1fr) 96px;gap:14px;align-items:start;padding:16px 18px;cursor:pointer}
 .emo{display:inline-block;font-size:42px;line-height:1;margin-top:-4px;transition:transform .2s cubic-bezier(.3,1.6,.5,1)}
 .ans:hover .emo{transform:rotate(-10deg) scale(1.1)}
 .ans.sel .emo{transform:scale(1.12)}
 .ttl{font-size:15px;font-weight:600;color:#18181b}
 .pick{font-size:12.5px;color:#71717a;font-weight:500}
 .star{font-size:17px;line-height:1;color:#f5a524;text-shadow:0 1px 0 rgba(180,110,0,.18)}
-.emo-col{display:flex;flex-direction:column;align-items:center;gap:10px}
-.conf{position:relative;display:grid;place-items:center;width:42px;height:42px}
-.conf svg{position:absolute;inset:0}
-.conf b{font-size:11.5px;font-weight:700;color:#3f3f46;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
-.ans.sel .conf b{color:#4c35d8}
+.emo-col{display:flex;flex-direction:column;align-items:center;gap:6px}
+@property --pp{syntax:'<number>';inherits:false;initial-value:0}
+.gwrap{position:relative;display:grid;place-items:center;width:84px;height:84px;margin-top:-6px}
+.gwrap::before{content:"";position:absolute;inset:9px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff,hsla(var(--h),90%,96%,.92));box-shadow:inset 0 0 0 1px hsla(var(--h),70%,50%,.12),0 6px 18px -8px hsla(var(--h),80%,40%,.55)}
+.gauge{position:absolute;inset:0;border-radius:50%;--pp:var(--p);background:conic-gradient(from 0deg,hsl(calc(var(--h) - 14),80%,60%) 0%,hsl(var(--h),76%,44%) calc(var(--pp) * 1%),hsla(var(--h),40%,50%,.13) calc(var(--pp) * 1%));-webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 8px),#000 calc(100% - 7px));mask:radial-gradient(farthest-side,transparent calc(100% - 8px),#000 calc(100% - 7px));filter:drop-shadow(0 0 6px hsla(var(--h),85%,50%,.5));animation:gfill 1s cubic-bezier(.2,.9,.25,1) both}
+@keyframes gfill{from{--pp:0}}
+.gwrap .emo{position:relative;font-size:38px;margin-top:0}
+.gnum{display:flex;align-items:baseline;gap:1px;color:hsl(var(--h),75%,30%);line-height:1;font-variant-numeric:tabular-nums}
+.gnum b{font-size:24px;font-weight:800;letter-spacing:-.04em}
+.gnum i{font-style:normal;font-size:13px;font-weight:700;opacity:.75}
+.ans.tinted{background:linear-gradient(100deg,hsla(var(--h),80%,55%,.19) 0%,hsla(var(--h),80%,55%,.08) 45%,hsla(var(--h),80%,55%,.025) 100%);box-shadow:inset 0 0 0 1px hsla(var(--h),70%,50%,.14)}
+.ans.tinted:hover{background:linear-gradient(100deg,hsla(var(--h),80%,55%,.27) 0%,hsla(var(--h),80%,55%,.12) 45%,hsla(var(--h),80%,55%,.04) 100%)}
+.ans.tinted.sel{box-shadow:inset 0 0 0 2px hsla(var(--h),75%,45%,.65),0 8px 24px -12px hsla(var(--h),80%,40%,.5)}
 .risk-high{font-size:12.5px;font-weight:600;color:#c2410c}
 .risk-medium{font-size:12.5px;font-weight:600;color:#a16207}
 .txt{display:block;margin-top:4px;color:#3f3f46;font-size:14.5px;line-height:1.55;text-wrap:pretty}
@@ -204,14 +212,14 @@ input::placeholder,textarea::placeholder{color:#8b8b94}
 
 <section class="card" aria-labelledby="h-ans" style="padding: 18px 8px 8px; display: flex; flex-direction: column; gap: 6px">
 <p id="h-ans" class="kicker" style="padding: 0 16px 4px">Answers</p>
-<div role="radiogroup" aria-labelledby="h-ans" style="display: flex; flex-direction: column; gap: 2px">
+<div role="radiogroup" aria-labelledby="h-ans" style="display: flex; flex-direction: column; gap: 8px">
 <sc-for list="{{ answers }}" as="a" hint-placeholder-count="4">
-<div class="{{ a.cls }}">
+<div class="{{ a.cls }}" style="{{ a.tint }}">
 <label class="ans-main">
 <input type="radio" name="answer" class="sr" checked="{{ a.selected }}" onChange="{{ a.pick }}">
 <span class="emo-col">
-<span class="emo" aria-hidden="true">{{ a.emoji }}</span>
-<sc-if value="{{ a.hasConf }}"><span class="conf" title="How sure the agent is about this answer"><svg width="42" height="42" viewBox="0 0 42 42" aria-hidden="true"><circle cx="21" cy="21" r="18" fill="none" stroke="#ece9fb" stroke-width="3"></circle><circle cx="21" cy="21" r="18" fill="none" stroke="{{ a.confColor }}" stroke-width="3" stroke-linecap="round" pathLength="100" stroke-dasharray="{{ a.confDash }}" transform="rotate(-90 21 21)"></circle></svg><b>{{ a.confPct }}%</b></span></sc-if>
+<sc-if value="{{ a.hasConf }}"><span class="gwrap" style="--p: {{ a.confPct }}; --h: {{ a.confHue }}" title="How sure the agent is about this answer"><span class="gauge" aria-hidden="true"></span><span class="emo" aria-hidden="true">{{ a.emoji }}</span></span><span class="gnum" style="--h: {{ a.confHue }}"><b>{{ a.confPct }}</b><i>%</i><span class="sr"> sure</span></span></sc-if>
+<sc-if value="{{ a.noConf }}"><span class="emo" aria-hidden="true">{{ a.emoji }}</span></sc-if>
 </span>
 <span style="min-width: 0">
 <span style="display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px">
@@ -228,14 +236,14 @@ input::placeholder,textarea::placeholder{color:#8b8b94}
 <sc-if value="{{ a.showScratchBtn }}"><button type="button" class="hov" onClick="{{ a.pick }}">Write from scratch</button></sc-if>
 
 <sc-if value="{{ a.showOwnBox }}">
-<div style="padding: 0 18px 16px 88px">
+<div style="padding: 0 18px 16px 116px">
 <label for="own" class="sr">Your reply</label>
 <textarea id="own" class="ta" placeholder="Write the reply the user will see" value="{{ own }}" onChange="{{ onOwn }}"></textarea>
 </div>
 </sc-if>
 
 <sc-if value="{{ a.editing }}">
-<div style="padding: 2px 18px 18px 88px; display: flex; flex-direction: column; gap: 12px">
+<div style="padding: 2px 18px 18px 116px; display: flex; flex-direction: column; gap: 12px">
 <div style="display: flex; flex-wrap: wrap; gap: 12px">
 <label class="field">Action
 <select class="inp" value="{{ a.action }}" onChange="{{ a.onAction }}">
@@ -640,13 +648,16 @@ class Component extends DCLogic {
       var risk = riskOf(base[id], v);
       var conf = base[id] && typeof base[id].conf === 'number' ? base[id].conf : null;
       var pct = conf == null ? 0 : Math.round(conf * 100);
+      // rose (≤40%) → orange (60%) → emerald (≥90%); greens start at 75% so 80% already reads as good
+      var hue = Math.round(pct <= 40 ? 350 : pct <= 60 ? 350 + (pct - 40) * 2 : pct <= 75 ? 30 + (pct - 60) * 110 / 15 : Math.min(158, 140 + (pct - 75) * 18 / 15)) % 360;
       return {
-        cls: selected === id ? 'ans sel' : 'ans',
+        cls: (selected === id ? 'ans sel' : 'ans') + (conf != null ? ' tinted' : ''),
+        tint: conf != null ? '--h: ' + hue : '',
         selected: selected === id,
         emoji: v.emoji,
         title: titleOf(v),
         isPick: i === 0,
-        hasConf: conf != null, confPct: pct, confDash: pct + ' 100', confColor: pct >= 75 ? '#6247f5' : pct >= 50 ? '#8b7cf6' : '#b4abf3',
+        hasConf: conf != null, noConf: conf == null, confPct: pct, confHue: hue,
         edited: isEdited(base, id, edits),
         hasRisk: risk.has,
         risk: risk.text,
@@ -675,7 +686,7 @@ class Component extends DCLogic {
       cls: selected === 'own' ? 'ans sel' : 'ans',
       selected: selected === 'own',
       emoji: '🧠', title: 'Write your own',
-      isPick: false, hasConf: false, edited: false, hasRisk: false, risk: '', riskCls: '',
+      tint: '', isPick: false, hasConf: false, noConf: true, edited: false, hasRisk: false, risk: '', riskCls: '',
       showText: false, reply: '', editing: false,
       showEditBtn: false,
       showScratchBtn: selected !== 'own',
