@@ -357,7 +357,8 @@ def short_title(summary: str) -> str:
     text = text[:1].upper() + text[1:]
     for m in re.finditer(r",(?!\s*\d)| — | – |; ", text):
         head = text[: m.start()]
-        if 30 <= len(head) <= TITLE_MAX and head.count("(") == head.count(")"):
+        dangling = re.search(r"\b(?:and|or|but|then|so|because|while|when|after|before|that|who)$", head)
+        if 30 <= len(head) <= TITLE_MAX and head.count("(") == head.count(")") and not dangling:
             return head
     if len(text) <= TITLE_MAX:
         return text

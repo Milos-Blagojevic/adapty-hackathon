@@ -27,3 +27,8 @@ def test_short_title_keeps_dates_and_brackets_whole_and_stays_short():
     long = "A Pro annual subscriber (paid $53.64, active to Oct 13, 2027) asks what the new label means and whether they have to pay again."
     out = short_title(long)
     assert len(out) <= 91 and out.endswith("…") and "(paid $53.64, active to Oct 13, 2027)" in out
+
+
+def test_short_title_never_ends_on_a_joining_word():
+    out = short_title("The user bought FitBuddy lifetime on iPhone and, after switching to a Pixel, the Android app asks them to pay again.")
+    assert not out.endswith(" and") and out.startswith("Bought FitBuddy lifetime on iPhone and, after switching to a Pixel")
