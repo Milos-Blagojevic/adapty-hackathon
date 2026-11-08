@@ -45,6 +45,18 @@ button,input,select,textarea{font-family:Inter,system-ui,-apple-system,sans-seri
 .ctl:focus{outline:none;border-color:#b9aefb;box-shadow:0 0 0 3px rgba(98,71,245,.10)}
 .ctl.bad{border-color:#f0a3a6;box-shadow:0 0 0 3px rgba(214,58,63,.10)}
 .num{width:84px;text-align:right;font-variant-numeric:tabular-nums}
+.intro{margin:0;padding:0 24px 14px;font-size:13.5px;line-height:1.5;color:#52525b}
+.plans{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;padding:0 24px 16px}
+.plan{display:flex;flex-direction:column;gap:6px;text-align:left;padding:12px 13px;border-radius:8px;border:1px solid #e4e4e8;background:#ffffff;cursor:pointer;font:inherit;color:#18181b;transition:border-color .15s, box-shadow .15s}
+.plan:hover{border-color:#cbc3fb}
+.plan.on{border-color:#6247f5;box-shadow:0 0 0 3px rgba(98,71,245,.12)}
+.plan .pt{display:flex;align-items:baseline;justify-content:space-between;gap:6px;font-family:Newsreader,Georgia,'Times New Roman',serif;font-size:18px;font-weight:500}
+.plan .rec{font-family:Inter,system-ui,sans-serif;font-size:11px;font-weight:600;color:#5b3cf0}
+.plan .risk{font-size:12px;font-weight:600}
+.plan .pd{font-size:12.5px;line-height:1.45;color:#6b6b75}
+.plan .pm{font-size:12.5px;font-weight:500;color:#3f3f46}
+.sum{margin:0;padding:12px 24px 4px;border-top:1px solid #f2f2f4;font-size:13px;line-height:1.5;color:#52525b}
+.sum b{font-weight:600;color:#18181b}
 .err{flex:1 0 100%;margin:0;font-size:13px;font-weight:500;color:#d63a3f}
 .sw{position:relative;width:38px;height:22px;border-radius:999px;border:0;background:#d9d9de;cursor:pointer;transition:background .18s;flex:0 0 auto}
 .sw::after{content:"";position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#ffffff;box-shadow:0 1px 2px rgba(0,0,0,.2);transition:transform .18s}
@@ -152,25 +164,29 @@ button,input,select,textarea{font-family:Inter,system-ui,-apple-system,sans-seri
 <sc-if value="{{ err.maxMessages }}"><p class="err">Choose 5 to 50 messages.</p></sc-if>
 </div>
 
-<p class="kicker grp" style="padding-top: 22px">Free access</p>
+<p class="kicker grp" style="padding-top: 22px">Free days the assistant may give</p>
+<p class="intro">When a paying user is blocked or surprised by a charge, the assistant can add free premium days on its own instead of making them wait for a person. It never charges anyone and never refunds. A free day costs you money only if the user would have paid for that day, for example when they cancel and keep premium a little longer. Pick how much you are comfortable with:</p>
+<div class="plans" role="radiogroup" aria-label="Free days plan">
+<sc-for list="{{ plans }}" as="pl"><button type="button" role="radio" aria-checked="{{ pl.on }}" class="{{ pl.cls }}" onClick="{{ pl.pick }}"><span class="pt">{{ pl.name }}<sc-if value="{{ pl.rec }}"><span class="rec">Recommended</span></sc-if></span><span class="risk" style="color: {{ pl.tone }}">{{ pl.risk }}</span><span class="pm">{{ pl.most }}</span><span class="pd">{{ pl.desc }}</span></button></sc-for>
+</div>
 <div class="set">
-<span class="nm"><span id="l-allow">Allow free access grants</span></span>
+<span class="nm"><span id="l-allow">Allow free access grants</span><span class="hint">Off: every such case waits for a person</span></span>
 <button type="button" role="switch" aria-labelledby="l-allow" aria-checked="{{ v.allowGrants }}" class="{{ sw.allowGrants }}" onClick="{{ tg.allowGrants }}"></button>
 </div>
 <div class="set">
-<label for="lvl" class="nm"><span>Access level</span></label>
+<label for="lvl" class="nm"><span>Access level</span><span class="hint">What the free days unlock</span></label>
 <select id="lvl" class="ctl" value="{{ v.level }}" onChange="{{ on.level }}" disabled="{{ grantsOff }}">
 <option value="premium">premium</option>
 <option value="pro">pro</option>
 </select>
 </div>
 <div class="set">
-<label for="days" class="nm"><span>Max days per grant</span></label>
+<label for="days" class="nm"><span>Max days per grant</span><span class="hint">The most one gift can be; the assistant often gives less</span></label>
 <input id="days" class="{{ cls.maxDays }}" type="number" min="1" max="30" value="{{ v.maxDays }}" onChange="{{ on.maxDays }}" disabled="{{ grantsOff }}">
 <sc-if value="{{ err.maxDays }}"><p class="err">Choose 1 to 30 days.</p></sc-if>
 </div>
 <div class="set">
-<label for="per" class="nm"><span>Grants per user per 30 days</span></label>
+<label for="per" class="nm"><span>Grants per user per 30 days</span><span class="hint">How often the same person can get free days; stops repeat asks</span></label>
 <input id="per" class="{{ cls.perUser }}" type="number" min="0" max="5" value="{{ v.perUser }}" onChange="{{ on.perUser }}" disabled="{{ grantsOff }}">
 <sc-if value="{{ err.perUser }}"><p class="err">Choose 0 to 5 grants.</p></sc-if>
 </div>
@@ -178,8 +194,10 @@ button,input,select,textarea{font-family:Inter,system-ui,-apple-system,sans-seri
 <span class="nm"><span id="l-paying">Paying users only</span><span class="hint">{{ payingHint }}</span></span>
 <button type="button" role="switch" aria-labelledby="l-paying" aria-checked="{{ v.payingOnly }}" class="{{ sw.payingOnly }}" onClick="{{ tg.payingOnly }}" disabled="{{ grantsOff }}"></button>
 </div>
+<p class="sum">{{ worst }}<sc-if value="{{ usedLine }}"> {{ usedLine }}</sc-if></p>
 
-<p class="kicker grp" style="padding-top: 22px">Always hand off to a person</p>
+<p class="kicker grp" style="padding-top: 22px">Always passed to a person</p>
+<p class="intro">The assistant never decides these on its own: it tells the user a teammate will reply and opens a ticket in Incoming. Keep them all on unless you have a reason.</p>
 <div class="set">
 <span class="nm"><span id="l-ref">Refund request</span></span>
 <button type="button" role="switch" aria-labelledby="l-ref" aria-checked="{{ v.hRefund }}" class="{{ sw.hRefund }}" onClick="{{ tg.hRefund }}"></button>
@@ -268,6 +286,23 @@ function toApi(v, raw) {
     llm_provider: v.provider
   });
 }
+// Ready-made limits for free days, from the safest to the most generous. Risk = how many free days one person can get a month.
+var PLANS = [
+  { id: 'off', name: 'Off', risk: 'No money at risk', tone: '#3d6b52', desc: 'The assistant explains and gives store steps; any free days come from a person.', v: { allowGrants: false } },
+  { id: 'careful', name: 'Careful', risk: 'Low risk', tone: '#3d6b52', desc: 'Enough to make up for an unlock that failed. Good for a new app or a tight budget.', v: { allowGrants: true, maxDays: 3, perUser: 1, payingOnly: true } },
+  { id: 'balanced', name: 'Balanced', rec: true, risk: 'Moderate risk', tone: '#8a6a2e', desc: 'A week makes up for most billing surprises; once a month per person stops abuse.', v: { allowGrants: true, maxDays: 7, perUser: 1, payingOnly: true } },
+  { id: 'generous', name: 'Generous', risk: 'Higher risk', tone: '#8e3b36', desc: 'Keeps unhappy users at almost any cost. Worth it when a lost subscriber costs more than a month.', v: { allowGrants: true, maxDays: 14, perUser: 2, payingOnly: true } }
+];
+function planOf(v) {
+  if (!v.allowGrants) return 'off';
+  var hit = PLANS.filter(function (p) { return p.id !== 'off' && Object.keys(p.v).every(function (k) { return String(v[k]) === String(p.v[k]); }); })[0];
+  return hit ? hit.id : '';
+}
+function mostLine(days, per) {
+  var d = Number(days) * Number(per);
+  return d ? 'Up to ' + d + ' free day' + (d === 1 ? '' : 's') + ' per person a month' : 'No free days';
+}
+
 function runningNow(info) {
   if (!info) return '…';
   if (info.active) return info.active + (info.model ? ' · ' + info.model : '');
@@ -286,6 +321,7 @@ class Component extends DCLogic {
       self.setState({ failText: 'Could not load the settings: ' + err.message });
     });
     this.loadLlm();
+    API.get('/api/analytics?range=30d').then(function (a) { self.setState({ used: a.period.current.grants }); }, function () {});
   }
   loadLlm() {
     var self = this;
@@ -340,7 +376,22 @@ class Component extends DCLogic {
     var have = LIVE && s.llm ? s.llm.available : null;
     // A tone that is none of the three: shown as its own option (the text, shortened).
     var raw = LIVE && s.saved && !TONES[s.saved.tone] ? s.saved.tone : '';
+    var cur = planOf(v);
+    var plans = PLANS.map(function (p) {
+      var on = cur === p.id;
+      return {
+        name: p.name, rec: !!p.rec, risk: p.risk, tone: p.tone, desc: p.desc, on: on, cls: on ? 'plan on' : 'plan',
+        most: p.id === 'off' ? 'No free days' : mostLine(p.v.maxDays, p.v.perUser),
+        pick: function () { self.setState({ v: Object.assign({}, v, p.v) }); }
+      };
+    });
+    var worst = !v.allowGrants ? 'Free days are off: the assistant gives none.'
+      : err.maxDays || err.perUser ? 'Fix the limits above to see the worst case.'
+      : 'Worst case: one person gets up to ' + Number(v.maxDays) * Number(v.perUser) + ' free days a month' + (v.payingOnly ? ', and only while they are paying.' : ', including people who are not paying.') + (cur ? '' : ' (your own limits)');
+    var used = LIVE ? s.used : { count: 3, days: 17 };
+    var usedLine = used ? 'Given in the last 30 days: ' + used.count + ' time' + (used.count === 1 ? '' : 's') + ', ' + used.days + ' day' + (used.days === 1 ? '' : 's') + ' in total.' : '';
     return {
+      plans: plans, worst: worst, usedLine: usedLine,
       payingHint: LIVE ? 'Only users with a paid subscription active now' : 'Never grant to users who never paid',
       v: v, on: on, tg: tg, sw: sw, err: err, cls: cls,
       running: LIVE ? runningNow(s.llm) : 'openai · deepseek-flash',
