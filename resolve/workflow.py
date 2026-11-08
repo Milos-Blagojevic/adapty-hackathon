@@ -13,9 +13,10 @@ marked done unless Adapty said yes. The only Adapty writes go through `actions.e
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass
 
-from resolve import actions, db, policy, triage
+from resolve import actions, db, llm, policy, triage
 from resolve.adapty import AdaptyError, Client
 from resolve.llm import LLM
 from resolve.models import Decision, Rejection
@@ -33,6 +34,38 @@ class Services:
 
 class NotFound(Exception):
     pass
+
+
+class TranslationFailed(Exception):
+    """The person's English could not be put into the user's language: nothing was sent or run."""
+
+
+TRANSLATE_PROMPT = """You translate one support reply from English into {language}, for a user of a subscription app. Translate faithfully, sentence by sentence: add no promise, fact, greeting or apology, and drop nothing. Keep every amount, date, product name, URL and number exactly as written. Output only the translation."""
+
+
+def translate_reply(services: Services, ticket_id: str, text: str, language: str) -> str:
+    """One small model call on the person's click; counted in the ticket's cap. Raises TranslationFailed."""
+    if services.demo or services.llm is None:
+        raise TranslationFailed(f"Could not translate to {language}: no model is connected. Nothing was sent.")
+    if not db.reserve_model_call(services.conn, ticket_id, triage.MAX_CALLS):
+        raise TranslationFailed(f"Could not translate to {language}: the model call cap for this ticket is reached. Nothing was sent.")
+    try:
+        step = services.llm.step(TRANSLATE_PROMPT.format(language=language), [{"role": "user", "content": text}], [])
+    except llm.LLMError:
+        raise TranslationFailed(f"Could not translate to {language}: the model call failed. Nothing was sent.") from None
+    out = (step.text or "").strip()
+    if step.stop in ("max_tokens", "refusal") or not out or out.casefold() == text.strip().casefold():
+        raise TranslationFailed(f"Could not translate to {language}: no usable translation came back. Nothing was sent.")
+    missing = set(re.findall(r"\d+", text)) - set(re.findall(r"\d+", out))
+    if missing:
+        raise TranslationFailed(f"Could not translate to {language}: the translation lost the number {sorted(missing)[0]}. Nothing was sent.")
+    return out
+
+
+def user_language(ticket: dict) -> str | None:
+    """The ticket's non-English user language, or None (English, unknown, not triaged)."""
+    language = (ticket.get("triage") or {}).get("user_language")
+    return None if triage.is_english(language) else language
 
 
 def _ticket(services: Services, ticket_id: str) -> dict:
@@ -105,6 +138,16 @@ def accept(services: Services, ticket_id: str, decision: Decision) -> dict:
     if decision.option >= len(proposed["options"]):
         raise ValueError(f"option {decision.option} does not exist; the ticket has {len(proposed['options'])}")
     final = final_option(services, proposed["options"][decision.option], decision)
+    language = user_language(ticket)
+    edits = decision.edits
+    if language:
+        # Before anything runs: a failed translation leaves the ticket proposed, with no grant and no message.
+        final["language"] = language
+        final["reply_en"] = None if edits.reply is not None else (edits.reply_en if edits.reply_en is not None else proposed["options"][decision.option].get("reply_en"))
+        if edits.reply is None and edits.reply_en is not None and edits.reply_en.strip():
+            final["reply"] = translate_reply(services, ticket_id, edits.reply_en, language)
+    elif edits.reply is None and edits.reply_en is not None:
+        final["reply"] = edits.reply_en
     customer = ticket["customer_user_id"]
     if final["action"] == "grant_access" and not customer:
         raise ValueError("grant_access needs an identified customer")
@@ -152,7 +195,18 @@ def reject(services: Services, ticket_id: str, rejection: Rejection) -> dict:
     """
     ticket = _ticket(services, ticket_id)
     reply = (rejection.reply or "").strip()
-    fields = {"decision_json": json.dumps(dict(rejection.model_dump(), rejected=True)), "status": "done" if reply else "dismissed"}
+    english = (rejection.reply_en or "").strip()
+    language = user_language(ticket)
+    if english and not reply:
+        # An open ticket only: a closed one must not spend a call. A failure raises and nothing changes.
+        if language and ticket["status"] in OPEN_STATUSES:
+            reply = translate_reply(services, ticket_id, english, language)
+        elif not language:
+            reply = english
+    decision = {"note": rejection.note, "reply": reply or rejection.reply, "rejected": True}
+    if language and reply:
+        decision.update(language=language, reply_en=english or None)
+    fields = {"decision_json": json.dumps(decision), "status": "done" if reply else "dismissed"}
     if reply:
         fields["reply_sent_at"] = db.now_iso()
     if db.update_ticket(services.conn, ticket_id, only_status=OPEN_STATUSES, **fields) and reply:

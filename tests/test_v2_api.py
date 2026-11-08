@@ -211,7 +211,7 @@ def test_accept_returns_the_full_ticket(env):
     make_proposed(env.conn, "t-001")
     out = env.client.post("/api/tickets/t-001/accept", json={"option": 1, "edits": {}}).json()
     assert TICKET_KEYS <= set(out) and out["status"] == "done"
-    assert out["decision"] == {"option": 1, "edits": {"action": None, "reply": None, "days": None, "kind": None, "store": None, "question": None}}
+    assert out["decision"] == {"option": 1, "edits": {"action": None, "reply": None, "reply_en": None, "days": None, "kind": None, "store": None, "question": None}}
 
 
 def test_reject_wrong_status_is_409_and_bad_body_422(env):

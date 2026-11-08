@@ -66,6 +66,7 @@ class TriageOption(BaseModel):
     risk_reason: str = Field(description="One line: why this risk level (money, abuse, wrong diagnosis).")
     emoji: str = Field("", max_length=8, description="One emoji, sincere, that says what this answer means for the user (👍 we give something, ❌ we say no or end something, 🙏 we apologise, ❓ we ask, 🧾 we explain, 🔁 restore).")
     confidence: float | None = Field(None, ge=0, le=1, description="How sure you are that this answer is right for this user, 0 to 1, judged for this option on its own.")
+    reply_en: str | None = Field(None, description="Faithful English translation of reply for the support person. Null when user_language is English.")
 
 
 class TriageTicket(BaseModel):
@@ -79,13 +80,16 @@ class TriageTicket(BaseModel):
     root_cause: str = Field(description="One sentence hypothesis of why this happened")
     confidence: float = Field(ge=0, le=1)
     options: list[TriageOption] = Field(min_length=2, max_length=3, description="Ranked, best first")
+    user_language: str | None = Field(None, description="The language the user writes in, as an English name (Russian, Spanish, Serbian (Latin)); English for English users. Mixed: the language of most of their latest message.")
+    messages_en: list[str] | None = Field(None, description="Faithful English translation of each numbered message [1], [2], ... in order, one entry each. Null when user_language is English.")
 
 
 class OptionEdits(BaseModel):
     """What the support person may change before accepting. Any field left None keeps the option's value."""
 
     action: Literal[*ACTIONS] | None = None
-    reply: str | None = None
+    reply: str | None = None  # the text the user gets, as written
+    reply_en: str | None = None  # the person's English: translated to the user's language on send (reply wins if both)
     days: int | None = Field(None, ge=1, le=365)
     kind: StoreKind | None = None
     store: Store | None = None
@@ -104,6 +108,7 @@ class Reopen(BaseModel):
 class Rejection(BaseModel):
     note: str = ""
     reply: str | None = None  # a manual reply → ticket done; none → dismissed
+    reply_en: str | None = None  # the person's English: translated to the user's language on send (reply wins if both)
 
 
 # --- Level 2 chat --------------------------------------------------------------------------------

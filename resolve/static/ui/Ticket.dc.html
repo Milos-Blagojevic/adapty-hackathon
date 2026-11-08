@@ -130,6 +130,10 @@ input::placeholder,textarea::placeholder{color:#7b7b85}
 .bl.off{opacity:.45}
 .toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);padding:11px 16px;border-radius:6px;background:#18181b;color:#fff;font-size:14px;font-weight:500;box-shadow:0 12px 30px -10px rgba(0,0,0,.4);animation:toast .22s ease-out;z-index:40}
 @keyframes toast{from{opacity:0;transform:translate(-50%,8px)}to{opacity:1;transform:translate(-50%,0)}}
+.trl{font-size:12px;color:#6b6b75}
+.orig{font-size:13.5px;line-height:1.5;color:#3f3f46;max-width:78%;padding:6px 12px;border-left:2px solid #d4c9fd;background:#faf8ff}
+.trl.l,.orig.l{margin-left:14px;align-self:flex-start}
+.sends{display:block;margin-top:6px;font-size:12.5px;font-weight:500;color:#5b3cf0}
 .btn.nf{border-color:transparent;color:#fff;background:radial-gradient(130% 160% at 18% -10%,#5b3fd4 0%,#33198f 46%,#1d0f55 100%);box-shadow:0 10px 24px -12px rgba(42,15,160,.65),0 0 0 1px rgba(60,30,170,.35),inset 0 1px 0 rgba(255,255,255,.14);transition:box-shadow .2s,filter .2s}
 .btn.nf svg{color:#cfc3ff}
 .btn.nf:hover{color:#fff;border-color:transparent;background:radial-gradient(130% 160% at 18% -10%,#6a4de6 0%,#3a1ea3 46%,#211062 100%);box-shadow:0 0 0 5px rgba(124,92,255,.14),0 12px 28px -12px rgba(42,15,160,.75),inset 0 1px 0 rgba(255,255,255,.18)}
@@ -226,6 +230,7 @@ input::placeholder,textarea::placeholder{color:#7b7b85}
 <sc-if value="{{ m.isUser }}">
 <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px">
 <div class="b b-u">{{ m.text }}<span class="t">{{ m.time }}</span><svg aria-hidden="true" width="11" height="16" viewBox="0 0 11 16" style="position: absolute; right: -5px; bottom: 0"><path d="M0 0 Q0 12 11 16 L0 16 Z" fill="#6247f5"></path></svg></div>
+<sc-if value="{{ m.tr }}"><span class="trl {{ m.trSide }}">Translated from {{ lang }} · <button type="button" class="quiet" style="font-size: 12px" onClick="{{ m.toggle }}">{{ m.trWord }}</button></span></sc-if><sc-if value="{{ m.showOrig }}"><span class="orig {{ m.trSide }}">{{ m.orig }}</span></sc-if>
 </div>
 </sc-if>
 <sc-if value="{{ m.labelled }}">
@@ -234,13 +239,14 @@ input::placeholder,textarea::placeholder{color:#7b7b85}
 <div style="display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1">
 <span style="font-size: 12px; color: #6b6b75; padding-left: 14px">{{ m.label }}</span>
 <div class="b b-a">{{ m.text }}<span class="t">{{ m.time }}</span><svg aria-hidden="true" width="11" height="16" viewBox="0 0 11 16" style="position: absolute; left: -5px; bottom: 0"><path d="M11 0 Q11 12 0 16 L11 16 Z" fill="#f2f2f5"></path></svg></div>
+<sc-if value="{{ m.tr }}"><span class="trl {{ m.trSide }}">Translated from {{ lang }} · <button type="button" class="quiet" style="font-size: 12px" onClick="{{ m.toggle }}">{{ m.trWord }}</button></span></sc-if><sc-if value="{{ m.showOrig }}"><span class="orig {{ m.trSide }}">{{ m.orig }}</span></sc-if>
 </div>
 </div>
 </sc-if>
 <sc-if value="{{ m.plain }}">
 <div style="display: flex; align-items: flex-end; gap: 8px">
 <span aria-hidden="true" style="flex: 0 0 auto; width: 26px; height: 26px; border-radius: 50%; background: #efedfb; color: #5b3cf0; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center">{{ m.avatar }}</span>
-<div class="b b-a">{{ m.text }}<span class="t">{{ m.time }}</span><svg aria-hidden="true" width="11" height="16" viewBox="0 0 11 16" style="position: absolute; left: -5px; bottom: 0"><path d="M11 0 Q11 12 0 16 L11 16 Z" fill="#f2f2f5"></path></svg></div>
+<div style="display: flex; flex-direction: column; gap: 3px; min-width: 0"><div class="b b-a" style="max-width: 100%; align-self: flex-start">{{ m.text }}<span class="t">{{ m.time }}</span><svg aria-hidden="true" width="11" height="16" viewBox="0 0 11 16" style="position: absolute; left: -5px; bottom: 0"><path d="M11 0 Q11 12 0 16 L11 16 Z" fill="#f2f2f5"></path></svg></div><sc-if value="{{ m.tr }}"><span class="trl {{ m.trSide }}">Translated from {{ lang }} · <button type="button" class="quiet" style="font-size: 12px" onClick="{{ m.toggle }}">{{ m.trWord }}</button></span></sc-if><sc-if value="{{ m.showOrig }}"><span class="orig {{ m.trSide }}">{{ m.orig }}</span></sc-if></div>
 </div>
 </sc-if>
 </sc-for>
@@ -267,6 +273,8 @@ input::placeholder,textarea::placeholder{color:#7b7b85}
 <sc-if value="{{ a.hasRisk }}"><span class="{{ a.riskCls }}">{{ a.risk }}</span></sc-if>
 </span>
 <sc-if value="{{ a.showText }}"><span class="txt">{{ a.reply }}</span></sc-if>
+<sc-if value="{{ a.hasLang }}"><span class="sends">{{ a.sendsWord }} · <button type="button" class="quiet" style="font-size: 12.5px" onClick="{{ a.toggleOrig }}">{{ a.origWord }}</button></span></sc-if>
+<sc-if value="{{ a.showOrig }}"><span class="orig" style="display: block; max-width: 100%; margin-top: 4px">{{ a.origText }}</span></sc-if>
 </span>
 <span class="okstamp" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.2 4.2L19 7"></path></svg>OK</span>
 </label>
@@ -276,7 +284,8 @@ input::placeholder,textarea::placeholder{color:#7b7b85}
 <sc-if value="{{ a.showOwnBox }}">
 <div style="padding: 0 18px 16px 98px">
 <label for="own" class="sr">Your reply</label>
-<textarea id="own" class="ta" placeholder="Write the reply the user will see" value="{{ own }}" onChange="{{ onOwn }}"></textarea>
+<textarea id="own" class="ta" placeholder="{{ ownPh }}" value="{{ own }}" onChange="{{ onOwn }}"></textarea>
+<sc-if value="{{ hasLang }}"><span style="display: block; margin-top: 6px; font-size: 12.5px; color: #6b6b75">{{ ownHint }} <button type="button" class="quiet" style="font-size: 12.5px" onClick="{{ toggleOwnDirect }}">{{ ownDirectWord }}</button></span></sc-if>
 </div>
 </sc-if>
 
@@ -297,7 +306,9 @@ input::placeholder,textarea::placeholder{color:#7b7b85}
 <sc-if value="{{ a.isSteps }}"><label class="field">Kind<select class="inp" value="{{ a.kind }}" onChange="{{ a.onKind }}"><option>Cancel</option><option>Refund</option><option>Restore</option></select></label></sc-if>
 <sc-if value="{{ a.isAsk }}"><label class="field" style="flex: 1 1 260px">Question<input class="inp" type="text" value="{{ a.question }}" onChange="{{ a.onQuestion }}"></label></sc-if>
 </div>
-<label class="field">Reply<textarea class="ta" value="{{ a.reply }}" onChange="{{ a.onReply }}"></textarea></label>
+<label class="field">{{ a.replyLabel }}<textarea class="ta" value="{{ a.reply }}" onChange="{{ a.onReply }}"></textarea></label>
+<sc-if value="{{ a.hasLang }}"><span style="font-size: 12.5px; color: #6b6b75">Your English is translated to {{ lang }} when you send. <button type="button" class="quiet" style="font-size: 12.5px" onClick="{{ a.toggleDirect }}">{{ a.directWord }}</button></span></sc-if>
+<sc-if value="{{ a.direct }}"><label class="field">{{ lang }} text, sent exactly as written<textarea class="ta" value="{{ a.orig }}" onChange="{{ a.onOrig }}"></textarea></label></sc-if>
 <div style="display: flex; align-items: center; gap: 16px">
 <button type="button" class="btn-dark" onClick="{{ a.done }}">Done</button>
 <button type="button" class="quiet" onClick="{{ a.reset }}">Back to the agent's version</button>
@@ -316,7 +327,7 @@ input::placeholder,textarea::placeholder{color:#7b7b85}
 <sc-if value="{{ hasSel }}" hint-placeholder-val="{{ false }}">
 <span style="display: flex; flex-direction: column; min-width: 0">
 <span style="font-size: 15px; font-weight: 600">{{ summary }}</span>
-<span style="font-size: 13.5px; color: #6b6b75">to {{ user }}</span>
+<span style="font-size: 13.5px; color: #6b6b75">to {{ user }}{{ sendsSuffix }}</span>
 </span>
 </sc-if>
 </div>
@@ -362,6 +373,12 @@ input::placeholder,textarea::placeholder{color:#7b7b85}
 </span>
 <span class="postmark" aria-hidden="true">SENT<small>{{ postmark }}</small></span>
 </button>
+<sc-if value="{{ sentLang }}" hint-placeholder-val="{{ false }}">
+<section class="card" aria-label="What was sent" style="padding: 16px 20px; display: flex; flex-direction: column; gap: 10px">
+<div><p class="kicker" style="margin-bottom: 4px">Sent in {{ sentLang }}</p><p style="margin: 0; font-size: 14.5px; line-height: 1.55; white-space: pre-wrap">{{ sentOrig }}</p></div>
+<div><p class="kicker" style="margin-bottom: 4px">In English</p><p style="margin: 0; font-size: 14.5px; line-height: 1.55; color: #3f3f46; white-space: pre-wrap">{{ sentEn }}</p></div>
+</section>
+</sc-if>
 <sc-if value="{{ ballot }}" hint-placeholder-val="{{ false }}">
 <section class="card ballot" aria-label="All answers" style="padding: 10px 20px">
 <sc-for list="{{ ballotRows }}" as="r" hint-placeholder-count="4">
@@ -444,6 +461,21 @@ var MOCK = {
   closedAt: 'Nov 7, 21:52', sentTime: '21:52', postmark: 'NOV 7', reopenHref: 'Reopen.dc.html'
 };
 
+// ?mock=1&sample=ru: the same screen for a user who writes in Russian.
+if (API.param('sample') === 'ru') Object.assign(MOCK, {
+  lang: 'Russian', title: 'Wants a refund for the annual plan', meta: 'lumen_443814_02380 · 21:40',
+  messages: [
+    { isUser: true, text: 'I was charged $49.99 for the annual plan and I no longer use the app. Please refund the money.', orig: 'С меня списали $49.99 за годовой план, а я приложением больше не пользуюсь. Верните деньги, пожалуйста.', time: '21:38' },
+    { plain: true, avatar: 'L', text: "I've passed your request to our support team. They will reply here.", orig: 'Я передал ваш запрос команде поддержки. Они ответят здесь.', time: '21:39' }
+  ],
+  foundSummary: 'The user wants a refund for the $49.99 annual plan.', foundCause: 'The user stopped using the app after the annual renewal.', category: 'Refund request',
+  base: {
+    reply: Object.assign({}, BASE.reply, { reply: 'Refunds for the $49.99 annual plan are decided by Apple: go to reportaproblem.apple.com and choose Request a refund.', orig: 'Возврат за годовой план на $49.99 решает Apple: откройте reportaproblem.apple.com и выберите Request a refund.' }),
+    steps: Object.assign({}, BASE.steps, { reply: 'You can turn off renewal in Settings → your name → Subscriptions → Lumen → Cancel.', orig: 'Продление можно отключить: Настройки → ваше имя → Подписки → Lumen → Отменить.' }),
+    grant: Object.assign({}, BASE.grant, { reply: "As a one-off, we've added 7 more days of premium to your account.", orig: 'В качестве исключения мы добавили 7 дней премиума к вашему аккаунту.' })
+  }
+});
+
 // API values ↔ the design's editor values.
 var ACT = { grant_access: 'grant', reply_only: 'reply', store_instructions: 'store_steps', ask_user: 'ask', refund_to_human: 'refund', no_reply: 'no_reply' };
 var STORES = { app_store: 'App Store', play_store: 'Google Play' };
@@ -508,7 +540,8 @@ function editsFor(base, id, edits) {
   var changed = function (k) { return k in e && !same(e[k], b[k]); };
   var switched = changed('action');
   if (switched) out.action = ACT_API[v.action];
-  if (changed('reply')) out.reply = v.reply;
+  if (changed('orig')) out.reply = v.orig;
+  else if (changed('reply')) { if (b.orig) out.reply_en = v.reply; else out.reply = v.reply; }
   if (v.action === 'grant' && (switched || changed('days')) && String(v.days).trim() !== '') {
     var n = Number(v.days);
     out.days = Number.isInteger(n) ? n : v.days;
@@ -561,8 +594,10 @@ function account(t) {
   return { acc1: acc1, acc2: acc2, acc3: how, rows: pairs(rows) };
 }
 
+function foreign(lang) { return lang && !/^(english|en)$/i.test(String(lang).trim()) ? lang : ''; }
 function liveModel(t, cfg) {
   var tri = t.triage;
+  var lang = foreign(tri && tri.user_language), msgEn = (tri && tri.messages_en) || [];
   var name = cfg && cfg.app_name;
   var maxDays = cfg && cfg.grant ? cfg.grant.max_days : '';
   var base = {}, order = [], conf = {};
@@ -570,24 +605,25 @@ function liveModel(t, cfg) {
     var p = o.params || {};
     order.push(String(i));
     conf[String(i)] = typeof o.confidence === 'number' ? Math.round(o.confidence * 100) : null;
-    base[String(i)] = { emoji: o.emoji || EMOJI[o.action] || '', action: ACT[o.action] || o.action, days: p.days != null ? p.days : maxDays, store: STORES[p.store] || '', kind: KINDS[p.kind] || '', question: p.question || '', reply: o.reply || '', risk: o.risk, riskReason: o.risk_reason || '' };
+    base[String(i)] = { emoji: o.emoji || EMOJI[o.action] || '', action: ACT[o.action] || o.action, days: p.days != null ? p.days : maxDays, store: STORES[p.store] || '', kind: KINDS[p.kind] || '', question: p.question || '', reply: (lang && o.reply_en) || o.reply || '', orig: lang ? o.reply || '' : '', risk: o.risk, riskReason: o.risk_reason || '' };
   });
   // The user wrote: the chat for a handoff, else the ticket body.
   var convo = t.conversation && t.conversation.length ? t.conversation : [{ role: 'user', content: t.body, ts: t.created_at }];
   var prev = null;
-  var messages = convo.map(function (m) {
+  var messages = convo.map(function (m, i) {
+    var en = lang && msgEn[i] && msgEn[i].trim() ? msgEn[i] : '';
     var isUser = m.role === 'user';
     var labelled = !isUser && m.role !== prev;
     if (!isUser) prev = m.role;
     var label = cap((name ? name + ' ' : '') + (m.role === 'support' ? 'support' : 'assistant'));
-    return { isUser: isUser, labelled: labelled, plain: !isUser && !labelled, text: m.content, time: API.hm(m.ts), label: label, avatar: label.charAt(0) };
+    return { isUser: isUser, labelled: labelled, plain: !isUser && !labelled, text: en || m.content, orig: en ? m.content : '', time: API.hm(m.ts), label: label, avatar: label.charAt(0) };
   });
   // A closed ticket: its decision in the design's shapes (selected / edits / own).
   var closed = null, d = t.decision, a = t.action;
   if (t.status === 'done' || t.status === 'dismissed') {
     closed = { selected: null, edits: {}, own: '' };
     if (d && d.rejected) {
-      if (d.reply) { closed.selected = 'own'; closed.own = d.reply; }
+      if (d.reply) { closed.selected = 'own'; closed.own = d.reply_en || d.reply; closed.sent = d.language ? { lang: d.language, orig: d.reply, en: d.reply_en || 'Written directly in ' + d.language + '; no English version.' } : null; }
     } else if (d && base[String(d.option)]) {
       var e = d.edits || {}, de = {};
       if (e.action) de.action = ACT[e.action] || e.action;
@@ -597,6 +633,11 @@ function liveModel(t, cfg) {
       if (e.kind) de.kind = KINDS[e.kind];
       if (e.question != null) de.question = e.question;
       closed.selected = String(d.option);
+      var fin = a && a.final;
+      if (fin && fin.language) {
+        de.reply = fin.reply_en || fin.reply; de.orig = fin.reply;
+        if (fin.reply) closed.sent = { lang: fin.language, orig: fin.reply, en: fin.reply_en || 'Edited directly in ' + fin.language + '; no English version.' };
+      }
       closed.edits[closed.selected] = de;
     } else if (a && order.length) {
       // v1 tickets closed before decisions were stored: the option with the executed action.
@@ -609,7 +650,7 @@ function liveModel(t, cfg) {
   var acc = account(t);
   var found = tri ? tri.summary : t.triage_error ? 'Triage failed: ' + t.triage_error : 'Not triaged yet.';
   return {
-    base: base, order: order, conf: conf, user: t.customer_user_id || t.email || 'unknown user', action: a, actionError: t.action_error,
+    lang: lang, base: base, order: order, conf: conf, user: t.customer_user_id || t.email || 'unknown user', action: a, actionError: t.action_error,
     phase: t.status === 'dismissed' || noReply ? 'dismissed' : t.status === 'done' ? 'closed' : 'open',
     closed: closed,
     title: t.subject, meta: (t.customer_user_id || t.email || 'unknown user') + ' · ' + when(t.created_at),
@@ -686,8 +727,16 @@ class Component extends DCLogic {
       self.setState({ edits: next, selected: id });
     };
 
+    var lang = (m && m.lang) || '';
+    var opened = s.opened || {};
+    var flip = function (key) { var n = Object.assign({}, opened); n[key] = !n[key]; self.setState({ opened: n }); };
     var answers = order.map(function (id, i) {
       var v = merged(base, id, edits);
+      var hasLang = !!base[id].orig && v.action !== 'no_reply';
+      var enEdited = hasLang && !same(v.reply, base[id].reply);
+      var origEdited = hasLang && !same(v.orig, base[id].orig);
+      var isClosed = !!fixed;
+      var pending = !isClosed && enEdited && !origEdited;
       var isGrant = v.action === 'grant';
       var risk = riskOf(base[id], v);
       // No per-option confidence (older tickets): an unlit dial and a dash, no number.
@@ -705,6 +754,18 @@ class Component extends DCLogic {
         riskCls: risk.cls,
         showText: editing !== id,
         reply: v.reply,
+        orig: v.orig,
+        hasLang: hasLang && editing !== id,
+        sendsWord: isClosed ? (selected === id ? 'Sent in ' + lang : 'Not sent') : pending ? 'Translates to ' + lang + ' when you send' : 'Sends in ' + lang,
+        origWord: opened['o' + id] ? 'Hide' : pending ? 'Show the earlier ' + lang : 'Show the ' + lang,
+        showOrig: hasLang && editing !== id && !!opened['o' + id],
+        origText: v.orig,
+        toggleOrig: function (e) { e.preventDefault(); flip('o' + id); },
+        replyLabel: base[id].orig ? 'Reply in English' : 'Reply',
+        direct: hasLang && editing === id && !!opened['d' + id],
+        directWord: opened['d' + id] ? 'Hide the ' + lang + ' text' : 'Edit the ' + lang + ' text instead',
+        toggleDirect: function () { flip('d' + id); },
+        onOrig: function (e) { setEdit(id, 'orig', e.target.value); },
         action: v.action, days: v.days, store: v.store, kind: v.kind, question: v.question,
         isGrant: isGrant, isSteps: v.action === 'store_steps', isAsk: v.action === 'ask',
         editing: editing === id,
@@ -729,7 +790,7 @@ class Component extends DCLogic {
       emoji: '🧠', title: 'Write your own',
       conf: '', confText: '', hasConf: false, tone: '#a1a1aa', ticks: ticksFor(0, 38, 28, 30.5, 34, '#a1a1aa'), mx: 38, my: 0.75, mr: 0, inf: 'M38 38 C35.4 34.4 30.2 34.2 30.2 38 C30.2 41.8 35.4 41.6 38 38 C40.6 34.4 45.8 34.2 45.8 38 C45.8 41.8 40.6 41.6 38 38 Z',
       isPick: false, edited: false, hasRisk: false, risk: '', riskCls: '',
-      showText: false, reply: '', editing: false,
+      showText: false, reply: '', editing: false, hasLang: false, showOrig: false, direct: false,
       showEditBtn: false,
       showScratchBtn: selected !== 'own',
       showOwnBox: selected === 'own',
@@ -759,7 +820,17 @@ class Component extends DCLogic {
       live: LIVE,
       title: m ? m.title : (s.loadError ? 'Could not open the ticket' : ''),
       meta: m ? m.meta : (s.loadError || 'Loading…'),
-      messages: m ? m.messages : [],
+      lang: lang, hasLang: !!lang,
+      messages: (m ? m.messages : []).map(function (x, i) {
+        var open = !!opened['m' + i];
+        return Object.assign({}, x, { tr: !!x.orig, showOrig: !!x.orig && open, trSide: x.isUser ? '' : 'l', trWord: open ? 'Hide original' : 'Show original', toggle: function () { flip('m' + i); } });
+      }),
+      ownPh: lang ? (s.ownDirect ? 'Write in ' + lang + ': sent exactly as written' : 'Write in English') : 'Write the reply the user will see',
+      ownHint: s.ownDirect ? 'Sent to the user exactly as written.' : 'Your English is translated to ' + lang + ' when you send.',
+      ownDirectWord: s.ownDirect ? 'Write in English' : 'Write in ' + lang + ' directly',
+      toggleOwnDirect: function () { self.setState({ ownDirect: !s.ownDirect }); },
+      sendsSuffix: lang && chosenVal && chosenVal.action !== 'no_reply' || lang && selected === 'own' ? ' · in ' + lang : '',
+      sentLang: fixed && m.closed.sent ? m.closed.sent.lang : '', sentOrig: fixed && m.closed.sent ? m.closed.sent.orig : '', sentEn: fixed && m.closed.sent ? m.closed.sent.en : '',
       hasTriage: m && m.hasTriage, foundSummary: m ? m.foundSummary : '', foundCause: m ? m.foundCause : '',
       category: m ? m.category : '', evidenceRows: m ? m.evidenceRows : [],
       hasCategory: !!(m && m.category), hasCause: !!(m && m.foundCause), hasEvidence: !!(m && m.evidenceRows.length),
@@ -784,7 +855,7 @@ class Component extends DCLogic {
         self.setState({ checking: true, error: null });
         if (self.tt) clearTimeout(self.tt);
         if (LIVE) {
-          if (selected === 'own') self.submit(self.path() + '/reject', { note: '', reply: own });
+          if (selected === 'own') self.submit(self.path() + '/reject', lang && !s.ownDirect ? { note: '', reply_en: own } : { note: '', reply: own });
           else self.submit(self.path() + '/accept', { option: Number(selected), edits: editsFor(base, selected, edits) });
           return;
         }
