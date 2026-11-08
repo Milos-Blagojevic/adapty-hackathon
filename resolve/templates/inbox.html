@@ -4,9 +4,9 @@
 <section class="head">
   <h1>Inbox <span class="muted">{{ tickets|length }}{% if current %} {{ current }}{% endif %} of {{ total }}</span></h1>
   <div class="chips">
-    <a href="/" class="chip {% if not current %}on{% endif %}">All <b>{{ total }}</b></a>
+    <a href="/inbox" class="chip {% if not current %}on{% endif %}">All <b>{{ total }}</b></a>
     {% for s in statuses %}
-    <a href="/?status={{ s }}" class="chip {% if current == s %}on{% endif %}">{{ s }} <b>{{ counts.get(s, 0) }}</b></a>
+    <a href="/inbox?status={{ s }}" class="chip {% if current == s %}on{% endif %}">{{ s }} <b>{{ counts.get(s, 0) }}</b></a>
     {% endfor %}
   </div>
 </section>

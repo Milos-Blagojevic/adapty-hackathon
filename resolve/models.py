@@ -185,6 +185,7 @@ class TicketSummary(BaseModel):
     updated_at: str | None = None
     confidence: float | None = None
     top_action: Literal[*ACTIONS] | None = None
+    triage_error: str | None = Field(None, description="Why Level 1 triage failed; the ticket stays new")
     snippet: str | None = Field(None, description="Only with ?q=: the text around the first match")
 
 
@@ -197,7 +198,6 @@ class Ticket(TicketSummary):
     decision: dict | None = Field(None, description="Decision on accept; {rejected: true, note, reply} on reject")
     action: dict | None = Field(None, description="Result of the executed action")
     action_error: str | None = None
-    triage_error: str | None = None
     conversation: list[ChatMessage] | None = None
     history: list[dict] = Field(default_factory=list, description="Earlier closes of a reopened ticket: {at, from_status, decision, action, note}")
 

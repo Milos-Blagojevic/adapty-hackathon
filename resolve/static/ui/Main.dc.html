@@ -261,7 +261,7 @@ function outcomeOf(full) {
 // Summary (+ the full ticket when fetched) → the design's ticket shape.
 function liveTicket(t, full) {
   var status = LIVE_STATUS[t.status];
-  var action = 'Agent is looking into it';
+  var action = t.triage_error ? 'Triage failed' : 'Agent is looking into it';
   if (status === 'ready') action = optionTitle(full && full.triage ? full.triage.options[0] : { action: t.top_action });
   if (status === 'closed' || status === 'dismissed') action = full ? outcomeOf(full) : (status === 'closed' ? 'Closed' : 'Closed without a reply');
   return {

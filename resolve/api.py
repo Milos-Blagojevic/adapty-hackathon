@@ -87,6 +87,7 @@ def ticket_summary(ticket: dict) -> dict:
         "updated_at": ticket["updated_at"],
         "confidence": view.get("confidence") if view else None,
         "top_action": options[0]["action"] if options else None,
+        "triage_error": ticket["triage_error"],
     }
 
 
@@ -128,7 +129,6 @@ def ticket_full(conn: db.Database, ticket: dict) -> dict:
         "decision": ticket["decision"],
         "action": ticket["action"],
         "action_error": ticket["action_error"],
-        "triage_error": ticket["triage_error"],
         "conversation": conversation,
         "history": ticket["history"],
     }

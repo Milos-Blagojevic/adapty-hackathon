@@ -2373,6 +2373,18 @@
       ],
       "title": "Top Action"
      },
+     "triage_error": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Triage Error",
+      "description": "Why Level 1 triage failed; the ticket stays new"
+     },
      "snippet": {
       "anyOf": [
        {
@@ -2464,17 +2476,6 @@
        }
       ],
       "title": "Action Error"
-     },
-     "triage_error": {
-      "anyOf": [
-       {
-        "type": "string"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Triage Error"
      },
      "conversation": {
       "anyOf": [
@@ -2658,6 +2659,18 @@
        }
       ],
       "title": "Top Action"
+     },
+     "triage_error": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Triage Error",
+      "description": "Why Level 1 triage failed; the ticket stays new"
      },
      "snippet": {
       "anyOf": [

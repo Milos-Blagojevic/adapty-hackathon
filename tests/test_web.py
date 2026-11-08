@@ -43,7 +43,18 @@ def test_ui_redirects_to_the_design_screens(tmp_path):
     from resolve.web import create_app
 
     client = TestClient(create_app(tmp_path / "ui.sqlite", demo=True))
-    r = client.get("/ui", follow_redirects=False)
-    assert r.status_code in (302, 307) and r.headers["location"] == "/static/ui/Main.dc.html"
+    for path in ("/", "/ui"):
+        r = client.get(path, follow_redirects=False)
+        assert r.status_code in (302, 307) and r.headers["location"] == "/static/ui/Main.dc.html"
     page = client.get("/static/ui/Main.dc.html")
     assert page.status_code == 200 and "support.js" in page.text
+
+
+def test_old_inbox_page_lives_at_inbox(tmp_path):
+    from fastapi.testclient import TestClient
+
+    from resolve.web import create_app
+
+    client = TestClient(create_app(tmp_path / "inbox.sqlite", demo=True))
+    page = client.get("/inbox")
+    assert page.status_code == 200 and "<h1>Inbox" in page.text and 'href="/inbox?status=' in page.text

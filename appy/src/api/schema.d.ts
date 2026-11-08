@@ -295,6 +295,26 @@ export interface components {
              */
             llm_provider: "env" | "openai" | "anthropic";
         };
+        /** AgentReply */
+        AgentReply: {
+            /** Ts */
+            ts: string;
+            /** Session Id */
+            session_id: string;
+            /** User */
+            user: string;
+            /** Reply */
+            reply: string;
+            /** Latency S */
+            latency_s?: number | null;
+            /**
+             * Outcome
+             * @enum {string}
+             */
+            outcome: "resolved" | "handed_off" | "grant_blocked" | "granted" | "with_teammate" | "answered";
+            /** Grant Days */
+            grant_days?: number | null;
+        };
         /** Analytics */
         Analytics: {
             tickets: components["schemas"]["TicketStats"];
@@ -304,6 +324,13 @@ export interface components {
             timeline: components["schemas"]["Timeline"];
             /** Open Tasks */
             open_tasks: components["schemas"]["OpenTask"][];
+            open_counts: components["schemas"]["OpenCounts"];
+            period: components["schemas"]["Period"];
+            /**
+             * Agent Log
+             * @description Latest agent replies, newest first (all time, at most 20)
+             */
+            agent_log: components["schemas"]["AgentReply"][];
         };
         /** Body_ab_draft_insights_ab_draft_post */
         Body_ab_draft_insights_ab_draft_post: {
@@ -370,6 +397,20 @@ export interface components {
              * @default
              */
             reply: string;
+        };
+        /** ChatCounts */
+        ChatCounts: {
+            /**
+             * Total
+             * @description Chats started in the range
+             */
+            total: number;
+            /** Resolved */
+            resolved: number;
+            /** Handed Off */
+            handed_off: number;
+            /** Open */
+            open: number;
         };
         /** ChatEvent */
         ChatEvent: {
@@ -459,6 +500,23 @@ export interface components {
             option: number;
             edits?: components["schemas"]["OptionEdits"];
         };
+        /** Decisions */
+        Decisions: {
+            /** Triaged */
+            triaged: number;
+            /** Decided */
+            decided: number;
+            /** First */
+            first: number;
+            /** Second Third */
+            second_third: number;
+            /** Edited */
+            edited: number;
+            /** Own Reply */
+            own_reply: number;
+            /** No Reply */
+            no_reply: number;
+        };
         /** ErrorDetail */
         ErrorDetail: {
             /** Detail */
@@ -520,6 +578,21 @@ export interface components {
              */
             require_paid: boolean;
         };
+        /** GrantTotals */
+        GrantTotals: {
+            /**
+             * Count
+             * @description Level 2 grants in the range
+             */
+            count: number;
+            /** Days */
+            days: number;
+            /**
+             * Days Each
+             * @description Days of each Level 2 grant, oldest first
+             */
+            days_each: number[];
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -575,6 +648,18 @@ export interface components {
             /** Demo */
             demo: boolean;
         };
+        /**
+         * OpenCounts
+         * @description True totals of the open_tasks kinds (open_tasks lists at most 20 of each).
+         */
+        OpenCounts: {
+            /** Chat */
+            chat: number;
+            /** Triage */
+            triage: number;
+            /** Review */
+            review: number;
+        };
         /** OpenTask */
         OpenTask: {
             /**
@@ -594,6 +679,11 @@ export interface components {
             age_s?: number | null;
             /** Note */
             note: string;
+            /**
+             * Detail
+             * @description For the live list: chat = the agent's last tool step, review = the agent's first option; null for triage
+             */
+            detail?: string | null;
         };
         /**
          * OptionEdits
@@ -636,6 +726,71 @@ export interface components {
              */
             question?: string | null;
         };
+        /** Period */
+        Period: {
+            /**
+             * Range
+             * @enum {string}
+             */
+            range: "today" | "7d" | "30d";
+            /** Tz Offset Min */
+            tz_offset_min: number;
+            /** Start */
+            start: string;
+            /** End */
+            end: string;
+            /**
+             * Prev Start
+             * @description previous = [prev_start, start)
+             */
+            prev_start: string;
+            /**
+             * Bucket
+             * @enum {string}
+             */
+            bucket: "hour" | "day";
+            /** Points */
+            points: components["schemas"]["PeriodPoint"][];
+            current: components["schemas"]["PeriodSummary"];
+            previous: components["schemas"]["PeriodSummary"];
+        };
+        /** PeriodPoint */
+        PeriodPoint: {
+            /**
+             * T
+             * @description Bucket start, UTC 'YYYY-MM-DDTHH:MM:SSZ' (a local hour or a local day)
+             */
+            t: string;
+            /** Agent */
+            agent: number;
+            /** Handed Off */
+            handed_off: number;
+            /** Closed By People */
+            closed_by_people: number;
+            /** Feedback */
+            feedback: number;
+        };
+        /** PeriodSummary */
+        PeriodSummary: {
+            chats: components["schemas"]["ChatCounts"];
+            /**
+             * Machine Share
+             * @description resolved / (resolved + handed_off), 0..1
+             */
+            machine_share?: number | null;
+            machines: components["schemas"]["ReplySide"];
+            humans: components["schemas"]["ReplySide"];
+            grants: components["schemas"]["GrantTotals"];
+            /** Handoff Reasons */
+            handoff_reasons: {
+                [key: string]: number;
+            };
+            /** Blocked */
+            blocked: {
+                [key: string]: number;
+            };
+            decisions: components["schemas"]["Decisions"];
+        };
         /** Rejection */
         Rejection: {
             /**
@@ -653,6 +808,24 @@ export interface components {
              * @default
              */
             note: string;
+        };
+        /**
+         * ReplySide
+         * @description One column of 'reply by reply': machines (agent messages) or humans (replies sent from Incoming). Shares are 0..1.
+         */
+        ReplySide: {
+            /** Replies */
+            replies: number;
+            /** First Reply Median S */
+            first_reply_median_s?: number | null;
+            /** Closed With Reply */
+            closed_with_reply?: number | null;
+            /** Came Back */
+            came_back?: number | null;
+            /** Passed On */
+            passed_on?: number | null;
+            /** Free Days */
+            free_days: number;
         };
         /** RootCauseCount */
         RootCauseCount: {
@@ -695,6 +868,11 @@ export interface components {
             /** Top Action */
             top_action?: ("grant_access" | "reply_only" | "store_instructions" | "refund_to_human" | "ask_user" | "no_reply") | null;
             /**
+             * Triage Error
+             * @description Why Level 1 triage failed; the ticket stays new
+             */
+            triage_error?: string | null;
+            /**
              * Snippet
              * @description Only with ?q=: the text around the first match
              */
@@ -732,8 +910,6 @@ export interface components {
             } | null;
             /** Action Error */
             action_error?: string | null;
-            /** Triage Error */
-            triage_error?: string | null;
             /** Conversation */
             conversation?: components["schemas"]["ChatMessage"][] | null;
             /**
@@ -796,6 +972,11 @@ export interface components {
             confidence?: number | null;
             /** Top Action */
             top_action?: ("grant_access" | "reply_only" | "store_instructions" | "refund_to_human" | "ask_user" | "no_reply") | null;
+            /**
+             * Triage Error
+             * @description Why Level 1 triage failed; the ticket stays new
+             */
+            triage_error?: string | null;
             /**
              * Snippet
              * @description Only with ?q=: the text around the first match
@@ -1425,7 +1606,12 @@ export interface operations {
     };
     get_analytics_api_analytics_get: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description period: today (hourly) / 7d / 30d (daily) */
+                range?: "today" | "7d" | "30d";
+                /** @description the viewer's offset from UTC in minutes (JS: -getTimezoneOffset()); sets local midnight and hours */
+                tz?: number;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -1439,6 +1625,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Analytics"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

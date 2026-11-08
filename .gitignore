@@ -25,5 +25,5 @@ web-build/
 *.swp
 
 # resolve
-data/resolve.sqlite*
+data/resolve*.sqlite*
 data/demo-run.sqlite*

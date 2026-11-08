@@ -9,9 +9,9 @@
 </head>
 <body>
 <header class="top">
-  <a class="brand" href="/">Resolve</a>
+  <a class="brand" href="/inbox">Resolve</a>
   <nav>
-    <a href="/" {% if request.url.path == '/' %}class="on"{% endif %}>Inbox</a>
+    <a href="/inbox" {% if request.url.path == '/inbox' %}class="on"{% endif %}>Inbox</a>
     <a href="/insights" {% if request.url.path.startswith('/insights') %}class="on"{% endif %}>Insights</a>
   </nav>
   <span class="app">Lumen – AI Photo Editor</span>

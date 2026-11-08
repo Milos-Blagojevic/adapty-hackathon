@@ -130,7 +130,7 @@ input::placeholder{color:#8b8b94}
 
 <main style="max-width: 1200px; margin: 0 auto; padding: 16px 24px 48px; display: flex; flex-direction: column; gap: 16px">
 <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px 22px; font-size: 13.5px; color: #71717a">
-<span>as <span style="font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px; color: #3f3f46">{{ user }}</span></span>
+<sc-if value="{{ design }}"><span>as <span style="font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px; color: #3f3f46">{{ user }}</span></span></sc-if><sc-if value="{{ live }}"><span style="display: inline-flex; align-items: center; gap: 8px">as <label for="pick-user" class="sr">User</label><select id="pick-user" class="pick" value="{{ user }}" onChange="{{ onUser }}"><sc-for list="{{ users }}" as="u"><option value="{{ u.id }}">{{ u.label }}</option></sc-for></select><button type="button" class="linkbtn" style="font-size: 13.5px" onClick="{{ newSession }}">New chat</button></span></sc-if>
 <span style="margin-left: auto; display: inline-flex; align-items: center; gap: 10px">
 <span id="dbg-l">Debug</span>
 <button type="button" role="switch" aria-checked="{{ debug }}" aria-labelledby="dbg-l" class="{{ swCls }}" onClick="{{ toggleDebug }}"></button>
@@ -282,6 +282,16 @@ function planOf(user, users) {
   return BADGE[u.badge] + (u.product ? ' · ' + u.product : '');
 }
 
+// The user picker: every user from GET /api/users as "id · badge"; the current one kept even when not listed.
+function userOptions(user, users) {
+  var out = (users || []).map(function (u) {
+    return { id: u.customer_user_id, label: u.customer_user_id + ' · ' + (BADGE[u.badge] || 'No profile loaded yet') };
+  });
+  if (user && !out.some(function (o) { return o.id === user; })) out.unshift({ id: user, label: user });
+  if (!out.length) out.push({ id: '', label: users ? 'no user' : '' });
+  return out;
+}
+
 class Component extends DCLogic {
   componentWillUnmount() { if (this.tt) clearTimeout(this.tt); if (this.poll) clearInterval(this.poll); }
   componentDidMount() {
@@ -295,7 +305,7 @@ class Component extends DCLogic {
     var users = API.get('/api/users').then(function (list) { self.setState({ users: list }); return list; }, function () { self.setState({ users: [] }); return []; });
     API.get('/api/chat/' + encodeURIComponent(session)).then(function (c) {
       self.setState({ loading: false });
-      self.apply(c);
+      if (self.state.session === session) self.apply(c);
     }, function (err) {
       if (err.status !== 404) console.error('GET /api/chat failed:', err.message);
       self.setState({ loading: false });
@@ -314,6 +324,12 @@ class Component extends DCLogic {
     q.set('session', s.session);
     if (s.user) q.set('user', s.user);
     history.replaceState(null, '', location.pathname + '?' + q.toString() + location.hash);
+  }
+  // Another user or New chat: a fresh session id, an empty chat, the URL updated.
+  fresh(user) {
+    if (this.poll) { clearInterval(this.poll); this.poll = null; }
+    this.setState({ session: 'web-' + Date.now().toString(36), user: user, msgs: [], log: [], handoff: null, outcome: null, sendErr: null, openLog: {}, typing: false, sending: false, loading: false });
+    this.keepUrl();
   }
   // A ChatSession from the server replaces what is on screen; after a handoff, poll for support replies.
   apply(c) {
@@ -353,10 +369,13 @@ class Component extends DCLogic {
     this.toBottom();
     var session = s.session;
     API.post('/chat', { customer_user_id: s.user, session_id: session, message: text }).then(function (r) {
+      if (self.state.session !== session) return;
       return API.get('/api/chat/' + encodeURIComponent(session)).then(function (c) {
+        if (self.state.session !== session) return;
         self.setState({ typing: false, sending: false });
         self.apply(c);
       }, function () {
+        if (self.state.session !== session) return;
         var st = self.state;
         self.setState({
           typing: false, sending: false,
@@ -368,6 +387,7 @@ class Component extends DCLogic {
       });
     }, function (err) {
       // Not sent: the text goes back into the composer, the reason into the debug log (kept across polls).
+      if (self.state.session !== session) return;
       var st = self.state;
       self.setState({
         typing: false, sending: false, msgs: kept, draft: st.draft || text,
@@ -433,8 +453,11 @@ class Component extends DCLogic {
       onDraft: function (e) { self.setState({ draft: e.target.value }); },
       submit: function (e) { e.preventDefault(); if (draft.trim()) self.say(draft.trim()); },
       user: LIVE && !user ? (s.users ? 'no user' : '') : user,
-      onUser: function (e) { self.setState({ user: e.target.value }); },
-      newSession: function () { self.setState({ msgs: [], log: [], handoff: null, session: 's-8c41d2', openLog: {} }); },
+      onUser: LIVE ? function (e) { self.fresh(e.target.value); } : function (e) { self.setState({ user: e.target.value }); },
+      newSession: LIVE ? function () { self.fresh(self.state.user || ''); } : function () { self.setState({ msgs: [], log: [], handoff: null, session: 's-8c41d2', openLog: {} }); },
+      live: LIVE,
+      design: !LIVE,
+      users: LIVE ? userOptions(user, s.users) : [],
       debug: debug,
       swCls: debug ? 'sw on' : 'sw',
       toggleDebug: function () { self.setState({ debug: !debug }); },

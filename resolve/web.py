@@ -115,12 +115,13 @@ def create_app(
             raise HTTPException(404, f"no ticket {ticket_id}")
         return ticket
 
+    @app.get("/", include_in_schema=False)
     @app.get("/ui", include_in_schema=False)
     def ui_home():
         """The support web UI (Claude Design screens in static/ui, wired to the JSON API)."""
         return RedirectResponse("/static/ui/Main.dc.html")
 
-    @app.get("/", response_class=HTMLResponse)
+    @app.get("/inbox", response_class=HTMLResponse)
     def inbox(request: Request, status: str | None = None):
         if status and status not in STATUSES:
             raise HTTPException(400, "unknown status")
