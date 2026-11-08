@@ -47,7 +47,7 @@ Tests (no network, no keys): `python -m pytest`. Contract: `docs/openapi.json` (
 ## Agent accuracy
 
 - v1 (single-call agent, Claude Opus 5.5, 20 hand-labelled tickets): category 18/20, action 16/20. Two of the four "misses" were label errors (t-017 was already refunded); relabelled with notes in `data/eval.json`.
-- v2 (this design): `scripts/eval.py --yes` scores Level 1 on 32 cases (20 + 12 hard ones: lifetime, already refunded, profile mismatch, unknown user, email-only, prompt injection, chargeback threat, other languages) and Level 2 on 8 scripted chats. *(Result to be added after the run.)*
+- v2 (this design): `scripts/eval.py --yes` scores Level 1 on 32 cases (20 + 12 hard ones: lifetime, already refunded, profile mismatch, unknown user, email-only, prompt injection, chargeback threat, other languages) and Level 2 on 8 scripted chats. Result on DeepSeek `deepseek-flash` (Sun morning, one run, ~5 min, no Adapty writes): **category 31/32, first-option action 28/32, evidence grounded 230/238, Level 2 7/8.** The Level 2 miss is l2-happy: the cached profile's weekly plan expired that morning, so under the paying-now rule no grant was correct and the agent said the week had run out. Action misses: t-017 (already refunded, chose refund to a person), t-019 and t-012 (a defensible second strategy first), x-005 (store steps before asking which device).
 - v3 live on DeepSeek (`deepseek-flash`, Sun night, a handful of runs, not an eval): Level 2 answers in one model call per message (1.5–3.6 s), Level 1 triages a ticket in one call (about 10 s); a chat handoff became a triaged ticket and the accepted reply reached the chat; prompt injection in chat and in a ticket was refused.
 
 ## What we would do next
