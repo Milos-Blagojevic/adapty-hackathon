@@ -248,7 +248,7 @@ def _load_profile(services, ticket: dict, cid: str, profiles: dict[str, dict]) -
 def config_facts(cfg: models.AgentConfig) -> dict:
     g = cfg.grant
     return {
-        "grants": f"up to {g.max_days} days of {g.access_level}, at most {g.max_grants_per_user_30d} per user per 30 days" + (", paid users only" if g.require_paid else ""),
+        "grants": f"up to {g.max_days} days of {g.access_level}, at most {g.max_grants_per_user_30d} per user per 30 days" + (", only users with a paid subscription active now (not past payers, not free trials)" if g.require_paid else ""),
         "always_to_a_human": list(cfg.always_handoff),
         "tone": cfg.tone,
     }

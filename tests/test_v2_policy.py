@@ -104,3 +104,39 @@ def test_load_config_returns_the_stored_config(tmp_path):
     assert loaded.tools["grant_access"] is False
     assert (loaded.grant.max_days, loaded.grant.max_grants_per_user_30d, loaded.grant.access_level) == (3, 2, "premium")
     assert loaded.max_turns == 4
+
+
+# "Paying users only" means paying now (owner's call, Sun morning): a past payer whose subscription ended is not eligible.
+def _with_sub(**changes):
+    p = paid_profile()
+    p["subscriptions"] = [{**p["subscriptions"][0], **changes}]
+    return p
+
+
+@pytest.mark.parametrize(
+    "changes",
+    [
+        {"expires_at": "2026-10-01T00:00:00+00:00", "is_active": False},
+        {"is_refund": True},
+        {"offer": {"category": "introductory", "type": "free_trial", "id": None}},
+    ],
+    ids=["expired", "refunded", "free_trial"],
+)
+def test_past_or_trial_subscription_is_not_paying(changes):
+    assert policy.check_grant(_with_sub(**changes), cfg(), [], 3, False) == (False, "not_paid")
+
+
+def test_revenue_alone_is_not_paying():
+    p = paid_profile()
+    p["subscriptions"] = []
+    assert p["total_revenue_usd"] > 0
+    assert policy.check_grant(p, cfg(), [], 3, False) == (False, "not_paid")
+
+
+def test_paid_offer_after_trial_is_paying():
+    assert policy.check_grant(_with_sub(offer={"category": "promotional", "type": "pay_as_you_go"}), cfg(), [], 3, False) == (True, None)
+
+
+def test_require_paid_off_lets_past_payers_through():
+    expired = _with_sub(expires_at="2026-10-01T00:00:00+00:00")
+    assert policy.check_grant(expired, cfg(grant={"require_paid": False}), [], 3, False) == (True, None)
