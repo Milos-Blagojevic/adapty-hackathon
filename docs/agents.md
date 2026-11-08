@@ -215,7 +215,7 @@ Level 1 `submit_ticket` is checked in code; a failed check gets the same single 
 - An option with `grant_access` requires that `get_profile` was called in this run and the user is not lifetime; days 1–365.
 - If the best option is `grant_access` or `refund_to_human`, at least one other option must be neither (a safe option).
 - If the user is not identified (`customer_user_id` null), one option must be `ask_user`.
-- `ask_user` needs `params.question`; every reply is non-empty except `no_reply`, ≤160 words.
+- `ask_user` needs `params.question`; every reply is non-empty except `no_reply`, ≤120 words (v4; was 160).
 - A text answer without a tool call gets one nudge to call `submit_ticket`.
 - `get_user_history` has the same allowed-id rule as `get_profile`. An id found by email is written to the ticket's `customer_user_id` when it had none.
 
@@ -333,3 +333,29 @@ Log and handoff in a turn:
 - Every call that does not run is logged with a fixed `blocked_reason`: `after_handoff` (handed off in this turn or a teammate has the conversation), `call_limit` (the last model call of a message), `unknown_tool`, `invalid_arguments`. `allowed=false` with `blocked_reason=null` no longer occurs.
 
 Eval (`scripts/eval.py --l2-only --repeat N`): the Level 2 scenarios (`data/l2_scenarios.json`) are scored on the code outcomes (grant, handoff, store steps that must or must not run, the log rule above) and on `reply` checks judged by the model over the transcript, the tool results and the raw profile. The clock is frozen at the scenario's `as_of`; a scenario may carry a live profile snapshot; grants the code allows are simulated (nothing reaches Adapty, the agent sees a success).
+
+### v4: Level 1 analysis quality (binding)
+
+From reading the stored triage of the Nov 8 live chats (f-0009…f-0015) as a support lead: grants offered to users the policy excludes (the facts said `compensation.available: true` for a lapsed payer, a never-paid trial and a user we had granted that morning), invented store paths ("Subscriptions → Lumen → Update payment"), claims the profile contradicts left unnoticed ("bought last year" vs Oct 26; "cancelled two days early" vs renewal off at trial end), replies that announce "a teammate will reply" although the teammate sends them, the bot's turns repeated, replies of 90–115 words in a chat, filler third options, "he/she" from a name.
+
+Facts (code, `triage.model_profile`, used by the prefetch and by `get_profile`; `profile_summary` stays for the v1 page):
+- Each subscription gets `plan` and `state`, one sentence computed from its dates and flags (`triage.subscription_state`): in a free trial / trial ended, first charge failed, never paid / paid, renews <date> / renewal off / payment failing, store retrying / ended after a failed payment, renewal off, the store will not retry / refunded; a trial that converted is named with both dates. Each access level gets `since` and `state` (active until / ended / lifetime; bought in which store, or "granted server-side" for store `adapty`). Dates read "Oct 11, 2026 (28 days ago)".
+- `non_subscriptions` carry their `store`. `total_revenue_usd` is shown as `total_paid_usd_all_time`.
+- `compensation` is replaced by `free_days`: `within_policy` and `why_not` from `policy.check_grant` (the Level 2 check, days = config max, our grants of the last 30 days), `days`, `would_run_to`; a `note` when premium already runs more than 60 days ahead.
+- `store_steps`: fixed paths (restore, cancel, update_payment, refund_request, purchase_history) for the stores on the profile (both when none).
+- History tickets carry `subject` and `triage_summary`; history sessions leave out the ticket's own chat.
+- A handed-off chat is shown once (the transcript inside the ticket body is cut), each message labelled user / bot / support teammate, with the line that the reply is the next message in that chat, sent by the support teammate.
+
+Prompt (goals): what Lumen sells and where (nothing else exists: no web checkout, no other tier); how access works (premium lives on the Lumen account and unlocks on any device signed in to it; Restore in the other store finds nothing); no prices on the profile; refunds by store (Apple only; Google Play: the user in 48 h, later a teammate from the Play Console). The diagnosis follows the field order: evidence copied as `field: value` plus `user says: …`, then a root cause that explains every fact and claim and names the claim the facts contradict (or what the bot got wrong), confidence, summary, category (with two issues, the one that needs the lead's decision). Options: 2–3 different strategies a lead would defend; a third only as a real alternative. Replies: written as the teammate; chat 25–60 words, email/form 40–90; a reply promises only what accepting its option does; store paths quoted from `store_steps`.
+
+Schema order: the `submit_ticket` schema the model sees has the TriageTicket fields in thinking order (`customer_user_id, lookup, evidence, root_cause, confidence, summary, category, options`; option: `action, params, risk, risk_reason, reply, emoji, confidence`) with sharper descriptions (`triage.TicketDraft`); arguments are still validated with `models.TriageTicket`, so the stored shape does not change.
+
+Checks on the submitted ticket (same single correction):
+- A `grant_access` option that `policy.check_grant` blocks (not paying now, a grant by us in the last 30 days, over max days, tool off) is the lead's exception, not the agent's pick: code moves it after the other options, sets `risk: high` and starts `risk_reason` with `Outside the policy: <why>` (no model call). `check_ticket` still rejects such a grant as options[0] or below high risk (defence in depth). Lifetime stays a rejection.
+- Arguments that are not valid JSON (the provider passes `_invalid_json`) get a correction naming the JSON error and its position, never the text. This is one retry of its own and does not spend the one correction.
+- `renewal_cancelled_at` of a server-side access level is hidden from the model: Adapty stamps it on every grant, and the store plan under it may still renew.
+- The tool schema reorders the fields of `TriageTicket`/`TriageOption` only for the model; a field added to those models is kept, after the named ones.
+- Gendered pronouns (he, she, his, her, …) in `summary`, `root_cause` or `evidence` are named in the correction; on their own they never fail a run (a second attempt with them is stored).
+- The correction names the rule broken plus every pronoun slip, and asks for the whole ticket again.
+
+Eval: data/eval.json `hard_cases` h-001…h-006 carry their own feedback (`feedback`, `chat`, `setup.prior_grant`) and are inserted by scripts/eval.py; `profiles` overrides a cached profile; `forbidden_actions` (no option may use them) and `forbidden_first` are reported, with reply length, options per ticket and pronoun slips.

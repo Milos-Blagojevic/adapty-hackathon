@@ -28,8 +28,8 @@ CATEGORIES = (
 # One line per category: the Level 1 prompt shows them to label tickets, the insights facts to read the counts.
 CATEGORY_MEANING = {
     "charged_after_trial": "the user did not expect the charge when a free trial converted.",
-    "no_access_after_purchase": "the user paid and says premium features are still locked.",
-    "billing_issue": "the store could not charge the user (billing_issue_detected_at set, grace period or expired) and the user lost access.",
+    "no_access_after_purchase": "the user paid (or says so) and premium features are locked.",
+    "billing_issue": "the store could not charge the user (billing issue, grace period or lapsed) and the user lost access.",
     "refund_request": "the user wants money back.",
     "cancel_how": "the user asks how to cancel or asks you to cancel.",
     "price_complaint": "the user objects to the price or how it was shown.",
