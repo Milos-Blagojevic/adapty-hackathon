@@ -257,3 +257,13 @@ Level 1:
 - `triage.ungrounded_evidence(ticket, facts_text) -> list[str]`: evidence lines whose value (after the first `: `) has a token with a digit, `_` or `.` (amounts, dates, ids, versions) that does not occur, case-insensitively, in the facts the run loaded (the model merges facts into one line, so whole-line matching is useless). Used by eval only; the run does not drop them.
 
 Decided by the owner after the review (2026-11-08): keep `confidence` (the models are DeepSeek and Opus, not a small model), keep three equal options, no keyword backstop for hand-off rules.
+
+### Any language for the user, English for the person (binding)
+
+The user writes and reads their own language; the support person sees and decides in English. `summary`, `root_cause`, `evidence`, `risk_reason` and `params.question` are always English.
+
+- `submit_ticket` (the same one call) adds `user_language` (English name, `English` for English users), `messages_en` (one English entry per numbered message: the chat's messages in order, or the ticket body as `[1]`) and `options[].reply_en`. `reply` is in the user's language.
+- `triage.check_translations`, with the same single corrective retry: a non-English ticket needs `messages_en` of the right length and `reply_en` on every non-empty reply, different from `reply`; when the user's text is mostly non-Latin, `user_language` cannot be English and each `reply` must be mostly in that script. For an English user the fields are cleared when stored and nothing changes.
+- `OptionEdits.reply_en` and `Rejection.reply_en`: the person's English. On a non-English ticket it goes through one small model call on the click (`workflow.translate_reply`, counted in the ticket's cap), before anything runs or is sent. No model, a model error, an empty or unchanged result, or a lost number → 502 with the reason, the ticket stays open, no grant, no message. `reply` is the user-language text as written and wins over `reply_en`. English ticket: `reply_en` is sent as is.
+- What was sent: `action.final` `{reply, reply_en, language}` on accept, `decision` `{reply, reply_en, language}` on a manual reply; `reply_en` is null when the person edited the user-language text directly. The chat gets only `reply`.
+- Messages that arrive after triage have no translation and are shown as written.

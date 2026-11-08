@@ -34,6 +34,7 @@ from resolve.models import (
 
 E404 = {404: {"model": ErrorDetail, "description": "Unknown id"}}
 E409 = {409: {"model": ErrorDetail, "description": "Wrong ticket status for this call"}}
+E502 = {502: {"model": ErrorDetail, "description": "The person's English could not be translated to the user's language; nothing was sent"}}
 from resolve.tickets import CATEGORIES
 
 ACCEPT_STATUSES = ("proposed",)
@@ -211,7 +212,7 @@ def build_router(services) -> APIRouter:
         triage.run(services, ticket_id, force=force)
         return ticket_full(conn, ticket_or_404(ticket_id))
 
-    @router.post("/api/tickets/{ticket_id}/accept", response_model=Ticket, tags=["inbox"], responses={**E404, **E409})
+    @router.post("/api/tickets/{ticket_id}/accept", response_model=Ticket, tags=["inbox"], responses={**E404, **E409, **E502})
     def accept(ticket_id: str, body: Decision):
         if ticket_or_404(ticket_id)["status"] not in ACCEPT_STATUSES:
             raise HTTPException(409, "only a proposed ticket can be accepted")
@@ -219,16 +220,20 @@ def build_router(services) -> APIRouter:
             workflow.accept(services, ticket_id, body)
         except workflow.NotFound:
             raise HTTPException(404, f"no ticket {ticket_id}") from None
+        except workflow.TranslationFailed as exc:
+            raise HTTPException(502, str(exc)) from None
         except ValueError as exc:  # raised before any write: bad option index, days, or no customer for a grant
             raise HTTPException(422, str(exc)) from None
         return ticket_full(conn, ticket_or_404(ticket_id))
 
-    @router.post("/api/tickets/{ticket_id}/reject", response_model=Ticket, tags=["inbox"], responses={**E404, **E409})
+    @router.post("/api/tickets/{ticket_id}/reject", response_model=Ticket, tags=["inbox"], responses={**E404, **E409, **E502})
     def reject(ticket_id: str, body: Rejection):
         if ticket_or_404(ticket_id)["status"] not in REJECT_STATUSES:
             raise HTTPException(409, "only an open ticket can be rejected")
         try:
             workflow.reject(services, ticket_id, body)
+        except workflow.TranslationFailed as exc:
+            raise HTTPException(502, str(exc)) from None
         except workflow.NotFound:
             raise HTTPException(404, f"no ticket {ticket_id}") from None
         return ticket_full(conn, ticket_or_404(ticket_id))

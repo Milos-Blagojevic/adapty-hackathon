@@ -434,6 +434,16 @@
        }
       }
      },
+     "502": {
+      "description": "The person's English could not be translated to the user's language; nothing was sent",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorDetail"
+        }
+       }
+      }
+     },
      "422": {
       "description": "Validation Error",
       "content": {
@@ -498,6 +508,16 @@
      },
      "409": {
       "description": "Wrong ticket status for this call",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorDetail"
+        }
+       }
+      }
+     },
+     "502": {
+      "description": "The person's English could not be translated to the user's language; nothing was sent",
       "content": {
        "application/json": {
         "schema": {
@@ -1881,6 +1901,17 @@
       ],
       "title": "Reply"
      },
+     "reply_en": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Reply En"
+     },
      "days": {
       "anyOf": [
        {
@@ -2175,6 +2206,17 @@
        }
       ],
       "title": "Reply"
+     },
+     "reply_en": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Reply En"
      }
     },
     "type": "object",
@@ -2832,6 +2874,18 @@
       ],
       "title": "Confidence",
       "description": "How sure you are that this answer is right for this user, 0 to 1, judged for this option on its own."
+     },
+     "reply_en": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Reply En",
+      "description": "Faithful English translation of reply for the support person. Null when user_language is English."
      }
     },
     "type": "object",
@@ -2947,6 +3001,33 @@
       "minItems": 1,
       "title": "Options",
       "description": "Ranked, best first"
+     },
+     "user_language": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "User Language",
+      "description": "The language the user writes in, as an English name (Russian, Spanish, Serbian (Latin)); English for English users. Mixed: the language of most of their latest message."
+     },
+     "messages_en": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "string"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Messages En",
+      "description": "Faithful English translation of each numbered message [1], [2], ... in order, one entry each. Null when user_language is English."
      }
     },
     "type": "object",
