@@ -49,6 +49,20 @@ def test_ui_redirects_to_the_design_screens(tmp_path):
     page = client.get("/static/ui/Main.dc.html")
     assert page.status_code == 200 and "support.js" in page.text
 
+def test_impact_page_is_static_and_keyless(tmp_path):
+    from fastapi.testclient import TestClient
+
+    from resolve.web import create_app
+
+    client = TestClient(create_app(tmp_path / "impact.sqlite", demo=True))
+    r = client.get("/impact", follow_redirects=False)
+    assert r.status_code in (302, 307) and r.headers["location"] == "/static/impact.html"
+    page = client.get("/static/impact.html")
+    assert page.status_code == 200
+    for anchor in ("168,607", "Calm", "6.4", "31/32", "1% of tracked revenue", "refundappeal.com", "<script"):
+        assert (anchor in page.text) == (anchor != "<script"), anchor
+
+
 
 def test_old_inbox_page_lives_at_inbox(tmp_path):
     from fastapi.testclient import TestClient
