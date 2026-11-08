@@ -232,6 +232,10 @@ Decisions: accept stores `decision_json = Decision.model_dump()`; reject always 
 
 While the session is `handed_off`, each user message still gets a model reply, but only with tools `get_profile`, `store_instructions`, `cancel_handoff {note: str}`; any other tool call is logged as not run ("not run: a teammate has the conversation"); no second ticket. New messages are visible to the teammate through the ticket's conversation. Each such message also reruns Level 1 on the open ticket with the whole conversation (one run per ticket at a time, a message during a run gets one more run after it), so the summary, options and translations follow what the user said after the handoff. A ticket already decided is left as it is. The ticket's model-call budget is `MAX_CALLS` per user message in that chat. `cancel_handoff` dismisses the ticket if it is still new/triaged/proposed (`decision_json = {"rejected": true, "note": "user cancelled the handoff: …", "reply": null}`) and sets the outcome back to `open`. Demo mode / no LLM: fixed reply `HANDED_OFF_REPLY`.
 
+### Evidence labels (binding)
+
+The model keeps copying evidence as `field: value` (`ungrounded_evidence` depends on it). The Ticket screen shows a readable label for the field (`custom_attributes.simulated_install_date` → Install date, `access_levels[0].expires_at` → Access expires); the value is shown as written. Level 1's prompt calls the first-line agent "the assistant", so its summaries do too; stored tickets keep their text until they are triaged again.
+
 ### Reopen (binding)
 
 `POST /api/tickets/{id}/reopen {note?}` → only from `done`/`dismissed` (else 409): status `proposed` if the ticket has a triage or v1 proposal, else `new`; the earlier `{at, from_status, decision, action, note}` is appended to `history` (Ticket field); decision/action/reply_sent_at are cleared. Nothing is undone in Adapty: an earlier grant stays.
@@ -356,7 +360,7 @@ Facts (code, `triage.model_profile`, used by the prefetch and by `get_profile`; 
 - `compensation` is replaced by `free_days`: `within_policy` and `why_not` from `policy.check_grant` (the Level 2 check, days = config max, our grants of the last 30 days), `days`, `would_run_to`; a `note` when premium already runs more than 60 days ahead.
 - `store_steps`: fixed paths (restore, cancel, update_payment, refund_request, purchase_history) for the stores on the profile (both when none).
 - History tickets carry `subject` and `triage_summary`; history sessions leave out the ticket's own chat.
-- A handed-off chat is shown once (the transcript inside the ticket body is cut), each message labelled user / bot / support teammate, with the line that the reply is the next message in that chat, sent by the support teammate.
+- A handed-off chat is shown once (the transcript inside the ticket body is cut), each message labelled user / assistant / support teammate, with the line that the reply is the next message in that chat, sent by the support teammate.
 
 Prompt (goals): what the app sells and where (nothing else exists: no web checkout, no other tier); how access works (premium lives on the app account and unlocks on any device signed in to it; Restore in the other store finds nothing); no prices on the profile; refunds by store (Apple only; Google Play: the user in 48 h, later a teammate from the Play Console). The diagnosis follows the field order: evidence copied as `field: value` plus `user says: …`, then a root cause that explains every fact and claim and names the claim the facts contradict (or what the bot got wrong), confidence, summary, category (with two issues, the one that needs the lead's decision). Options: 2–3 different strategies a lead would defend; a third only as a real alternative. Replies: written as the teammate; chat 25–60 words, email/form 40–90; a reply promises only what accepting its option does; store paths quoted from `store_steps`.
 
