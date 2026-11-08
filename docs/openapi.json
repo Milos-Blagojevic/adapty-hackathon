@@ -768,6 +768,119 @@
     }
    }
   },
+  "/api/insights": {
+   "get": {
+    "tags": [
+     "insights"
+    ],
+    "summary": "Grouping, the cached hypothesis and drafts; no model call (may schedule an auto run)",
+    "operationId": "get_insights_api_insights_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/InsightsView"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/insights/run": {
+   "post": {
+    "tags": [
+     "insights"
+    ],
+    "summary": "Run the hypothesis now (one model call, \u22642 with the retry); errors come back in run.error",
+    "operationId": "run_insights_api_insights_run_post",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/InsightsView"
+        }
+       }
+      }
+     },
+     "409": {
+      "description": "A hypothesis run is already in flight",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorDetail"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/insights/ab-draft": {
+   "post": {
+    "tags": [
+     "insights"
+    ],
+    "summary": "Create a draft A/B test in Adapty (never started)",
+    "operationId": "ab_draft_api_insights_ab_draft_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/AbDraftRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/InsightsView"
+        }
+       }
+      }
+     },
+     "409": {
+      "description": "Demo mode or no Adapty CLI: nothing is created",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorDetail"
+        }
+       }
+      }
+     },
+     "502": {
+      "description": "The Adapty CLI failed",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorDetail"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/healthz": {
    "get": {
     "tags": [
@@ -792,6 +905,91 @@
  },
  "components": {
   "schemas": {
+   "AbDraft": {
+    "properties": {
+     "ab_test_id": {
+      "type": "string",
+      "title": "Ab Test Id"
+     },
+     "title": {
+      "type": "string",
+      "title": "Title"
+     },
+     "state": {
+      "type": "string",
+      "title": "State"
+     },
+     "placement": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Placement"
+     },
+     "placement_id": {
+      "type": "string",
+      "title": "Placement Id"
+     },
+     "arms": {
+      "items": {
+       "$ref": "#/components/schemas/DraftArm"
+      },
+      "type": "array",
+      "title": "Arms"
+     },
+     "goal": {
+      "type": "string",
+      "title": "Goal"
+     },
+     "created_at": {
+      "type": "string",
+      "title": "Created At"
+     }
+    },
+    "type": "object",
+    "required": [
+     "ab_test_id",
+     "title",
+     "state",
+     "placement",
+     "placement_id",
+     "arms",
+     "goal",
+     "created_at"
+    ],
+    "title": "AbDraft"
+   },
+   "AbDraftRequest": {
+    "properties": {
+     "placement": {
+      "type": "string",
+      "enum": [
+       "onboarding",
+       "main",
+       "ai_limit_reached",
+       "settings_upgrade",
+       "win_back"
+      ],
+      "title": "Placement",
+      "description": "insights.PLACEMENTS key"
+     },
+     "goal": {
+      "type": "string",
+      "maxLength": 500,
+      "title": "Goal",
+      "default": ""
+     }
+    },
+    "type": "object",
+    "required": [
+     "placement"
+    ],
+    "title": "AbDraftRequest"
+   },
    "ActionLog": {
     "properties": {
      "tool": {
@@ -1420,6 +1618,24 @@
     ],
     "title": "Decisions"
    },
+   "DraftArm": {
+    "properties": {
+     "title": {
+      "type": "string",
+      "title": "Title"
+     },
+     "weight": {
+      "type": "integer",
+      "title": "Weight"
+     }
+    },
+    "type": "object",
+    "required": [
+     "title",
+     "weight"
+    ],
+    "title": "DraftArm"
+   },
    "ErrorDetail": {
     "properties": {
      "detail": {
@@ -1640,6 +1856,496 @@
      "demo"
     ],
     "title": "Health"
+   },
+   "InsightCategory": {
+    "properties": {
+     "category": {
+      "type": "string",
+      "title": "Category"
+     },
+     "count": {
+      "type": "integer",
+      "title": "Count"
+     },
+     "share": {
+      "type": "number",
+      "title": "Share",
+      "description": "count / triaged"
+     },
+     "products": {
+      "items": {
+       "$ref": "#/components/schemas/InsightCount"
+      },
+      "type": "array",
+      "title": "Products"
+     },
+     "flows": {
+      "items": {
+       "$ref": "#/components/schemas/InsightFlowCount"
+      },
+      "type": "array",
+      "title": "Flows"
+     }
+    },
+    "type": "object",
+    "required": [
+     "category",
+     "count",
+     "share",
+     "products",
+     "flows"
+    ],
+    "title": "InsightCategory"
+   },
+   "InsightCount": {
+    "properties": {
+     "product": {
+      "type": "string",
+      "title": "Product"
+     },
+     "count": {
+      "type": "integer",
+      "title": "Count"
+     }
+    },
+    "type": "object",
+    "required": [
+     "product",
+     "count"
+    ],
+    "title": "InsightCount"
+   },
+   "InsightFlowCount": {
+    "properties": {
+     "flow": {
+      "type": "string",
+      "title": "Flow",
+      "description": "Flow key from the offline dataset, or 'unknown'"
+     },
+     "title": {
+      "type": "string",
+      "title": "Title"
+     },
+     "count": {
+      "type": "integer",
+      "title": "Count"
+     }
+    },
+    "type": "object",
+    "required": [
+     "flow",
+     "title",
+     "count"
+    ],
+    "title": "InsightFlowCount"
+   },
+   "InsightPending": {
+    "properties": {
+     "reason": {
+      "type": "string",
+      "title": "Reason",
+      "description": "What changed, e.g. 'top issue changed: Refund request \u2192 Charged after trial'"
+     },
+     "since": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Since"
+     },
+     "due_in_s": {
+      "type": "number",
+      "title": "Due In S",
+      "description": "Seconds until the debounce ends"
+     },
+     "blocked": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Blocked",
+      "description": "Why it will not start: 'hourly cap', 'cooling down', 'last auto run failed'"
+     }
+    },
+    "type": "object",
+    "required": [
+     "reason",
+     "since",
+     "due_in_s",
+     "blocked"
+    ],
+    "title": "InsightPending"
+   },
+   "InsightPlacement": {
+    "properties": {
+     "key": {
+      "type": "string",
+      "title": "Key"
+     },
+     "title": {
+      "type": "string",
+      "title": "Title"
+     },
+     "flows": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Flows"
+     },
+     "draftable": {
+      "type": "boolean",
+      "title": "Draftable",
+      "description": "Two or more flows: can be an A/B test"
+     }
+    },
+    "type": "object",
+    "required": [
+     "key",
+     "title",
+     "flows",
+     "draftable"
+    ],
+    "title": "InsightPlacement"
+   },
+   "InsightReport": {
+    "properties": {
+     "headline": {
+      "type": "string",
+      "title": "Headline"
+     },
+     "hypothesis": {
+      "type": "string",
+      "title": "Hypothesis"
+     },
+     "placement": {
+      "type": "string",
+      "title": "Placement"
+     },
+     "placement_title": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Placement Title"
+     },
+     "control_flow": {
+      "type": "string",
+      "title": "Control Flow"
+     },
+     "variant": {
+      "type": "string",
+      "title": "Variant"
+     },
+     "expected_effect": {
+      "type": "string",
+      "title": "Expected Effect"
+     },
+     "evidence": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Evidence"
+     },
+     "created_at": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Created At"
+     },
+     "trigger": {
+      "anyOf": [
+       {
+        "type": "string",
+        "enum": [
+         "manual",
+         "auto"
+        ]
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Trigger"
+     },
+     "reason": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Reason"
+     }
+    },
+    "type": "object",
+    "required": [
+     "headline",
+     "hypothesis",
+     "placement",
+     "placement_title",
+     "control_flow",
+     "variant",
+     "expected_effect",
+     "evidence",
+     "created_at"
+    ],
+    "title": "InsightReport"
+   },
+   "InsightRun": {
+    "properties": {
+     "state": {
+      "type": "string",
+      "enum": [
+       "idle",
+       "running",
+       "error"
+      ],
+      "title": "State"
+     },
+     "trigger": {
+      "anyOf": [
+       {
+        "type": "string",
+        "enum": [
+         "manual",
+         "auto"
+        ]
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Trigger"
+     },
+     "reason": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Reason"
+     },
+     "started_at": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Started At"
+     },
+     "finished_at": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Finished At"
+     },
+     "error": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Error"
+     }
+    },
+    "type": "object",
+    "required": [
+     "state",
+     "trigger",
+     "reason",
+     "started_at",
+     "finished_at",
+     "error"
+    ],
+    "title": "InsightRun"
+   },
+   "InsightTop": {
+    "properties": {
+     "category": {
+      "type": "string",
+      "title": "Category"
+     },
+     "flow": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Flow"
+     },
+     "title": {
+      "type": "string",
+      "title": "Title"
+     },
+     "count": {
+      "type": "integer",
+      "title": "Count"
+     }
+    },
+    "type": "object",
+    "required": [
+     "category",
+     "flow",
+     "title",
+     "count"
+    ],
+    "title": "InsightTop"
+   },
+   "InsightsView": {
+    "properties": {
+     "updated_at": {
+      "type": "string",
+      "title": "Updated At"
+     },
+     "demo": {
+      "type": "boolean",
+      "title": "Demo"
+     },
+     "llm": {
+      "type": "boolean",
+      "title": "Llm",
+      "description": "A model client is configured"
+     },
+     "auto": {
+      "type": "boolean",
+      "title": "Auto",
+      "description": "The hypothesis re-runs on its own after a material change"
+     },
+     "total": {
+      "type": "integer",
+      "title": "Total"
+     },
+     "triaged": {
+      "type": "integer",
+      "title": "Triaged"
+     },
+     "untriaged": {
+      "type": "integer",
+      "title": "Untriaged"
+     },
+     "categories": {
+      "items": {
+       "$ref": "#/components/schemas/InsightCategory"
+      },
+      "type": "array",
+      "title": "Categories"
+     },
+     "top": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/InsightTop"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "report": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/InsightReport"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "previous": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/InsightReport"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "The report the current one replaced"
+     },
+     "run": {
+      "$ref": "#/components/schemas/InsightRun"
+     },
+     "pending": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/InsightPending"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "placements": {
+      "items": {
+       "$ref": "#/components/schemas/InsightPlacement"
+      },
+      "type": "array",
+      "title": "Placements"
+     },
+     "drafts": {
+      "items": {
+       "$ref": "#/components/schemas/AbDraft"
+      },
+      "type": "array",
+      "title": "Drafts"
+     }
+    },
+    "type": "object",
+    "required": [
+     "updated_at",
+     "demo",
+     "llm",
+     "auto",
+     "total",
+     "triaged",
+     "untriaged",
+     "categories",
+     "top",
+     "report",
+     "previous",
+     "run",
+     "pending",
+     "placements",
+     "drafts"
+    ],
+    "title": "InsightsView"
    },
    "Level2Stats": {
     "properties": {

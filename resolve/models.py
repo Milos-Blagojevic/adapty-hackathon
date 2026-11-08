@@ -10,6 +10,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from resolve.insights import PLACEMENT_IDS
 from resolve.tickets import CATEGORIES
 
 # Level 1 option actions (what the support person can accept or switch to).
@@ -394,3 +395,108 @@ class FeedbackRequest(BaseModel):
     customer_user_id: str | None = None
     email: str | None = None
     subject: str | None = None
+
+
+# --- Insights (docs/agents.md, "Insights: JSON API and live screen") --------------------------------
+
+
+class InsightCount(BaseModel):
+    product: str
+    count: int
+
+
+class InsightFlowCount(BaseModel):
+    flow: str = Field(description="Flow key from the offline dataset, or 'unknown'")
+    title: str
+    count: int
+
+
+class InsightCategory(BaseModel):
+    category: str
+    count: int
+    share: float = Field(description="count / triaged")
+    products: list[InsightCount]
+    flows: list[InsightFlowCount]
+
+
+class InsightTop(BaseModel):
+    category: str
+    flow: str | None
+    title: str
+    count: int
+
+
+class InsightReport(BaseModel):
+    headline: str
+    hypothesis: str
+    placement: str
+    placement_title: str | None
+    control_flow: str
+    variant: str
+    expected_effect: str
+    evidence: list[str]
+    created_at: str | None
+    trigger: Literal["manual", "auto"] | None = None
+    reason: str | None = None
+
+
+class InsightRun(BaseModel):
+    state: Literal["idle", "running", "error"]
+    trigger: Literal["manual", "auto"] | None
+    reason: str | None
+    started_at: str | None
+    finished_at: str | None
+    error: str | None
+
+
+class InsightPending(BaseModel):
+    reason: str = Field(description="What changed, e.g. 'top issue changed: Refund request → Charged after trial'")
+    since: str | None
+    due_in_s: float = Field(description="Seconds until the debounce ends")
+    blocked: str | None = Field(description="Why it will not start: 'hourly cap', 'cooling down', 'last auto run failed'")
+
+
+class InsightPlacement(BaseModel):
+    key: str
+    title: str
+    flows: list[str]
+    draftable: bool = Field(description="Two or more flows: can be an A/B test")
+
+
+class DraftArm(BaseModel):
+    title: str
+    weight: int
+
+
+class AbDraft(BaseModel):
+    ab_test_id: str
+    title: str
+    state: str
+    placement: str | None
+    placement_id: str
+    arms: list[DraftArm]
+    goal: str
+    created_at: str
+
+
+class InsightsView(BaseModel):
+    updated_at: str
+    demo: bool
+    llm: bool = Field(description="A model client is configured")
+    auto: bool = Field(description="The hypothesis re-runs on its own after a material change")
+    total: int
+    triaged: int
+    untriaged: int
+    categories: list[InsightCategory]
+    top: InsightTop | None
+    report: InsightReport | None
+    previous: InsightReport | None = Field(description="The report the current one replaced")
+    run: InsightRun
+    pending: InsightPending | None
+    placements: list[InsightPlacement]
+    drafts: list[AbDraft]
+
+
+class AbDraftRequest(BaseModel):
+    placement: Literal[*PLACEMENT_IDS] = Field(description="insights.PLACEMENTS key")
+    goal: str = Field("", max_length=500)

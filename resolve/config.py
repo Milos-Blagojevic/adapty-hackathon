@@ -23,6 +23,8 @@ OPENAI_EXTRA_BODY = os.environ.get("OPENAI_EXTRA_BODY", "").strip()
 OPENAI_STRICT_TOOLS = os.environ.get("OPENAI_STRICT_TOOLS", "1").strip() != "0"
 OPENAI_MAX_TOKENS = int(os.environ.get("OPENAI_MAX_TOKENS", "4000"))
 DEMO_MODE = os.environ.get("DEMO_MODE", "0") == "1"
+# Insights: re-run the hypothesis on its own when the grouping changes materially (docs/agents.md, "Insights").
+INSIGHTS_AUTO = os.environ.get("INSIGHTS_AUTO", "1").strip() != "0"
 DB_PATH = Path(os.environ.get("RESOLVE_DB", ROOT / "data" / "resolve.sqlite"))
 DEMO_DB_PATH = ROOT / "data" / "demo.sqlite"
 SEED_REPO = Path(os.environ.get("SEED_REPO", Path.home() / "hackathon" / "adapty-seed-data-hack"))
