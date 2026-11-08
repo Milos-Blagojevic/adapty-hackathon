@@ -7,10 +7,10 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,400..600;1,6..72,400..500&display=swap" rel="stylesheet">
 <style>
-  :root { --ink:#18181b; --grey:#6b6b75; --faint:#9a9aa3; --line:#e6e6ea; --fill:#f6f6f8; --brand:#5b3cf0; --green:#188038; --amber:#b06000; --red:#c5221f;
+  :root { --ink:#18181b; --grey:#6b6b75; --faint:#9a9aa3; --line:#eeebf8; --fill:#f6f4fd; --brand:#6247f5; --green:#3d6b52; --amber:#8a6a2e; --red:#8e3b36;
           --serif: Newsreader, Georgia, "Times New Roman", serif; --sans: Inter, system-ui, -apple-system, sans-serif; }
   * { box-sizing:border-box; }
-  body { margin:0; background:#fff; color:var(--ink); font:16px/1.5 var(--sans); }
+  body { margin:0; background:radial-gradient(900px 500px at 15% -10%, rgba(98,71,245,.08), transparent 70%), radial-gradient(800px 600px at 100% 30%, rgba(98,71,245,.05), transparent 70%), #fafafa; color:var(--ink); font:16px/1.5 var(--sans); }
   main { max-width:1280px; margin:0 auto; padding:36px 48px 60px; }
   header { display:flex; align-items:baseline; justify-content:space-between; gap:24px; margin-bottom:28px; }
   h1 { font:500 44px/1.05 var(--serif); margin:0; letter-spacing:-.01em; }
@@ -20,8 +20,8 @@
   .grid { display:grid; gap:16px; }
   .g4 { grid-template-columns:repeat(4,1fr); }
   .g3 { grid-template-columns:repeat(3,1fr); }
-  .card { border:1px solid var(--line); border-radius:14px; padding:20px 22px; background:#fff; }
-  .card.fill { background:var(--fill); border-color:transparent; }
+  .card { border:1px solid var(--line); border-radius:14px; padding:20px 22px; background:linear-gradient(180deg, #faf8ff 0%, #ffffff 130px); }
+  .card.fill { background:var(--fill); border-color:#ebe7fb; }
   .num { font:500 56px/1 var(--serif); letter-spacing:-.02em; margin:0 0 10px; }
   .num small { font-size:28px; color:var(--grey); }
   .num.brand { color:var(--brand); }
@@ -36,8 +36,8 @@
   td.n { font:500 22px/1.1 var(--serif); white-space:nowrap; }
   td.muted { color:var(--grey); }
   .pill { display:inline-block; font:600 12px/1 var(--sans); letter-spacing:.06em; text-transform:uppercase; padding:5px 9px; border-radius:999px; background:#efe9ff; color:var(--brand); margin-bottom:12px; }
-  .pill.green { background:#e6f4ea; color:var(--green); }
-  .pill.amber { background:#fdf1dc; color:var(--amber); }
+  .pill.green { background:#e9f1ec; color:var(--green); }
+  .pill.amber { background:#fbf3db; color:var(--amber); }
   .card h3 { font:500 24px/1.2 var(--serif); margin:0 0 10px; }
   .card ul { margin:8px 0 0; padding-left:18px; }
   .card li { margin:4px 0; }
@@ -46,7 +46,7 @@
   .adapty blockquote { font-size:21px; }
   .assump { color:var(--grey); font-size:14px; }
   .assump li { margin:3px 0; }
-  footer { margin-top:40px; padding-top:18px; border-top:1px solid var(--line); color:var(--grey); font-size:13px; }
+  footer { margin-top:40px; padding-top:18px; border-top:1px solid #e4e4e8; color:var(--grey); font-size:13px; }
   footer ol { columns:2; column-gap:40px; padding-left:18px; margin:8px 0 0; }
   footer li { margin:2px 0; break-inside:avoid; }
   footer a { color:var(--grey); }
