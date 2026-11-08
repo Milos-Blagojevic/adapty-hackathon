@@ -56,11 +56,14 @@ def test_impact_page_is_static_and_keyless(tmp_path):
 
     client = TestClient(create_app(tmp_path / "impact.sqlite", demo=True))
     r = client.get("/impact", follow_redirects=False)
-    assert r.status_code in (302, 307) and r.headers["location"] == "/static/impact.html"
-    page = client.get("/static/impact.html")
-    assert page.status_code == 200
-    for anchor in ("168,607", "Calm", "6.4", "31/32", "1% of tracked revenue", "refundappeal.com", "<script"):
-        assert (anchor in page.text) == (anchor != "<script"), anchor
+    assert r.status_code in (302, 307) and r.headers["location"] == "/static/ui/Impact.dc.html"
+    anchors = ("168,607", "Calm", "6.4", "31/32", "1% of tracked revenue", "refundappeal.com")
+    themed = client.get("/static/ui/Impact.dc.html")  # same content inside the support UI shell; no API calls
+    assert themed.status_code == 200 and "support.js" in themed.text and "API." not in themed.text
+    original = client.get("/static/impact.html")  # Milos's standalone original, no scripts
+    assert original.status_code == 200 and "<script" not in original.text
+    for anchor in anchors:
+        assert anchor in themed.text and anchor in original.text, anchor
 
 
 

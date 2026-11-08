@@ -123,8 +123,11 @@ def create_app(
 
     @app.get("/impact", include_in_schema=False)
     def impact():
-        """The closing demo screen: market size, Lumen numbers, what Resolve and Adapty gain. Static, numbers baked in."""
-        return RedirectResponse("/static/impact.html")
+        """The closing demo screen: market size, Lumen numbers, what Resolve and Adapty gain. Static, numbers baked in.
+
+        Served inside the support UI's shell (static/ui/Impact.dc.html); Milos's standalone original stays at /static/impact.html.
+        """
+        return RedirectResponse("/static/ui/Impact.dc.html")
 
     @app.get("/inbox", response_class=HTMLResponse)
     def inbox(request: Request, status: str | None = None):
