@@ -2818,6 +2818,20 @@
       "title": "Emoji",
       "description": "One emoji, sincere, that says what this answer means for the user (\ud83d\udc4d we give something, \u274c we say no or end something, \ud83d\ude4f we apologise, \u2753 we ask, \ud83e\uddfe we explain, \ud83d\udd01 restore).",
       "default": ""
+     },
+     "confidence": {
+      "anyOf": [
+       {
+        "type": "number",
+        "maximum": 1.0,
+        "minimum": 0.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Confidence",
+      "description": "How sure you are that this answer is right for this user, 0 to 1, judged for this option on its own."
      }
     },
     "type": "object",

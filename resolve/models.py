@@ -64,6 +64,7 @@ class TriageOption(BaseModel):
     risk: Literal["low", "medium", "high"]
     risk_reason: str = Field(description="One line: why this risk level (money, abuse, wrong diagnosis).")
     emoji: str = Field("", max_length=8, description="One emoji, sincere, that says what this answer means for the user (👍 we give something, ❌ we say no or end something, 🙏 we apologise, ❓ we ask, 🧾 we explain, 🔁 restore).")
+    confidence: float | None = Field(None, ge=0, le=1, description="How sure you are that this answer is right for this user, 0 to 1, judged for this option on its own.")
 
 
 class TriageTicket(BaseModel):

@@ -237,7 +237,7 @@ While the session is `handed_off`, each user message still gets a model reply, b
 
 ### Options: three equal answers with an emoji (binding)
 
-Level 1 aims for 3 equally strong options (2 are still accepted), the first is the agent's pick but the UI shows them with equal weight. Each option has `emoji`: one sincere emoji for what the answer means to the user (👍 give, ❌ refuse/cancel, 🙏 apologise, ❓ ask, 🧾 explain a charge, 🔁 restore, 💸 store refund). Old tickets without it: the UI falls back by action (`triage.LEGACY_EMOJI`).
+Level 1 aims for 3 equally strong options (2 are still accepted), the first is the agent's pick but the UI shows them with equal weight. Each option has `emoji`: one sincere emoji for what the answer means to the user (👍 give, ❌ refuse/cancel, 🙏 apologise, ❓ ask, 🧾 explain a charge, 🔁 restore, 💸 store refund). Old tickets without it: the UI falls back by action (`triage.LEGACY_EMOJI`). Each option also has its own `confidence` (0–1, how sure the agent is that this answer is right; the ticket's `confidence` is about the diagnosis); the Ticket screen shows it as a ring under the emoji and marks the agent's pick with a star. Older tickets have `null` and show no ring.
 
 ### v3: code loads the facts (binding on branch `alex/agents-v3`)
 

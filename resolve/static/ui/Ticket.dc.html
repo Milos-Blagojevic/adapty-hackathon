@@ -65,6 +65,12 @@ input::placeholder,textarea::placeholder{color:#8b8b94}
 .ans.sel .emo{transform:scale(1.12)}
 .ttl{font-size:15px;font-weight:600;color:#18181b}
 .pick{font-size:12.5px;color:#71717a;font-weight:500}
+.star{font-size:17px;line-height:1;color:#f5a524;text-shadow:0 1px 0 rgba(180,110,0,.18)}
+.emo-col{display:flex;flex-direction:column;align-items:center;gap:10px}
+.conf{position:relative;display:grid;place-items:center;width:42px;height:42px}
+.conf svg{position:absolute;inset:0}
+.conf b{font-size:11.5px;font-weight:700;color:#3f3f46;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.ans.sel .conf b{color:#4c35d8}
 .risk-high{font-size:12.5px;font-weight:600;color:#c2410c}
 .risk-medium{font-size:12.5px;font-weight:600;color:#a16207}
 .txt{display:block;margin-top:4px;color:#3f3f46;font-size:14.5px;line-height:1.55;text-wrap:pretty}
@@ -203,11 +209,14 @@ input::placeholder,textarea::placeholder{color:#8b8b94}
 <div class="{{ a.cls }}">
 <label class="ans-main">
 <input type="radio" name="answer" class="sr" checked="{{ a.selected }}" onChange="{{ a.pick }}">
+<span class="emo-col">
 <span class="emo" aria-hidden="true">{{ a.emoji }}</span>
+<sc-if value="{{ a.hasConf }}"><span class="conf" title="How sure the agent is about this answer"><svg width="42" height="42" viewBox="0 0 42 42" aria-hidden="true"><circle cx="21" cy="21" r="18" fill="none" stroke="#ece9fb" stroke-width="3"></circle><circle cx="21" cy="21" r="18" fill="none" stroke="{{ a.confColor }}" stroke-width="3" stroke-linecap="round" pathLength="100" stroke-dasharray="{{ a.confDash }}" transform="rotate(-90 21 21)"></circle></svg><b>{{ a.confPct }}%</b></span></sc-if>
+</span>
 <span style="min-width: 0">
 <span style="display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px">
 <span class="ttl">{{ a.title }}</span>
-<sc-if value="{{ a.isPick }}"><span class="pick">agent's pick</span></sc-if>
+<sc-if value="{{ a.isPick }}"><span class="star" title="Agent's pick" aria-label="Agent's pick">★</span></sc-if>
 <sc-if value="{{ a.edited }}"><span class="pick">edited</span></sc-if>
 <sc-if value="{{ a.hasRisk }}"><span class="{{ a.riskCls }}">{{ a.risk }}</span></sc-if>
 </span>
@@ -359,9 +368,9 @@ var LIVE = !API.mock;
 
 var USER = 'lumen_443814_02380';
 var BASE = {
-  reply: { emoji: '🥶', action: 'reply', days: 7, store: 'Google Play', kind: 'Cancel', question: '', reply: "Hi! We added 7 days of premium on Nov 5 for the trial charge, so your access now runs to Nov 20. We can't add more, but you can cancel any time in Google Play → Subscriptions." },
-  steps: { emoji: '👋', action: 'store_steps', days: 7, store: 'Google Play', kind: 'Cancel', question: '', reply: 'You can cancel the weekly plan any time: Google Play → Profile → Payments & subscriptions → Subscriptions → Lumen → Cancel. Premium stays until Nov 20.' },
-  grant: { emoji: '🎁', action: 'grant', days: 7, store: 'Google Play', kind: 'Cancel', question: '', reply: "As a one-off, we've added 7 more days of premium to your account." }
+  reply: { emoji: '🥶', action: 'reply', days: 7, store: 'Google Play', kind: 'Cancel', question: '', conf: 0.82, reply: "Hi! We added 7 days of premium on Nov 5 for the trial charge, so your access now runs to Nov 20. We can't add more, but you can cancel any time in Google Play → Subscriptions." },
+  steps: { emoji: '👋', action: 'store_steps', days: 7, store: 'Google Play', kind: 'Cancel', question: '', conf: 0.64, reply: 'You can cancel the weekly plan any time: Google Play → Profile → Payments & subscriptions → Subscriptions → Lumen → Cancel. Premium stays until Nov 20.' },
+  grant: { emoji: '🎁', action: 'grant', days: 7, store: 'Google Play', kind: 'Cancel', question: '', conf: 0.31, reply: "As a one-off, we've added 7 more days of premium to your account." }
 };
 var ORDER = ['reply', 'steps', 'grant'];
 var MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -510,7 +519,7 @@ function liveModel(t, cfg) {
   ((tri && tri.options) || []).forEach(function (o, i) {
     var p = o.params || {};
     order.push(String(i));
-    base[String(i)] = { emoji: o.emoji || EMOJI[o.action] || '', action: ACT[o.action] || o.action, days: p.days != null ? p.days : maxDays, store: STORES[p.store] || '', kind: KINDS[p.kind] || '', question: p.question || '', reply: o.reply || '', risk: o.risk, riskReason: o.risk_reason || '' };
+    base[String(i)] = { emoji: o.emoji || EMOJI[o.action] || '', action: ACT[o.action] || o.action, days: p.days != null ? p.days : maxDays, store: STORES[p.store] || '', kind: KINDS[p.kind] || '', question: p.question || '', reply: o.reply || '', risk: o.risk, riskReason: o.risk_reason || '', conf: o.confidence };
   });
   // The user wrote: the chat for a handoff, else the ticket body.
   var convo = t.conversation && t.conversation.length ? t.conversation : [{ role: 'user', content: t.body, ts: t.created_at }];
@@ -629,12 +638,15 @@ class Component extends DCLogic {
       var v = merged(base, id, edits);
       var isGrant = v.action === 'grant';
       var risk = riskOf(base[id], v);
+      var conf = base[id] && typeof base[id].conf === 'number' ? base[id].conf : null;
+      var pct = conf == null ? 0 : Math.round(conf * 100);
       return {
         cls: selected === id ? 'ans sel' : 'ans',
         selected: selected === id,
         emoji: v.emoji,
         title: titleOf(v),
         isPick: i === 0,
+        hasConf: conf != null, confPct: pct, confDash: pct + ' 100', confColor: pct >= 75 ? '#6247f5' : pct >= 50 ? '#8b7cf6' : '#b4abf3',
         edited: isEdited(base, id, edits),
         hasRisk: risk.has,
         risk: risk.text,
@@ -663,7 +675,7 @@ class Component extends DCLogic {
       cls: selected === 'own' ? 'ans sel' : 'ans',
       selected: selected === 'own',
       emoji: '🧠', title: 'Write your own',
-      isPick: false, edited: false, hasRisk: false, risk: '', riskCls: '',
+      isPick: false, hasConf: false, edited: false, hasRisk: false, risk: '', riskCls: '',
       showText: false, reply: '', editing: false,
       showEditBtn: false,
       showScratchBtn: selected !== 'own',

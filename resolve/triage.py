@@ -147,6 +147,7 @@ Option actions:
 Rules:
 - Give 3 options that are equally strong: three genuinely different, defensible ways to answer this user, each with a different action, each one a person could send as is. No filler option to make a list. Put the one you would pick first. Each has the action, its params (null for fields that do not apply), a ready reply, a risk (low, medium, high) and one line why.
 - Each option has one emoji, sincere and simple, that says what the answer means for the user: 👍 we give them something (days, a fix), ❌ we say no or end something (cancel, refuse), 🙏 we apologise and explain, ❓ we ask them something, 🧾 we explain a charge, 🔁 restore steps, 💸 money goes back through the store. One emoji, no text.
+- Each option has its own confidence (0 to 1): how sure you are that this answer is right for this user, judged on its own; the ticket's confidence is about the diagnosis.
 - When the best option gives days or money (grant_access, refund_to_human), at least one other option must be safe: no grant and no money (reply_only, store_instructions, ask_user).
 - Never propose grant_access for a user with lifetime access (compensation.available is false) or when no customer was identified; say in root_cause that the user has lifetime access.
 - Look at the history: if we already granted days recently, or the user complained again after a grant, say so and do not offer another grant as the best option.

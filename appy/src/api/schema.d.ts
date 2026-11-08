@@ -1057,6 +1057,11 @@ export interface components {
              * @default
              */
             emoji: string;
+            /**
+             * Confidence
+             * @description How sure you are that this answer is right for this user, 0 to 1, judged for this option on its own.
+             */
+            confidence?: number | null;
         };
         /** TriageStats */
         TriageStats: {
