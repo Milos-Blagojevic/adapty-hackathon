@@ -76,6 +76,7 @@ input::placeholder,textarea::placeholder{color:#8b8b94}
 <button type="submit" class="primary">Send to Incoming</button>
 <a href="Main.dc.html" style="font-size: 14px; font-weight: 500; color: #71717a">Cancel</a>
 </div>
+<sc-if value="{{ hasError }}" hint-placeholder-val="{{ false }}"><p role="alert" style="margin: 0; font-size: 14px; font-weight: 500; color: #d63a3f">{{ error }}</p></sc-if>
 </form>
 </sc-if>
 
@@ -108,7 +109,26 @@ class Component extends DCLogic {
       formCls: src === 'form' ? 'on' : '', emailCls: src === 'email' ? 'on' : '',
       toForm: function () { self.setState({ src: 'form' }); },
       toEmail: function () { self.setState({ src: 'email' }); },
-      submit: function (e) { e.preventDefault(); if (!msg.trim()) { self.setState({ tried: true }); return; } self.setState({ sent: true }); },
+      hasError: !!s.error, error: s.error || '',
+      submit: function (e) {
+        e.preventDefault();
+        if (!msg.trim()) { self.setState({ tried: true }); return; }
+        if (API.mock) { self.setState({ sent: true }); return; }
+        if (self.sending) return;
+        // POST /feedback; then the new ticket's page. "From" is an email when it has an @, else a user id.
+        var from = (s.from || '').trim();
+        var body = { text: msg.trim(), source: src };
+        if (from.indexOf('@') >= 0) body.email = from; else if (from) body.customer_user_id = from;
+        if ((s.subject || '').trim()) body.subject = s.subject.trim();
+        self.sending = true;
+        self.setState({ error: null });
+        API.post('/feedback', body).then(function (r) {
+          location.href = 'Ticket.dc.html?id=' + encodeURIComponent(r.ticket_id);
+        }, function (err) {
+          self.sending = false;
+          self.setState({ error: 'Not sent: ' + err.message + '. Try again.' });
+        });
+      },
       again: function () { self.setState({ sent: false, tried: false, msg: '', from: '', subject: '' }); }
     };
   }

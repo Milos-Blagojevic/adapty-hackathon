@@ -62,6 +62,9 @@ mark{background:#ece7ff;color:#3b1fc2;border-radius:4px;padding:0 2px}
 .linkbtn{background:none;border:0;padding:0;color:#5b3cf0;font-size:14px;font-weight:500;cursor:pointer}
 .linkbtn:hover{color:#4527d6}
 .backdrop{position:fixed;inset:0;border:0;padding:0;background:transparent;cursor:default;z-index:20}
+.sk{height:10px;border-radius:5px;background:linear-gradient(90deg,#f0f0f2 0%,#f7f7f8 40%,#f0f0f2 80%);background-size:200% 100%;animation:sh 1.4s linear infinite}
+@keyframes sh{from{background-position:100% 0}to{background-position:-100% 0}}
+.skrow{display:grid;grid-template-columns:10px 160px minmax(0,1fr) 40px;gap:18px;align-items:center;height:50px;padding:0 24px;border-top:1px solid #f1f1f3}
 </style>
 </helmet>
 <div style="min-height: 100vh; background: #f6f6f4; color: #18181b; font-family: Inter, system-ui, -apple-system, sans-serif; font-size: 14.5px; line-height: 1.5; -webkit-font-smoothing: antialiased">
@@ -131,12 +134,24 @@ mark{background:#ece7ff;color:#3b1fc2;border-radius:4px;padding:0 2px}
 </div>
 
 <section aria-label="Tickets" style="background: #fff; border: 1px solid #e9e9ec; border-radius: 16px; box-shadow: 0 1px 2px rgba(24,24,27,.04); overflow: hidden">
+<sc-if value="{{ hasError }}" hint-placeholder-val="{{ false }}">
+<p role="alert" style="margin: 0; padding: 18px 24px; font-size: 14px; font-weight: 500; color: #d63a3f">{{ error }}</p>
+</sc-if>
+<sc-if value="{{ loading }}" hint-placeholder-val="{{ false }}">
+<div aria-busy="true" style="padding-top: 8px">
+<div style="padding: 10px 24px"><div class="sk" style="width: 120px"></div></div>
+<div class="skrow"><span style="width: 8px; height: 8px; border-radius: 50%; background: #ececef"></span><div class="sk" style="width: 130px"></div><div class="sk" style="width: 78%"></div><div class="sk"></div></div>
+<div class="skrow"><span style="width: 8px; height: 8px; border-radius: 50%; background: #ececef"></span><div class="sk" style="width: 110px"></div><div class="sk" style="width: 64%"></div><div class="sk"></div></div>
+<div class="skrow"><span style="width: 8px; height: 8px; border-radius: 50%; background: #ececef"></span><div class="sk" style="width: 140px"></div><div class="sk" style="width: 86%"></div><div class="sk"></div></div>
+<div class="skrow"><span style="width: 8px; height: 8px; border-radius: 50%; background: #ececef"></span><div class="sk" style="width: 100px"></div><div class="sk" style="width: 58%"></div><div class="sk"></div></div>
+</div>
+</sc-if>
 <sc-for list="{{ groups }}" as="g" hint-placeholder-count="2">
 <div style="display: flex; flex-direction: column">
 <p class="kicker" style="padding: 18px 24px 10px">{{ g.label }}</p>
 <div role="list" style="display: flex; flex-direction: column">
 <sc-for list="{{ g.rows }}" as="t" hint-placeholder-count="4">
-<a href="Ticket.dc.html" role="listitem" class="{{ t.cls }}">
+<a href="{{ t.href }}" role="listitem" class="{{ t.cls }}">
 <span class="{{ t.dotCls }}"><span class="sr">{{ t.stateWord }}</span></span>
 <span class="cell">{{ t.user }}</span>
 <span class="cell"><span class="subj"><sc-for list="{{ t.subj }}" as="p"><sc-if value="{{ p.hit }}"><mark>{{ p.t }}</mark></sc-if><sc-if value="{{ p.miss }}"><span>{{ p.t }}</span></sc-if></sc-for></span><span class="cont">  ·  <sc-for list="{{ t.cont }}" as="p"><sc-if value="{{ p.hit }}"><mark>{{ p.t }}</mark></sc-if><sc-if value="{{ p.miss }}"><span>{{ p.t }}</span></sc-if></sc-for></span></span>
@@ -201,22 +216,126 @@ function mark(s, q, around) {
   return out;
 }
 
+// --- Live mode: GET /api/tickets?q= mapped to the TICKETS shape above ---------------------------------
+var LIVE_STATUS = { new: 'triaging', proposed: 'ready', done: 'closed', dismissed: 'dismissed' };
+var LIVE_SOURCE = { chat_handoff: 'chat', email: 'email', form: 'form' };
+var STORE = { app_store: 'App Store', play_store: 'Google Play' };
+var KIND = { restore: 'Restore', cancel: 'Cancel', refund_request: 'Refund' };
+
+// The agent's first option as the row's grey continuation ('Grant 7 days of access', 'Refund steps · App Store').
+function optionTitle(o) {
+  var p = (o && o.params) || {};
+  var store = p.store ? ' · ' + (STORE[p.store] || p.store) : '';
+  switch (o && o.action) {
+    case 'grant_access': return p.days ? 'Grant ' + p.days + ' days of access' : 'Grant access';
+    case 'store_instructions': return (KIND[p.kind] || 'Store') + ' steps' + store;
+    case 'refund_to_human': return 'Pass the refund to a person' + store;
+    case 'ask_user': return 'Ask the user';
+    case 'reply_only': return 'Reply, no action';
+    case 'no_reply': return 'Close without a reply';
+  }
+  return '';
+}
+
+// What was done on a closed ticket, from its decision and the action that ran.
+function outcomeOf(full) {
+  var d = full.decision || {}, a = full.action || {};
+  if (d.rejected) return d.reply ? 'Sent your own reply' : 'Closed without a reply';
+  var opts = (full.triage && full.triage.options) || [];
+  var f = a.final || (d.option != null ? opts[d.option] : null);
+  if (!f) return full.status === 'dismissed' ? 'Closed without a reply' : 'Closed';
+  var p = f.params || {};
+  switch (f.action) {
+    case 'grant_access':
+      var days = a.days || p.days;
+      return (days ? 'Granted ' + days + ' days' : 'Granted access') + (a.expires_at ? ', until ' + API.day(a.expires_at) : '');
+    case 'store_instructions': return 'Sent ' + (KIND[p.kind] || 'store').toLowerCase() + ' steps' + (p.store ? ' · ' + (STORE[p.store] || p.store) : '');
+    case 'refund_to_human': return 'Passed the refund to a person';
+    case 'ask_user': return 'Asked the user';
+    case 'reply_only': return 'Replied, no action';
+    case 'no_reply': return 'Closed without a reply';
+  }
+  return 'Closed';
+}
+
+// Summary (+ the full ticket when fetched) → the design's ticket shape.
+function liveTicket(t, full) {
+  var status = LIVE_STATUS[t.status];
+  var action = 'Agent is looking into it';
+  if (status === 'ready') action = optionTitle(full && full.triage ? full.triage.options[0] : { action: t.top_action });
+  if (status === 'closed' || status === 'dismissed') action = full ? outcomeOf(full) : (status === 'closed' ? 'Closed' : 'Closed without a reply');
+  return {
+    id: t.id, status: status, source: LIVE_SOURCE[t.source],
+    user: t.customer_user_id || t.email || 'unknown user',
+    subject: t.subject, action: action, age: API.ago(t.created_at),
+    snippet: t.snippet || '', category: t.category || ''
+  };
+}
+
+// The API's search snippet with the match marked; a match in the subject or the user is already on the row.
+function snippetMarks(t, q) {
+  var core = t.snippet.replace(/^…/, '').replace(/…$/, '');
+  if (!core || t.subject.indexOf(core) >= 0 || core === t.user || core === t.category) return plain(t.action);
+  return mark(t.snippet, q, true) || mark(t.snippet, q.split(/\s+/)[0], true) || plain(t.snippet);
+}
+
 class Component extends DCLogic {
+  componentDidMount() {
+    if (API.mock) return;
+    var self = this;
+    this.seq = 0;
+    this.full = {};
+    this.load();
+    this.timer = setInterval(function () { if (!self.busy) self.load(); }, 5000);
+  }
+  // The list for the current search; the full ticket only for rows that need more than the summary
+  // (the first option's days/store, what was done on a closed one), refetched when updated_at changes.
+  load() {
+    var self = this;
+    var q = (this.state.q || '').trim();
+    var seq = ++this.seq;
+    this.busy = true;
+    API.get('/api/tickets' + (q ? '?q=' + encodeURIComponent(q) : '')).then(function (list) {
+      var need = list.filter(function (t) {
+        var c = self.full[t.id];
+        return t.status !== 'new' && !(c && c.key === t.status + t.updated_at);
+      });
+      return Promise.all(need.map(function (t) {
+        return API.get('/api/tickets/' + encodeURIComponent(t.id)).then(function (full) {
+          self.full[t.id] = { key: t.status + t.updated_at, full: full };
+        }, function () { return null; });
+      })).then(function () { return list; });
+    }).then(function (list) {
+      if (seq !== self.seq) return;
+      self.busy = false;
+      var rows = list.map(function (t) {
+        var c = self.full[t.id];
+        return liveTicket(t, c && c.key === t.status + t.updated_at ? c.full : null);
+      });
+      self.setState({ rows: rows, rowsQ: q, loaded: true, error: null });
+    }).catch(function (e) {
+      if (seq !== self.seq) return;
+      self.busy = false;
+      self.setState({ error: 'Tickets did not load: ' + e.message + '. Trying again.' });
+    });
+  }
   renderVals() {
     var s = this.state || {};
     var self = this;
+    var live = !API.mock;
     var tab = s.tab || 'open';
     var q = (s.q || '').trim();
     var isOpen = function (t) { return t.status === 'ready' || t.status === 'triaging'; };
     var matches = function (t) {
-      if (!q) return true;
+      if (!q || live) return true;
       return (t.subject + ' ' + t.user + ' ' + t.text + ' ' + t.action).toLowerCase().indexOf(q.toLowerCase()) >= 0;
     };
     var shape = function (t) {
-      var subj = (q && mark(t.subject, q, false)) || plain(t.subject);
+      var subj = (q && (mark(t.subject, q, false) || (live && mark(t.subject, q.split(/\s+/)[0], false)))) || plain(t.subject);
       var cont = plain(t.action);
-      if (q) cont = mark(t.text, q, true) || mark(t.action, q, false) || plain(t.action);
+      if (q) cont = live ? snippetMarks(t, q) : mark(t.text, q, true) || mark(t.action, q, false) || plain(t.action);
       return {
+        href: live ? 'Ticket.dc.html?id=' + encodeURIComponent(t.id) : 'Ticket.dc.html',
         cls: t.status === 'ready' ? 'row bold' : 'row',
         dotCls: DOT[t.status],
         stateWord: WORD[t.status],
@@ -225,8 +344,11 @@ class Component extends DCLogic {
         srcWord: SRC[t.source]
       };
     };
-    var openList = TICKETS.filter(function (t) { return isOpen(t) && matches(t); });
-    var closedList = TICKETS.filter(function (t) { return !isOpen(t) && matches(t); });
+    var all = live ? s.rows || [] : TICKETS;
+    // Live: the empty and no-match messages wait until the list for this very search has arrived.
+    var settled = !live || (!!s.loaded && s.rowsQ === q);
+    var openList = all.filter(function (t) { return isOpen(t) && matches(t); });
+    var closedList = all.filter(function (t) { return !isOpen(t) && matches(t); });
     var groups = [];
     if (tab === 'open') {
       var waiting = openList.filter(function (t) { return t.status === 'ready'; }).map(shape);
@@ -242,19 +364,22 @@ class Component extends DCLogic {
       q: s.q || '',
       hasQ: !!q,
       groups: groups,
-      openCount: openList.length,
-      closedCount: closedList.length,
+      openCount: live && !s.loaded ? '' : openList.length,
+      closedCount: live && !s.loaded ? '' : closedList.length,
       openSel: tab === 'open',
       closedSel: tab === 'closed',
       openCls: tab === 'open' ? 'tab on' : 'tab',
       closedCls: tab === 'closed' ? 'tab on' : 'tab',
-      emptyOpen: !q && tab === 'open' && shown === 0,
-      noResults: !!q && shown === 0,
+      emptyOpen: settled && !q && tab === 'open' && shown === 0,
+      noResults: settled && !!q && shown === 0,
+      loading: live && !s.loaded && !s.error,
+      hasError: !!s.error,
+      error: s.error || '',
       menu: menu,
       menuCls: menu ? 'nl open' : 'nl',
-      onQ: function (e) { self.setState({ q: e.target.value }); },
-      onKey: function (e) { if (e.key === 'Escape') self.setState({ q: '' }); },
-      clearQ: function () { self.setState({ q: '' }); },
+      onQ: function (e) { self.setState({ q: e.target.value }); if (live) self.load(); },
+      onKey: function (e) { if (e.key === 'Escape') { self.setState({ q: '' }); if (live) self.load(); } },
+      clearQ: function () { self.setState({ q: '' }); if (live) self.load(); },
       noSubmit: function (e) { e.preventDefault(); },
       toggleMenu: function () { self.setState({ menu: !menu }); },
       closeMenu: function () { self.setState({ menu: false }); },

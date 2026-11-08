@@ -130,7 +130,7 @@ input::placeholder{color:#8b8b94}
 
 <main style="max-width: 1200px; margin: 0 auto; padding: 16px 24px 48px; display: flex; flex-direction: column; gap: 16px">
 <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px 22px; font-size: 13.5px; color: #71717a">
-<span>as <span style="font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px; color: #3f3f46">lumen_443814_02380</span></span>
+<span>as <span style="font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px; color: #3f3f46">{{ user }}</span></span>
 <span style="margin-left: auto; display: inline-flex; align-items: center; gap: 10px">
 <span id="dbg-l">Debug</span>
 <button type="button" role="switch" aria-checked="{{ debug }}" aria-labelledby="dbg-l" class="{{ swCls }}" onClick="{{ toggleDebug }}"></button>
@@ -176,7 +176,7 @@ input::placeholder{color:#8b8b94}
 <p class="kicker">Session</p>
 <dl style="margin: 0; display: grid; grid-template-columns: 70px minmax(0,1fr); gap: 6px 12px; font-size: 13.5px">
 <dt style="color: #71717a">Id</dt><dd style="margin: 0; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px">{{ session }}</dd>
-<dt style="color: #71717a">Outcome</dt><dd style="margin: 0"><sc-if value="{{ handedOff }}"><a href="Ticket.dc.html" style="font-weight: 500">Handed to a person · {{ ticket }} →</a></sc-if><sc-if value="{{ inProgress }}"><span>In progress</span></sc-if></dd>
+<dt style="color: #71717a">Outcome</dt><dd style="margin: 0"><sc-if value="{{ handedOff }}"><a href="{{ ticketHref }}" style="font-weight: 500">Handed to a person · {{ ticket }} →</a></sc-if><sc-if value="{{ inProgress }}"><span>{{ outcomeText }}</span></sc-if></dd>
 <dt style="color: #71717a">Plan</dt><dd style="margin: 0">{{ plan }}</dd>
 </dl>
 </div>
@@ -238,9 +238,145 @@ var MARK = { ok: '✓', no: '✕', go: '→' };
 
 function now() { var d = new Date(); return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2); }
 
+// --- live mode (no ?mock=1): the real API, mapped to the same shapes as the sample data above ---
+var LIVE = !(window.API && API.mock);
+var POLL_MS = 3000;
+var ROLE = { user: 'user', agent: 'assistant', support: 'support' };
+var BADGE = { active: 'Active', expired: 'Expired', lifetime: 'Lifetime', none: 'No access level' };
+
+// args / result in the design's form: { days: 7, access_level: "premium" }; nested values as indented JSON.
+function lit(v) {
+  if (typeof v === 'string') return v;
+  if (v && typeof v === 'object' && !Array.isArray(v)) {
+    var keys = Object.keys(v);
+    var flat = keys.every(function (k) { return v[k] === null || typeof v[k] !== 'object'; });
+    if (!keys.length) return '{}';
+    if (flat) return '{ ' + keys.map(function (k) { return k + ': ' + JSON.stringify(v[k]); }).join(', ') + ' }';
+  }
+  return JSON.stringify(v, null, 2);
+}
+
+// One ChatEvent / ActionLog → one debug line: ✓ ran, ✕ blocked / not run / error, → handoff.
+function toLog(e) {
+  var error = e.result && typeof e.result === 'object' && e.result.error;
+  var kind = !e.allowed || error ? 'no' : e.tool === 'handoff' ? 'go' : 'ok';
+  var line = e.tool;
+  if (e.blocked_reason) line += ' · blocked: ' + e.blocked_reason;
+  else if (error) line += ' · error: ' + error;
+  else if (!e.allowed) line += ' · ' + (typeof e.result === 'string' && e.result ? e.result : 'not run');
+  else if (kind === 'go' && e.result && e.result.ticket_id) line += ' · ticket ' + e.result.ticket_id;
+  var det = [];
+  if (e.args && Object.keys(e.args).length) det.push('args   ' + lit(e.args));
+  if (e.result != null && e.result !== '') det.push('result ' + lit(e.result));
+  else if (e.blocked_reason) det.push('result blocked · ' + e.blocked_reason);
+  return { kind: kind, line: line, detail: det.join('\n') || 'no arguments, no result' };
+}
+
+// The Plan row: what GET /api/users knows about the user (access badge and product).
+function planOf(user, users) {
+  if (!user) return 'No user';
+  if (!users) return '';
+  var u = users.filter(function (x) { return x.customer_user_id === user; })[0];
+  if (!u) return 'Not in the user list';
+  if (u.badge === 'unknown') return 'No profile loaded yet';
+  return BADGE[u.badge] + (u.product ? ' · ' + u.product : '');
+}
+
 class Component extends DCLogic {
-  componentWillUnmount() { if (this.tt) clearTimeout(this.tt); }
+  componentWillUnmount() { if (this.tt) clearTimeout(this.tt); if (this.poll) clearInterval(this.poll); }
+  componentDidMount() {
+    if (!LIVE) return;
+    var self = this;
+    var p = this.props || {};
+    var session = p.session || 'web-' + Date.now().toString(36);
+    this.setState({ session: session, user: p.user || '', loading: true, msgs: [], log: [], handoff: null });
+    this.keepUrl();
+    API.get('/api/config').then(function (c) { self.setState({ appName: c.app_name }); }, function () {});
+    var users = API.get('/api/users').then(function (list) { self.setState({ users: list }); return list; }, function () { self.setState({ users: [] }); return []; });
+    API.get('/api/chat/' + encodeURIComponent(session)).then(function (c) {
+      self.setState({ loading: false });
+      self.apply(c);
+    }, function (err) {
+      if (err.status !== 404) console.error('GET /api/chat failed:', err.message);
+      self.setState({ loading: false });
+      // A new session: the user from ?user, else the first user with active access, else the first one.
+      users.then(function (list) {
+        if (self.state.user || !list.length) return;
+        var pick = list.filter(function (u) { return u.badge === 'active'; })[0] || list[0];
+        self.setState({ user: pick.customer_user_id });
+        self.keepUrl();
+      });
+    });
+  }
+  keepUrl() {
+    var s = this.state || {};
+    var q = new URLSearchParams(location.search);
+    q.set('session', s.session);
+    if (s.user) q.set('user', s.user);
+    history.replaceState(null, '', location.pathname + '?' + q.toString() + location.hash);
+  }
+  // A ChatSession from the server replaces what is on screen; after a handoff, poll for support replies.
+  apply(c) {
+    var self = this;
+    var before = (this.state.msgs || []).length;
+    var handoff = c.outcome === 'handed_off' ? c.ticket_id : null;
+    this.setState({
+      user: c.customer_user_id,
+      outcome: c.outcome,
+      handoff: handoff,
+      msgs: c.messages.map(function (m) { return { role: ROLE[m.role] || 'assistant', text: m.content, ts: API.hm(m.ts) }; }),
+      log: c.events.map(toLog)
+    });
+    this.keepUrl();
+    if (c.messages.length !== before) this.toBottom();
+    if (handoff && !this.poll) {
+      this.poll = setInterval(function () {
+        if (self.state.sending) return;
+        API.get('/api/chat/' + encodeURIComponent(self.state.session)).then(function (n) {
+          if (!self.state.sending) self.apply(n);
+        }, function () {});
+      }, POLL_MS);
+    }
+  }
+  toBottom() {
+    requestAnimationFrame(function () {
+      var el = document.querySelector('[role="log"]');
+      if (el) el.scrollTop = el.scrollHeight;
+    });
+  }
+  sayLive(text) {
+    var self = this;
+    var s = this.state || {};
+    if (s.sending || s.loading || !s.user) return;
+    var kept = s.msgs || [];
+    this.setState({ msgs: kept.concat([{ role: 'user', text: text, ts: now() }]), draft: '', typing: true, sending: true, sendErr: null });
+    this.toBottom();
+    var session = s.session;
+    API.post('/chat', { customer_user_id: s.user, session_id: session, message: text }).then(function (r) {
+      return API.get('/api/chat/' + encodeURIComponent(session)).then(function (c) {
+        self.setState({ typing: false, sending: false });
+        self.apply(c);
+      }, function () {
+        var st = self.state;
+        self.setState({
+          typing: false, sending: false,
+          msgs: st.msgs.concat([{ role: 'assistant', text: r.reply, ts: now() }]),
+          log: (st.log || []).concat(r.actions.map(toLog)),
+          handoff: r.handed_off ? r.ticket_id : st.handoff
+        });
+        self.toBottom();
+      });
+    }, function (err) {
+      // Not sent: the text goes back into the composer, the reason into the debug log (kept across polls).
+      var st = self.state;
+      self.setState({
+        typing: false, sending: false, msgs: kept, draft: st.draft || text,
+        sendErr: { kind: 'no', line: 'message not sent · ' + err.message, detail: 'POST /chat' + (err.status ? ' → ' + err.status : '') + '\n' + err.message }
+      });
+    });
+  }
   say(text) {
+    if (LIVE) return this.sayLive(text);
     var self = this;
     var s = this.state || {};
     var msgs = (s.msgs || START).concat([{ role: 'user', text: text, ts: now() }]);
@@ -261,12 +397,14 @@ class Component extends DCLogic {
     var self = this;
     var s = this.state || {};
     var p = this.props || {};
-    var msgs = s.msgs || START;
-    var log = s.log || START_LOG;
+    var msgs = s.msgs || (LIVE ? [] : START);
+    var log = s.log || (LIVE ? [] : START_LOG);
+    if (LIVE && s.sendErr) log = log.concat([s.sendErr]);
     var debug = s.debug !== undefined ? s.debug : !!p.debugOn;
-    var user = s.user || 'lumen_443814_02380';
+    var user = LIVE ? s.user || '' : s.user || 'lumen_443814_02380';
     var openIdx = s.openLog || {};
-    var handoff = s.handoff !== undefined ? s.handoff : 'f-0013';
+    var handoff = LIVE ? s.handoff || null : s.handoff !== undefined ? s.handoff : 'f-0013';
+    var supportLabel = LIVE ? (s.appName ? s.appName + ' support' : 'Support') : 'Lumen support';
     var shaped = msgs.map(function (m, i) {
       var prev = msgs[i - 1], next = msgs[i + 1];
       var first = !prev || prev.role !== m.role;
@@ -274,7 +412,7 @@ class Component extends DCLogic {
       var left = m.role !== 'user';
       return {
         text: m.text, ts: m.ts,
-        label: first && m.role === 'support' ? 'Lumen support' : '',
+        label: first && m.role === 'support' ? supportLabel : '',
         rowCls: 'msg ' + (left ? '' : 'u ') + (i === 0 ? '' : (first ? 'gap' : 'tight')),
         left: left,
         avCls: last ? 'av' : 'av hide',
@@ -288,23 +426,25 @@ class Component extends DCLogic {
     var menu = !!s.menu;
     return {
       msgs: shaped,
-      empty: msgs.length === 0 && !s.typing,
+      empty: msgs.length === 0 && !s.typing && !s.loading,
       typing: !!s.typing,
       draft: draft,
-      noDraft: !draft.trim(),
+      noDraft: !draft.trim() || (LIVE && (!user || !!s.sending || !!s.loading)),
       onDraft: function (e) { self.setState({ draft: e.target.value }); },
       submit: function (e) { e.preventDefault(); if (draft.trim()) self.say(draft.trim()); },
-      user: user,
+      user: LIVE && !user ? (s.users ? 'no user' : '') : user,
       onUser: function (e) { self.setState({ user: e.target.value }); },
       newSession: function () { self.setState({ msgs: [], log: [], handoff: null, session: 's-8c41d2', openLog: {} }); },
       debug: debug,
       swCls: debug ? 'sw on' : 'sw',
       toggleDebug: function () { self.setState({ debug: !debug }); },
-      session: s.session || 's-7f3a21',
+      session: LIVE ? s.session || '' : s.session || 's-7f3a21',
       handedOff: !!handoff,
       inProgress: !handoff,
       ticket: handoff || '',
-      plan: PLANS[user],
+      ticketHref: LIVE ? 'Ticket.dc.html?id=' + encodeURIComponent(handoff || '') : 'Ticket.dc.html',
+      outcomeText: LIVE && s.outcome === 'resolved' ? 'Resolved by the agent' : 'In progress',
+      plan: LIVE ? planOf(user, s.users) : PLANS[user],
       noLog: log.length === 0,
       log: log.map(function (l, i) {
         var open = !!openIdx[i];

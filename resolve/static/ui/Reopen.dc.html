@@ -47,10 +47,10 @@ textarea::placeholder{color:#8b8b94}
 </header>
 
 <main style="max-width: 680px; margin: 0 auto; padding: 20px 24px 80px; display: flex; flex-direction: column; gap: 18px">
-<a href="Ticket.dc.html" style="display: inline-flex; align-items: center; gap: 6px; align-self: flex-start; font-size: 13.5px; font-weight: 500; color: #52525b"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5M11 6l-6 6 6 6"></path></svg>Ticket</a>
+<a href="{{ ticketHref }}" style="display: inline-flex; align-items: center; gap: 6px; align-self: flex-start; font-size: 13.5px; font-weight: 500; color: #52525b"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5M11 6l-6 6 6 6"></path></svg>Ticket</a>
 <div style="display: flex; flex-direction: column; gap: 6px">
-<h1 style="margin: 0; font-size: 26px; font-weight: 600; letter-spacing: -0.025em; line-height: 1.2; text-wrap: balance">Wants another free week after compensation</h1>
-<p style="margin: 0; display: inline-flex; align-items: center; gap: 8px; color: #52525b; font-size: 14px"><span aria-hidden="true" style="width: 8px; height: 8px; border-radius: 50%; background: #16a34a"></span>Closed Nov 7 · Granted 7 days</p>
+<h1 style="margin: 0; font-size: 26px; font-weight: 600; letter-spacing: -0.025em; line-height: 1.2; text-wrap: balance">{{ subject }}</h1>
+<p style="margin: 0; display: inline-flex; align-items: center; gap: 8px; color: #52525b; font-size: 14px"><span aria-hidden="true" style="width: 8px; height: 8px; border-radius: 50%; background: {{ dotColor }}"></span>{{ closedLine }}</p>
 </div>
 
 <sc-if value="{{ editing }}" hint-placeholder-val="{{ true }}">
@@ -61,10 +61,12 @@ textarea::placeholder{color:#8b8b94}
 </label>
 <div style="display: flex; align-items: center; gap: 16px">
 <button type="submit" class="dark">Reopen ticket</button>
-<a href="Ticket.dc.html" style="font-size: 14px; font-weight: 500; color: #71717a">Cancel</a>
+<a href="{{ ticketHref }}" style="font-size: 14px; font-weight: 500; color: #71717a">Cancel</a>
 </div>
 </form>
 </sc-if>
+
+<sc-if value="{{ hasError }}" hint-placeholder-val="{{ false }}"><p role="alert" style="margin: 0; font-size: 14px; font-weight: 500; color: #d63a3f">{{ error }}</p></sc-if>
 
 <sc-if value="{{ done }}" hint-placeholder-val="{{ false }}">
 <section class="card done" style="padding: 24px; display: flex; flex-direction: column; gap: 8px">
@@ -77,15 +79,77 @@ textarea::placeholder{color:#8b8b94}
 </div>
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":820}}'>
+var STORE = { app_store: 'App Store', play_store: 'Google Play' };
+var KIND = { restore: 'Restore', cancel: 'Cancel', refund_request: 'Refund' };
+
+// What was done on the closed ticket ('Granted 7 days'), from its decision and the action that ran.
+function outcomeOf(full) {
+  var d = full.decision || {}, a = full.action || {};
+  if (d.rejected) return d.reply ? 'Sent your own reply' : 'Closed without a reply';
+  var opts = (full.triage && full.triage.options) || [];
+  var f = a.final || (d.option != null ? opts[d.option] : null);
+  if (!f) return full.status === 'dismissed' ? 'Closed without a reply' : '';
+  var p = f.params || {};
+  switch (f.action) {
+    case 'grant_access': var days = a.days || p.days; return days ? 'Granted ' + days + ' days' : 'Granted access';
+    case 'store_instructions': return 'Sent ' + (KIND[p.kind] || 'store').toLowerCase() + ' steps' + (p.store ? ' · ' + (STORE[p.store] || p.store) : '');
+    case 'refund_to_human': return 'Passed the refund to a person';
+    case 'ask_user': return 'Asked the user';
+    case 'reply_only': return 'Replied, no action';
+    case 'no_reply': return 'Closed without a reply';
+  }
+  return '';
+}
+
 class Component extends DCLogic {
+  // Live: GET /api/tickets/{id} for the subject and what was done; only a done/dismissed ticket gets the form.
+  componentDidMount() {
+    if (API.mock) return;
+    var self = this;
+    var id = this.props.id;
+    if (!id) { this.setState({ error: 'No ticket in the link: open Reopen from a closed ticket.' }); return; }
+    API.get('/api/tickets/' + encodeURIComponent(id)).then(function (t) {
+      var closed = t.status === 'done' || t.status === 'dismissed';
+      self.setState({ ticket: t, error: closed ? null : 'This ticket is still open: there is nothing to reopen.' });
+    }, function (err) {
+      self.setState({ error: err.status === 404 ? 'No ticket ' + id + '.' : 'The ticket did not load: ' + err.message + '.' });
+    });
+  }
   renderVals() {
     var self = this;
     var s = this.state || {};
+    var live = !API.mock;
+    var id = this.props.id || '';
+    var t = s.ticket;
+    var closed = !!t && (t.status === 'done' || t.status === 'dismissed');
+    var line = '';
+    if (t && closed) {
+      var at = API.day((t.action && t.action.approved_at) || t.updated_at || t.created_at);
+      var what = outcomeOf(t);
+      line = (t.status === 'dismissed' ? 'Dismissed ' : 'Closed ') + at + (what ? ' · ' + what : '');
+    }
     return {
-      editing: !s.done, done: !!s.done,
+      subject: live ? (t ? t.subject : '') : 'Wants another free week after compensation',
+      closedLine: live ? line : 'Closed Nov 7 · Granted 7 days',
+      dotColor: !live ? '#16a34a' : !closed ? 'transparent' : t.status === 'dismissed' ? '#c4c4cc' : '#16a34a',
+      ticketHref: live && id ? 'Ticket.dc.html?id=' + encodeURIComponent(id) : 'Ticket.dc.html',
+      editing: live ? closed && !s.done : !s.done, done: !!s.done,
+      hasError: !!s.error, error: s.error || '',
       note: s.note || '',
       onNote: function (e) { self.setState({ note: e.target.value }); },
-      submit: function (e) { e.preventDefault(); self.setState({ done: true }); }
+      submit: function (e) {
+        e.preventDefault();
+        if (!live) { self.setState({ done: true }); return; }
+        if (self.sending) return;
+        self.sending = true;
+        self.setState({ error: null });
+        API.post('/api/tickets/' + encodeURIComponent(id) + '/reopen', { note: (s.note || '').trim() }).then(function () {
+          location.href = 'Ticket.dc.html?id=' + encodeURIComponent(id);
+        }, function (err) {
+          self.sending = false;
+          self.setState({ error: 'Not reopened: ' + err.message + '.' });
+        });
+      }
     };
   }
 }

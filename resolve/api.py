@@ -6,7 +6,7 @@ import json
 from datetime import datetime, timezone
 from typing import Literal
 
-from fastapi import APIRouter, BackgroundTasks, FastAPI, HTTPException
+from fastapi import APIRouter, BackgroundTasks, FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 
 from resolve import analytics, config, db, frontline, llm, policy, triage, workflow
@@ -219,6 +219,8 @@ def build_router(services) -> APIRouter:
             workflow.accept(services, ticket_id, body)
         except workflow.NotFound:
             raise HTTPException(404, f"no ticket {ticket_id}") from None
+        except ValueError as exc:  # raised before any write: bad option index, days, or no customer for a grant
+            raise HTTPException(422, str(exc)) from None
         return ticket_full(conn, ticket_or_404(ticket_id))
 
     @router.post("/api/tickets/{ticket_id}/reject", response_model=Ticket, tags=["inbox"], responses={**E404, **E409})
@@ -265,8 +267,11 @@ def build_router(services) -> APIRouter:
         }
 
     @router.get("/api/analytics", response_model=Analytics, tags=["analyze"])
-    def get_analytics():
-        return analytics.compute(conn)
+    def get_analytics(
+        range_: Literal["today", "7d", "30d"] = Query("today", alias="range", description="period: today (hourly) / 7d / 30d (daily)"),
+        tz: int = Query(0, ge=-840, le=840, description="the viewer's offset from UTC in minutes (JS: -getTimezoneOffset()); sets local midnight and hours"),
+    ):
+        return analytics.compute(conn, range_, tz)
 
     @router.get("/api/users", response_model=list[UserItem], tags=["mobile"], summary="Seeded demo users for a user picker")
     def users():

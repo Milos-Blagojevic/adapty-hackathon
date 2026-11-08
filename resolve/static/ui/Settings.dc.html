@@ -112,18 +112,20 @@ button,input,select,textarea{font-family:Inter,system-ui,-apple-system,sans-seri
 <div style="display: flex; flex-direction: column; gap: 4px">
 <h1 style="margin: 0; font-size: 28px; font-weight: 600; letter-spacing: -0.03em; line-height: 1.1">Agent settings</h1>
 <p style="margin: 0; color: #52525b; font-size: 15px">What the in-app agent may do on its own.</p>
+<sc-if value="{{ failText }}"><p class="err">{{ failText }}</p></sc-if>
 </div>
 
 <section class="card" aria-label="Settings" style="overflow: hidden; padding-bottom: 6px">
 
 <p class="kicker grp">AI model</p>
 <div class="set">
-<label for="prov" class="nm"><span>Provider</span><span class="hint">Running now: openai · deepseek-flash</span></label>
+<label for="prov" class="nm"><span>Provider</span><span class="hint">Running now: {{ running }}</span></label>
 <select id="prov" class="ctl" value="{{ v.provider }}" onChange="{{ on.provider }}">
 <option value="env">Default from .env</option>
-<option value="openai">OpenAI-compatible</option>
-<option value="anthropic" disabled>Anthropic · no key</option>
+<option value="openai" disabled="{{ prov.openaiOff }}">{{ prov.openai }}</option>
+<option value="anthropic" disabled="{{ prov.anthropicOff }}">{{ prov.anthropic }}</option>
 </select>
+<sc-if value="{{ provErr }}"><p class="err">{{ provErr }}</p></sc-if>
 </div>
 
 <p class="kicker grp" style="padding-top: 22px">The app</p>
@@ -138,6 +140,7 @@ button,input,select,textarea{font-family:Inter,system-ui,-apple-system,sans-seri
 <option>Friendly</option>
 <option>Neutral</option>
 <option>Formal</option>
+<sc-if value="{{ toneCustom }}"><option value="{{ toneCustom }}">{{ toneCustomText }}</option></sc-if>
 </select>
 </div>
 <div class="set">
@@ -223,18 +226,101 @@ var TEXT = ['provider', 'appName', 'tone', 'maxMessages', 'level', 'maxDays', 'p
 var BOOL = ['allowGrants', 'payingOnly', 'hRefund', 'hChargeback', 'hThreat', 'hHuman', 'hMismatch', 'hRepeat'];
 function inRange(x, a, b) { var n = Number(x); return String(x).trim() !== '' && n >= a && n <= b && Math.floor(n) === n; }
 
+// --- live mode (no ?mock=1): GET/PUT /api/config (AgentConfig) and GET /api/llm ---
+var LIVE = !(window.API && API.mock);
+// The Tone select ↔ AgentConfig.tone (free text). Friendly is the server's default tone.
+var TONES = { Friendly: 'warm, short, plain English', Neutral: 'neutral, short, plain English', Formal: 'formal, polite, plain English' };
+// The six switches ↔ AgentConfig.always_handoff, in HANDOFF_RULES order.
+var RULES = [['hRefund', 'refund'], ['hChargeback', 'chargeback'], ['hThreat', 'threat'], ['hHuman', 'asks_for_human'], ['hMismatch', 'profile_mismatch'], ['hRepeat', 'repeat_after_grant']];
+// Shown until GET /api/config answers (no sample values; errors are not shown for it).
+var BLANK = {
+  provider: '', appName: '', tone: '', maxMessages: '',
+  allowGrants: false, level: '', maxDays: '', perUser: '', payingOnly: false,
+  hRefund: false, hChargeback: false, hThreat: false, hHuman: false, hMismatch: false, hRepeat: false
+};
+var NO_ERR = { appName: false, maxMessages: false, maxDays: false, perUser: false };
+
+function toneKey(tone) {
+  var t = String(tone || '').trim().toLowerCase();
+  return Object.keys(TONES).filter(function (k) { return TONES[k].toLowerCase() === t; })[0] || tone;
+}
+function fromApi(c) {
+  var v = {
+    provider: c.llm_provider, appName: c.app_name, tone: toneKey(c.tone), maxMessages: c.max_turns,
+    allowGrants: !!(c.tools || {}).grant_access, level: c.grant.access_level, maxDays: c.grant.max_days,
+    perUser: c.grant.max_grants_per_user_30d, payingOnly: !!c.grant.require_paid
+  };
+  RULES.forEach(function (r) { v[r[0]] = c.always_handoff.indexOf(r[1]) >= 0; });
+  return v;
+}
+// The full AgentConfig for PUT: the loaded one with the form's values on top (other keys kept).
+function toApi(v, raw) {
+  return Object.assign({}, raw, {
+    app_name: String(v.appName).trim(),
+    tone: TONES[v.tone] || v.tone,
+    tools: Object.assign({}, raw.tools, { grant_access: !!v.allowGrants }),
+    grant: Object.assign({}, raw.grant, { access_level: v.level, max_days: Number(v.maxDays), max_grants_per_user_30d: Number(v.perUser), require_paid: !!v.payingOnly }),
+    always_handoff: RULES.filter(function (r) { return v[r[0]]; }).map(function (r) { return r[1]; }),
+    max_turns: Number(v.maxMessages),
+    llm_provider: v.provider
+  });
+}
+function runningNow(info) {
+  if (!info) return '…';
+  if (info.active) return info.active + (info.model ? ' · ' + info.model : '');
+  return info.demo ? 'demo mode, no model' : 'no model';
+}
+
 class Component extends DCLogic {
   componentWillUnmount() { if (this.tt) clearTimeout(this.tt); }
+  componentDidMount() {
+    if (!LIVE) return;
+    var self = this;
+    API.get('/api/config').then(function (c) {
+      var v = fromApi(c);
+      self.setState({ raw: c, saved: v, v: v, loaded: true });
+    }, function (err) {
+      self.setState({ failText: 'Could not load the settings: ' + err.message });
+    });
+    this.loadLlm();
+  }
+  loadLlm() {
+    var self = this;
+    API.get('/api/llm').then(function (info) { self.setState({ llm: info }); }, function () {});
+  }
+  saveLive() {
+    var self = this;
+    var s = this.state;
+    if (s.saving || !s.loaded) return;
+    var sent = s.v, saved = s.saved;
+    var providerChanged = sent.provider !== saved.provider;
+    this.setState({ saving: true, provErr: '', failText: '' });
+    API.put('/api/config', toApi(sent, s.raw)).then(function (c) {
+      var v = fromApi(c);
+      self.setState({ raw: c, saved: v, v: self.state.v === sent ? v : self.state.v, saving: false, toast: true });
+      if (self.tt) clearTimeout(self.tt);
+      self.tt = setTimeout(function () { self.setState({ toast: false }); }, 2400);
+      if (providerChanged) self.loadLlm();
+    }, function (err) {
+      if (providerChanged && err.status === 422 && /^cannot use /.test(err.message)) {
+        // Nothing was saved: the provider goes back, the other changes stay unsaved.
+        self.setState({ saving: false, provErr: err.message, v: Object.assign({}, self.state.v, { provider: saved.provider }) });
+      } else {
+        self.setState({ saving: false, failText: 'Not saved: ' + err.message });
+        window.scrollTo(0, 0);
+      }
+    });
+  }
   renderVals() {
     var self = this;
     var s = this.state || {};
-    var saved = s.saved || SAVED;
+    var saved = s.saved || (LIVE ? BLANK : SAVED);
     var v = s.v || saved;
-    var set = function (k, val) { var n = Object.assign({}, v); n[k] = val; self.setState({ v: n }); };
+    var set = function (k, val) { var n = Object.assign({}, v); n[k] = val; self.setState(LIVE && k === 'provider' ? { v: n, provErr: '' } : { v: n }); };
     var on = {}, tg = {}, sw = {};
     TEXT.forEach(function (k) { on[k] = function (e) { set(k, e.target.value); }; });
     BOOL.forEach(function (k) { tg[k] = function () { set(k, !v[k]); }; sw[k] = v[k] ? 'sw on' : 'sw'; });
-    var err = {
+    var err = LIVE && !s.loaded ? NO_ERR : {
       appName: !String(v.appName).trim(),
       maxMessages: !inRange(v.maxMessages, 5, 50),
       maxDays: !inRange(v.maxDays, 1, 30),
@@ -248,13 +334,25 @@ class Component extends DCLogic {
     };
     var dirty = Object.keys(SAVED).some(function (k) { return String(v[k]) !== String(saved[k]); });
     var menu = !!s.menu;
+    var have = LIVE && s.llm ? s.llm.available : null;
+    // A tone that is none of the three: shown as its own option (the text, shortened).
+    var raw = LIVE && s.saved && !TONES[s.saved.tone] ? s.saved.tone : '';
     return {
       v: v, on: on, tg: tg, sw: sw, err: err, cls: cls,
+      running: LIVE ? runningNow(s.llm) : 'openai · deepseek-flash',
+      prov: LIVE ? {
+        openai: have && !have.openai ? 'OpenAI-compatible · no key' : 'OpenAI-compatible', openaiOff: !!have && !have.openai,
+        anthropic: have && !have.anthropic ? 'Anthropic · no key' : 'Anthropic', anthropicOff: !!have && !have.anthropic
+      } : { openai: 'OpenAI-compatible', openaiOff: false, anthropic: 'Anthropic · no key', anthropicOff: true },
+      provErr: LIVE ? s.provErr || '' : '',
+      failText: LIVE ? s.failText || '' : '',
+      toneCustom: raw,
+      toneCustomText: raw.length > 40 ? raw.slice(0, 39) + '…' : raw,
       grantsOff: !v.allowGrants,
       dirty: dirty,
-      invalid: err.appName || err.maxMessages || err.maxDays || err.perUser,
-      discard: function () { self.setState({ v: saved }); },
-      save: function () {
+      invalid: err.appName || err.maxMessages || err.maxDays || err.perUser || (LIVE && (!s.loaded || !!s.saving)),
+      discard: function () { self.setState(LIVE ? { v: saved, provErr: '', failText: '' } : { v: saved }); },
+      save: LIVE ? function () { self.saveLive(); } : function () {
         self.setState({ saved: v, toast: true });
         if (self.tt) clearTimeout(self.tt);
         self.tt = setTimeout(function () { self.setState({ toast: false }); }, 2400);

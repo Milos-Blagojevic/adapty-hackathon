@@ -172,11 +172,20 @@ def test_accept_wrong_status_is_409(env, http):
     assert http_calls(http, "POST") == []
 
 
-@pytest.mark.parametrize("payload", [{"option": "first"}, {"option": 7}, {"option": 0, "edits": {"days": 0}}, {"option": 0, "edits": {"action": "refund_now"}}, {}])
+@pytest.mark.parametrize("payload", [{"option": "first"}, {"option": 7}, {"option": 2}, {"option": 0, "edits": {"days": 0}}, {"option": 0, "edits": {"action": "refund_now"}}, {}])
 def test_accept_invalid_body_is_422(env, http, payload):
     make_proposed(env.conn, "t-001")
     assert env.client.post("/api/tickets/t-001/accept", json=payload).status_code == 422
     assert get_ticket(env, "t-001")["status"] == "proposed"
+
+
+def test_accept_grant_without_customer_is_422_with_the_reason(env, http):
+    make_proposed(env.conn, "t-001")
+    db.update_ticket(env.conn, "t-001", customer_user_id="")
+    response = env.client.post("/api/tickets/t-001/accept", json={"option": 0, "edits": {}})
+    assert response.status_code == 422 and "identified customer" in response.json()["detail"]
+    assert get_ticket(env, "t-001")["status"] == "proposed"
+    assert http_calls(http, "POST") == []
 
 
 def test_reject_with_reply_is_done_without_is_dismissed(env, http):

@@ -686,6 +686,39 @@
     ],
     "summary": "Get Analytics",
     "operationId": "get_analytics_api_analytics_get",
+    "parameters": [
+     {
+      "name": "range",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "enum": [
+        "today",
+        "7d",
+        "30d"
+       ],
+       "type": "string",
+       "description": "period: today (hourly) / 7d / 30d (daily)",
+       "default": "today",
+       "title": "Range"
+      },
+      "description": "period: today (hourly) / 7d / 30d (daily)"
+     },
+     {
+      "name": "tz",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "integer",
+       "maximum": 840,
+       "minimum": -840,
+       "description": "the viewer's offset from UTC in minutes (JS: -getTimezoneOffset()); sets local midnight and hours",
+       "default": 0,
+       "title": "Tz"
+      },
+      "description": "the viewer's offset from UTC in minutes (JS: -getTimezoneOffset()); sets local midnight and hours"
+     }
+    ],
     "responses": {
      "200": {
       "description": "Successful Response",
@@ -693,6 +726,16 @@
        "application/json": {
         "schema": {
          "$ref": "#/components/schemas/Analytics"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
         }
        }
       }
@@ -857,6 +900,69 @@
     "type": "object",
     "title": "AgentConfig"
    },
+   "AgentReply": {
+    "properties": {
+     "ts": {
+      "type": "string",
+      "title": "Ts"
+     },
+     "session_id": {
+      "type": "string",
+      "title": "Session Id"
+     },
+     "user": {
+      "type": "string",
+      "title": "User"
+     },
+     "reply": {
+      "type": "string",
+      "title": "Reply"
+     },
+     "latency_s": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Latency S"
+     },
+     "outcome": {
+      "type": "string",
+      "enum": [
+       "resolved",
+       "handed_off",
+       "grant_blocked",
+       "granted",
+       "with_teammate",
+       "answered"
+      ],
+      "title": "Outcome"
+     },
+     "grant_days": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Grant Days"
+     }
+    },
+    "type": "object",
+    "required": [
+     "ts",
+     "session_id",
+     "user",
+     "reply",
+     "outcome"
+    ],
+    "title": "AgentReply"
+   },
    "Analytics": {
     "properties": {
      "tickets": {
@@ -887,6 +993,20 @@
       },
       "type": "array",
       "title": "Open Tasks"
+     },
+     "open_counts": {
+      "$ref": "#/components/schemas/OpenCounts"
+     },
+     "period": {
+      "$ref": "#/components/schemas/Period"
+     },
+     "agent_log": {
+      "items": {
+       "$ref": "#/components/schemas/AgentReply"
+      },
+      "type": "array",
+      "title": "Agent Log",
+      "description": "Latest agent replies, newest first (all time, at most 20)"
      }
     },
     "type": "object",
@@ -895,7 +1015,10 @@
      "level2",
      "triage",
      "timeline",
-     "open_tasks"
+     "open_tasks",
+     "open_counts",
+     "period",
+     "agent_log"
     ],
     "title": "Analytics"
    },
@@ -990,6 +1113,35 @@
     },
     "type": "object",
     "title": "Body_reject_tickets__ticket_id__reject_post"
+   },
+   "ChatCounts": {
+    "properties": {
+     "total": {
+      "type": "integer",
+      "title": "Total",
+      "description": "Chats started in the range"
+     },
+     "resolved": {
+      "type": "integer",
+      "title": "Resolved"
+     },
+     "handed_off": {
+      "type": "integer",
+      "title": "Handed Off"
+     },
+     "open": {
+      "type": "integer",
+      "title": "Open"
+     }
+    },
+    "type": "object",
+    "required": [
+     "total",
+     "resolved",
+     "handed_off",
+     "open"
+    ],
+    "title": "ChatCounts"
    },
    "ChatEvent": {
     "properties": {
@@ -1225,6 +1377,49 @@
     ],
     "title": "Decision"
    },
+   "Decisions": {
+    "properties": {
+     "triaged": {
+      "type": "integer",
+      "title": "Triaged"
+     },
+     "decided": {
+      "type": "integer",
+      "title": "Decided"
+     },
+     "first": {
+      "type": "integer",
+      "title": "First"
+     },
+     "second_third": {
+      "type": "integer",
+      "title": "Second Third"
+     },
+     "edited": {
+      "type": "integer",
+      "title": "Edited"
+     },
+     "own_reply": {
+      "type": "integer",
+      "title": "Own Reply"
+     },
+     "no_reply": {
+      "type": "integer",
+      "title": "No Reply"
+     }
+    },
+    "type": "object",
+    "required": [
+     "triaged",
+     "decided",
+     "first",
+     "second_third",
+     "edited",
+     "own_reply",
+     "no_reply"
+    ],
+    "title": "Decisions"
+   },
    "ErrorDetail": {
     "properties": {
      "detail": {
@@ -1387,6 +1582,34 @@
     "type": "object",
     "title": "GrantLimits"
    },
+   "GrantTotals": {
+    "properties": {
+     "count": {
+      "type": "integer",
+      "title": "Count",
+      "description": "Level 2 grants in the range"
+     },
+     "days": {
+      "type": "integer",
+      "title": "Days"
+     },
+     "days_each": {
+      "items": {
+       "type": "integer"
+      },
+      "type": "array",
+      "title": "Days Each",
+      "description": "Days of each Level 2 grant, oldest first"
+     }
+    },
+    "type": "object",
+    "required": [
+     "count",
+     "days",
+     "days_each"
+    ],
+    "title": "GrantTotals"
+   },
    "HTTPValidationError": {
     "properties": {
      "detail": {
@@ -1530,6 +1753,30 @@
     ],
     "title": "LlmInfo"
    },
+   "OpenCounts": {
+    "properties": {
+     "chat": {
+      "type": "integer",
+      "title": "Chat"
+     },
+     "triage": {
+      "type": "integer",
+      "title": "Triage"
+     },
+     "review": {
+      "type": "integer",
+      "title": "Review"
+     }
+    },
+    "type": "object",
+    "required": [
+     "chat",
+     "triage",
+     "review"
+    ],
+    "title": "OpenCounts",
+    "description": "True totals of the open_tasks kinds (open_tasks lists at most 20 of each)."
+   },
    "OpenTask": {
     "properties": {
      "kind": {
@@ -1578,6 +1825,18 @@
      "note": {
       "type": "string",
       "title": "Note"
+     },
+     "detail": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Detail",
+      "description": "For the live list: chat = the agent's last tool step, review = the agent's first option; null for triage"
      }
     },
     "type": "object",
@@ -1745,6 +2004,160 @@
     "type": "object",
     "title": "OptionParams"
    },
+   "Period": {
+    "properties": {
+     "range": {
+      "type": "string",
+      "enum": [
+       "today",
+       "7d",
+       "30d"
+      ],
+      "title": "Range"
+     },
+     "tz_offset_min": {
+      "type": "integer",
+      "title": "Tz Offset Min"
+     },
+     "start": {
+      "type": "string",
+      "title": "Start"
+     },
+     "end": {
+      "type": "string",
+      "title": "End"
+     },
+     "prev_start": {
+      "type": "string",
+      "title": "Prev Start",
+      "description": "previous = [prev_start, start)"
+     },
+     "bucket": {
+      "type": "string",
+      "enum": [
+       "hour",
+       "day"
+      ],
+      "title": "Bucket"
+     },
+     "points": {
+      "items": {
+       "$ref": "#/components/schemas/PeriodPoint"
+      },
+      "type": "array",
+      "title": "Points"
+     },
+     "current": {
+      "$ref": "#/components/schemas/PeriodSummary"
+     },
+     "previous": {
+      "$ref": "#/components/schemas/PeriodSummary"
+     }
+    },
+    "type": "object",
+    "required": [
+     "range",
+     "tz_offset_min",
+     "start",
+     "end",
+     "prev_start",
+     "bucket",
+     "points",
+     "current",
+     "previous"
+    ],
+    "title": "Period"
+   },
+   "PeriodPoint": {
+    "properties": {
+     "t": {
+      "type": "string",
+      "title": "T",
+      "description": "Bucket start, UTC 'YYYY-MM-DDTHH:MM:SSZ' (a local hour or a local day)"
+     },
+     "agent": {
+      "type": "integer",
+      "title": "Agent"
+     },
+     "handed_off": {
+      "type": "integer",
+      "title": "Handed Off"
+     },
+     "closed_by_people": {
+      "type": "integer",
+      "title": "Closed By People"
+     },
+     "feedback": {
+      "type": "integer",
+      "title": "Feedback"
+     }
+    },
+    "type": "object",
+    "required": [
+     "t",
+     "agent",
+     "handed_off",
+     "closed_by_people",
+     "feedback"
+    ],
+    "title": "PeriodPoint"
+   },
+   "PeriodSummary": {
+    "properties": {
+     "chats": {
+      "$ref": "#/components/schemas/ChatCounts"
+     },
+     "machine_share": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Machine Share",
+      "description": "resolved / (resolved + handed_off), 0..1"
+     },
+     "machines": {
+      "$ref": "#/components/schemas/ReplySide"
+     },
+     "humans": {
+      "$ref": "#/components/schemas/ReplySide"
+     },
+     "grants": {
+      "$ref": "#/components/schemas/GrantTotals"
+     },
+     "handoff_reasons": {
+      "additionalProperties": {
+       "type": "integer"
+      },
+      "type": "object",
+      "title": "Handoff Reasons"
+     },
+     "blocked": {
+      "additionalProperties": {
+       "type": "integer"
+      },
+      "type": "object",
+      "title": "Blocked"
+     },
+     "decisions": {
+      "$ref": "#/components/schemas/Decisions"
+     }
+    },
+    "type": "object",
+    "required": [
+     "chats",
+     "machines",
+     "humans",
+     "grants",
+     "handoff_reasons",
+     "blocked",
+     "decisions"
+    ],
+    "title": "PeriodSummary"
+   },
    "Rejection": {
     "properties": {
      "note": {
@@ -1777,6 +2190,69 @@
     },
     "type": "object",
     "title": "Reopen"
+   },
+   "ReplySide": {
+    "properties": {
+     "replies": {
+      "type": "integer",
+      "title": "Replies"
+     },
+     "first_reply_median_s": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "First Reply Median S"
+     },
+     "closed_with_reply": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Closed With Reply"
+     },
+     "came_back": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Came Back"
+     },
+     "passed_on": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Passed On"
+     },
+     "free_days": {
+      "type": "integer",
+      "title": "Free Days"
+     }
+    },
+    "type": "object",
+    "required": [
+     "replies",
+     "free_days"
+    ],
+    "title": "ReplySide",
+    "description": "One column of 'reply by reply': machines (agent messages) or humans (replies sent from Incoming). Shares are 0..1."
    },
    "RootCauseCount": {
     "properties": {

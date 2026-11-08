@@ -277,6 +277,93 @@ class OpenTask(BaseModel):
     since: str | None = None
     age_s: int | None = None
     note: str
+    detail: str | None = Field(None, description="For the live list: chat = the agent's last tool step, review = the agent's first option; null for triage")
+
+
+class OpenCounts(BaseModel):
+    """True totals of the open_tasks kinds (open_tasks lists at most 20 of each)."""
+
+    chat: int
+    triage: int
+    review: int
+
+
+# Analyze v3: one date range (every number is defined in resolve/analytics.py).
+
+
+class ChatCounts(BaseModel):
+    total: int = Field(description="Chats started in the range")
+    resolved: int
+    handed_off: int
+    open: int
+
+
+class ReplySide(BaseModel):
+    """One column of 'reply by reply': machines (agent messages) or humans (replies sent from Incoming). Shares are 0..1."""
+
+    replies: int
+    first_reply_median_s: float | None = None
+    closed_with_reply: float | None = None
+    came_back: float | None = None
+    passed_on: float | None = None
+    free_days: int
+
+
+class GrantTotals(BaseModel):
+    count: int = Field(description="Level 2 grants in the range")
+    days: int
+    days_each: list[int] = Field(description="Days of each Level 2 grant, oldest first")
+
+
+class Decisions(BaseModel):
+    triaged: int
+    decided: int
+    first: int
+    second_third: int
+    edited: int
+    own_reply: int
+    no_reply: int
+
+
+class PeriodSummary(BaseModel):
+    chats: ChatCounts
+    machine_share: float | None = Field(None, description="resolved / (resolved + handed_off), 0..1")
+    machines: ReplySide
+    humans: ReplySide
+    grants: GrantTotals
+    handoff_reasons: dict[str, int]
+    blocked: dict[str, int]
+    decisions: Decisions
+
+
+class PeriodPoint(BaseModel):
+    t: str = Field(description="Bucket start, UTC 'YYYY-MM-DDTHH:MM:SSZ' (a local hour or a local day)")
+    agent: int
+    handed_off: int
+    closed_by_people: int
+    feedback: int
+
+
+class Period(BaseModel):
+    range: Literal["today", "7d", "30d"]
+    tz_offset_min: int
+    start: str
+    end: str
+    prev_start: str = Field(description="previous = [prev_start, start)")
+    bucket: Literal["hour", "day"]
+    points: list[PeriodPoint]
+    current: PeriodSummary
+    previous: PeriodSummary
+
+
+class AgentReply(BaseModel):
+    ts: str
+    session_id: str
+    user: str
+    reply: str
+    latency_s: float | None = None
+    outcome: Literal["resolved", "handed_off", "grant_blocked", "granted", "with_teammate", "answered"]
+    grant_days: int | None = None
 
 
 class Analytics(BaseModel):
@@ -286,6 +373,9 @@ class Analytics(BaseModel):
     eval: EvalSummary | None = None
     timeline: Timeline
     open_tasks: list[OpenTask]
+    open_counts: OpenCounts
+    period: Period
+    agent_log: list[AgentReply] = Field(description="Latest agent replies, newest first (all time, at most 20)")
 
 
 class Health(BaseModel):

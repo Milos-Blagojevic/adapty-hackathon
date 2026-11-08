@@ -159,8 +159,8 @@ input::placeholder,textarea::placeholder{color:#8b8b94}
 
 <div style="display: flex; flex-direction: column; gap: 10px">
 <a href="Main.dc.html" style="display: inline-flex; align-items: center; gap: 6px; align-self: flex-start; font-size: 13.5px; font-weight: 500; color: #52525b"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5M11 6l-6 6 6 6"></path></svg>Incoming</a>
-<h1 style="margin: 0; font-size: 26px; font-weight: 600; letter-spacing: -0.025em; line-height: 1.2; text-wrap: balance">Wants another free week after compensation</h1>
-<p style="margin: 0; font-size: 14px; color: #71717a">lumen_443814_02380 · 21:40</p>
+<h1 style="margin: 0; font-size: 26px; font-weight: 600; letter-spacing: -0.025em; line-height: 1.2; text-wrap: balance">{{ title }}</h1>
+<p style="margin: 0; font-size: 14px; color: #71717a">{{ meta }}</p>
 </div>
 
 <sc-if value="{{ isOpen }}" hint-placeholder-val="{{ true }}">
@@ -171,23 +171,28 @@ input::placeholder,textarea::placeholder{color:#8b8b94}
 <section class="card" aria-labelledby="h-wrote" style="padding: 20px 24px 18px; display: flex; flex-direction: column; gap: 14px">
 <p id="h-wrote" class="kicker">The user wrote</p>
 <div style="display: flex; flex-direction: column; gap: 12px">
+<sc-for list="{{ messages }}" as="m">
+<sc-if value="{{ m.isUser }}">
 <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px">
-<div class="b b-u">Hi, the trial thing again, I still feel tricked by the weekly charge<span class="t">21:38</span><svg aria-hidden="true" width="11" height="16" viewBox="0 0 11 16" style="position: absolute; right: -5px; bottom: 0"><path d="M0 0 Q0 12 11 16 L0 16 Z" fill="#6247f5"></path></svg></div>
+<div class="b b-u">{{ m.text }}<span class="t">{{ m.time }}</span><svg aria-hidden="true" width="11" height="16" viewBox="0 0 11 16" style="position: absolute; right: -5px; bottom: 0"><path d="M0 0 Q0 12 11 16 L0 16 Z" fill="#6247f5"></path></svg></div>
 </div>
+</sc-if>
+<sc-if value="{{ m.labelled }}">
 <div style="display: flex; align-items: flex-end; gap: 8px">
-<span aria-hidden="true" style="flex: 0 0 auto; width: 26px; height: 26px; border-radius: 50%; background: #efedfb; color: #5b3cf0; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center">L</span>
+<span aria-hidden="true" style="flex: 0 0 auto; width: 26px; height: 26px; border-radius: 50%; background: #efedfb; color: #5b3cf0; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center">{{ m.avatar }}</span>
 <div style="display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1">
-<span style="font-size: 12px; color: #71717a; padding-left: 14px">Lumen assistant</span>
-<div class="b b-a">I'm sorry you feel that way. I can see your weekly plan renews on Nov 13 and we added 7 days of premium on Nov 5.<span class="t">21:38</span><svg aria-hidden="true" width="11" height="16" viewBox="0 0 11 16" style="position: absolute; left: -5px; bottom: 0"><path d="M11 0 Q11 12 0 16 L11 16 Z" fill="#f1f0f4"></path></svg></div>
+<span style="font-size: 12px; color: #71717a; padding-left: 14px">{{ m.label }}</span>
+<div class="b b-a">{{ m.text }}<span class="t">{{ m.time }}</span><svg aria-hidden="true" width="11" height="16" viewBox="0 0 11 16" style="position: absolute; left: -5px; bottom: 0"><path d="M11 0 Q11 12 0 16 L11 16 Z" fill="#f1f0f4"></path></svg></div>
 </div>
 </div>
-<div style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px">
-<div class="b b-u">Give me another week for free then. Or a month.<span class="t">21:39</span><svg aria-hidden="true" width="11" height="16" viewBox="0 0 11 16" style="position: absolute; right: -5px; bottom: 0"><path d="M0 0 Q0 12 11 16 L0 16 Z" fill="#6247f5"></path></svg></div>
-</div>
+</sc-if>
+<sc-if value="{{ m.plain }}">
 <div style="display: flex; align-items: flex-end; gap: 8px">
-<span aria-hidden="true" style="flex: 0 0 auto; width: 26px; height: 26px; border-radius: 50%; background: #efedfb; color: #5b3cf0; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center">L</span>
-<div class="b b-a">I can't add more days myself, but I've sent your request to our support team. They'll get back to you here.<span class="t">21:39</span><svg aria-hidden="true" width="11" height="16" viewBox="0 0 11 16" style="position: absolute; left: -5px; bottom: 0"><path d="M11 0 Q11 12 0 16 L11 16 Z" fill="#f1f0f4"></path></svg></div>
+<span aria-hidden="true" style="flex: 0 0 auto; width: 26px; height: 26px; border-radius: 50%; background: #efedfb; color: #5b3cf0; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center">{{ m.avatar }}</span>
+<div class="b b-a">{{ m.text }}<span class="t">{{ m.time }}</span><svg aria-hidden="true" width="11" height="16" viewBox="0 0 11 16" style="position: absolute; left: -5px; bottom: 0"><path d="M11 0 Q11 12 0 16 L11 16 Z" fill="#f1f0f4"></path></svg></div>
 </div>
+</sc-if>
+</sc-for>
 </div>
 </section>
 
@@ -229,6 +234,7 @@ input::placeholder,textarea::placeholder{color:#8b8b94}
 <option value="grant">Grant access</option>
 <option value="store_steps">Store steps</option>
 <option value="ask">Ask the user</option>
+<sc-if value="{{ live }}"><option value="refund">Refund to a person</option><option value="no_reply">No reply</option></sc-if>
 </select>
 </label>
 <sc-if value="{{ a.isGrant }}"><label class="field">Days<input class="inp" type="number" min="1" max="30" value="{{ a.days }}" onChange="{{ a.onDays }}" style="width: 90px"></label></sc-if>
@@ -268,40 +274,30 @@ input::placeholder,textarea::placeholder{color:#8b8b94}
 <aside style="flex: 1 1 320px; min-width: 0; display: flex; flex-direction: column; gap: 20px">
 <section class="card" aria-labelledby="h-found" style="padding: 20px 22px; display: flex; flex-direction: column; gap: 10px">
 <p id="h-found" class="kicker">What we found</p>
-<p style="margin: 0; font-size: 15px; line-height: 1.5; color: #18181b; text-wrap: pretty">The user wants more free days after already being compensated for the trial conversion.</p>
-<p style="margin: 0; font-size: 13.5px; line-height: 1.5; color: #52525b; text-wrap: pretty">Second complaint about the same trial conversion two days after a 7-day grant; no new problem in the profile.</p>
+<p style="margin: 0; font-size: 15px; line-height: 1.5; color: #18181b; text-wrap: pretty">{{ foundSummary }}</p>
+<sc-if value="{{ hasTriage }}">
+<p style="margin: 0; font-size: 13.5px; line-height: 1.5; color: #52525b; text-wrap: pretty">{{ foundCause }}</p>
 <p style="margin: 2px 0 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; font-size: 13.5px; color: #52525b">
-<span><strong style="color: #18181b; font-weight: 600">88%</strong> confidence</span><span aria-hidden="true">·</span><span>Charged after trial</span><span aria-hidden="true">·</span>
+<span><strong style="color: #18181b; font-weight: 600">{{ confidence }}</strong> confidence</span><span aria-hidden="true">·</span><span>{{ category }}</span><span aria-hidden="true">·</span>
 <button type="button" class="{{ evCls }}" style="font-size: 13.5px" aria-expanded="{{ evidence }}" onClick="{{ toggleEvidence }}">Evidence<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg></button>
 </p>
+</sc-if>
 <sc-if value="{{ evidence }}" hint-placeholder-val="{{ false }}">
 <dl class="kv ballot">
-<dt>last_grant</dt><dd>7 days · Nov 5</dd>
-<dt>grants_30d</dt><dd>1 of 1 allowed</dd>
-<dt>trial_converted</dt><dd>Oct 30 → lumen_weekly</dd>
-<dt>renews_at</dt><dd>Nov 13 2026</dd>
-<dt>new_issue</dt><dd>none in the profile</dd>
+<sc-for list="{{ evidenceRows }}" as="e"><dt>{{ e.k }}</dt><dd style="overflow-wrap: anywhere">{{ e.v }}</dd></sc-for>
 </dl>
 </sc-if>
 </section>
 
 <section class="card" aria-labelledby="h-acc" style="padding: 20px 22px; display: flex; flex-direction: column; gap: 6px">
 <p id="h-acc" class="kicker" style="margin-bottom: 4px">Account</p>
-<p style="margin: 0; font-size: 15px; font-weight: 500; color: #18181b">Premium · active until Nov 20 2026</p>
-<p style="margin: 0; font-size: 13.5px; color: #52525b">Google Play · lumen_weekly · $18.90 revenue</p>
-<p style="margin: 0; font-size: 13.5px; color: #71717a">Found by the user id from the chat.</p>
+<p style="margin: 0; font-size: 15px; font-weight: 500; color: #18181b">{{ acc1 }}</p>
+<p style="margin: 0; font-size: 13.5px; color: #52525b">{{ acc2 }}</p>
+<p style="margin: 0; font-size: 13.5px; color: #71717a">{{ acc3 }}</p>
 <button type="button" class="{{ detCls }}" style="font-size: 13.5px; align-self: flex-start; margin-top: 4px" aria-expanded="{{ details }}" onClick="{{ toggleDetails }}">Details<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg></button>
 <sc-if value="{{ details }}" hint-placeholder-val="{{ false }}">
 <dl class="kv ballot">
-<dt>customer_user_id</dt><dd>lumen_443814_02380</dd>
-<dt>access_level</dt><dd>premium · active</dd>
-<dt>expires_at</dt><dd>Nov 20 2026, 21:00</dd>
-<dt>store</dt><dd>Google Play</dd>
-<dt>product</dt><dd>lumen_weekly</dd>
-<dt>renews_at</dt><dd>Nov 13 2026</dd>
-<dt>trial_converted</dt><dd>Oct 30 2026</dd>
-<dt>revenue</dt><dd>$18.90</dd>
-<dt>grants_30d</dt><dd>1 · 7 days on Nov 5</dd>
+<sc-for list="{{ accountRows }}" as="e"><dt>{{ e.k }}</dt><dd>{{ e.v }}</dd></sc-for>
 </dl>
 </sc-if>
 </section>
@@ -313,17 +309,17 @@ input::placeholder,textarea::placeholder{color:#8b8b94}
 <div style="max-width: 760px; display: flex; flex-direction: column; gap: 18px">
 <p style="margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; font-size: 15px; color: #18181b">
 <span style="display: inline-flex; align-items: center; gap: 8px; font-weight: 600"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.2 4.2L19 7"></path></svg>Ticket closed</span>
-<span style="color: #52525b">{{ outcome }} · Nov 7, 21:52</span>
-<a href="Reopen.dc.html" style="font-weight: 500">Reopen</a>
+<span style="color: #52525b">{{ outcome }} · {{ closedAt }}</span>
+<a href="{{ reopenHref }}" style="font-weight: 500">Reopen</a>
 </p>
 <button type="button" class="letter" aria-expanded="{{ ballot }}" onClick="{{ toggleBallot }}">
 <svg aria-hidden="true" viewBox="0 0 100 20" preserveAspectRatio="none" style="position: absolute; left: 0; top: 0; width: 100%; height: 26px"><path d="M0 0 L50 18 L100 0" fill="none" stroke="#ececef" stroke-width="1" vector-effect="non-scaling-stroke"></path></svg>
 <span aria-hidden="true" style="font-size: 26px; line-height: 1">{{ chosenEmoji }}</span>
 <span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; padding-top: 6px">
-<span style="font-size: 13px; color: #71717a">Sent to lumen_443814_02380 · 21:52</span>
+<span style="font-size: 13px; color: #71717a">Sent to {{ user }} · {{ sentTime }}</span>
 <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #18181b; font-weight: 500">{{ firstLine }}</span>
 </span>
-<span class="postmark" aria-hidden="true">SENT<small>NOV 7</small></span>
+<span class="postmark" aria-hidden="true">SENT<small>{{ postmark }}</small></span>
 </button>
 <sc-if value="{{ ballot }}" hint-placeholder-val="{{ false }}">
 <section class="card ballot" aria-label="All answers" style="padding: 10px 20px">
@@ -345,8 +341,8 @@ input::placeholder,textarea::placeholder{color:#8b8b94}
 <sc-if value="{{ isDismissed }}" hint-placeholder-val="{{ false }}">
 <p style="margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; font-size: 15px; color: #18181b">
 <span style="font-weight: 600">Closed without a reply</span>
-<span style="color: #52525b">Nov 7, 21:52</span>
-<a href="Reopen.dc.html" style="font-weight: 500">Reopen</a>
+<span style="color: #52525b">{{ closedAt }}</span>
+<a href="{{ reopenHref }}" style="font-weight: 500">Reopen</a>
 </p>
 </sc-if>
 
@@ -357,6 +353,10 @@ input::placeholder,textarea::placeholder{color:#8b8b94}
 </div>
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props='{"startState":{"editor":"enum","options":["open","closed","dismissed"],"default":"open"},"failFirstSend":{"editor":"boolean","default":false},"$preview":{"width":1440,"height":1640}}'>
+// Live (default): the ticket from GET /api/tickets/{id} (?id=), mapped to the shapes the design uses.
+// ?mock=1: the design's own sample data and behaviour below, no requests.
+var LIVE = !API.mock;
+
 var USER = 'lumen_443814_02380';
 var BASE = {
   reply: { emoji: '🥶', action: 'reply', days: 7, store: 'Google Play', kind: 'Cancel', question: '', reply: "Hi! We added 7 days of premium on Nov 5 for the trial charge, so your access now runs to Nov 20. We can't add more, but you can cancel any time in Google Play → Subscriptions." },
@@ -365,17 +365,57 @@ var BASE = {
 };
 var ORDER = ['reply', 'steps', 'grant'];
 var MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+var MOCK = {
+  base: BASE, order: ORDER, user: USER, phase: null, closed: null, actionError: null, action: null,
+  title: 'Wants another free week after compensation',
+  meta: 'lumen_443814_02380 · 21:40',
+  messages: [
+    { isUser: true, text: 'Hi, the trial thing again, I still feel tricked by the weekly charge', time: '21:38' },
+    { labelled: true, avatar: 'L', label: 'Lumen assistant', text: "I'm sorry you feel that way. I can see your weekly plan renews on Nov 13 and we added 7 days of premium on Nov 5.", time: '21:38' },
+    { isUser: true, text: 'Give me another week for free then. Or a month.', time: '21:39' },
+    { plain: true, avatar: 'L', text: "I can't add more days myself, but I've sent your request to our support team. They'll get back to you here.", time: '21:39' }
+  ],
+  hasTriage: true,
+  foundSummary: 'The user wants more free days after already being compensated for the trial conversion.',
+  foundCause: 'Second complaint about the same trial conversion two days after a 7-day grant; no new problem in the profile.',
+  confidence: '88%', category: 'Charged after trial',
+  evidenceRows: pairs([['last_grant', '7 days · Nov 5'], ['grants_30d', '1 of 1 allowed'], ['trial_converted', 'Oct 30 → lumen_weekly'], ['renews_at', 'Nov 13 2026'], ['new_issue', 'none in the profile']]),
+  acc1: 'Premium · active until Nov 20 2026', acc2: 'Google Play · lumen_weekly · $18.90 revenue', acc3: 'Found by the user id from the chat.',
+  accountRows: pairs([['customer_user_id', 'lumen_443814_02380'], ['access_level', 'premium · active'], ['expires_at', 'Nov 20 2026, 21:00'], ['store', 'Google Play'], ['product', 'lumen_weekly'], ['renews_at', 'Nov 13 2026'], ['trial_converted', 'Oct 30 2026'], ['revenue', '$18.90'], ['grants_30d', '1 · 7 days on Nov 5']]),
+  closedAt: 'Nov 7, 21:52', sentTime: '21:52', postmark: 'NOV 7', reopenHref: 'Reopen.dc.html'
+};
 
-function merged(id, edits) { return Object.assign({}, BASE[id], edits[id] || {}); }
+// API values ↔ the design's editor values.
+var ACT = { grant_access: 'grant', reply_only: 'reply', store_instructions: 'store_steps', ask_user: 'ask', refund_to_human: 'refund', no_reply: 'no_reply' };
+var STORES = { app_store: 'App Store', play_store: 'Google Play' };
+var KINDS = { cancel: 'Cancel', refund_request: 'Refund', restore: 'Restore' };
+var EMOJI = { grant_access: '👍', reply_only: '🙏', store_instructions: '🔁', refund_to_human: '💸', ask_user: '❓', no_reply: '❌' };
+var LEGACY_ACT = { explain: 'reply_only', escalate_refund: 'refund_to_human', no_action: 'no_reply' };
+var CATEGORIES = { charged_after_trial: 'Charged after trial', no_access_after_purchase: 'No access after purchase', billing_issue: 'Billing issue', refund_request: 'Refund request', cancel_how: 'How to cancel', price_complaint: 'Price complaint', other: 'Other' };
+var STORE_NAMES = { app_store: 'App Store', play_store: 'Google Play', stripe: 'Stripe', paddle: 'Paddle', adapty: 'Adapty' };
+var SOURCE_WORDS = { chat_handoff: 'chat', form: 'form', email: 'email' };
+function invert(o) { var r = {}; for (var k in o) r[o[k]] = k; return r; }
+var ACT_API = invert(ACT), STORE_API = invert(STORES), KIND_API = invert(KINDS);
+
+function pairs(list) { return list.map(function (x) { return { k: x[0], v: x[1] }; }); }
+function cap(s) { s = String(s || ''); return s.charAt(0).toUpperCase() + s.slice(1); }
+function when(ts) { return !ts ? '' : new Date(ts).toDateString() === new Date().toDateString() ? API.hm(ts) : API.day(ts) + ', ' + API.hm(ts); }
+function stamp(ts) { return API.day(ts) + ', ' + API.hm(ts); }
+
+function merged(base, id, edits) { return Object.assign({}, base[id], edits[id] || {}); }
 function titleOf(v) {
   if (v.action === 'grant') return 'Grant ' + v.days + ' days of access';
-  if (v.action === 'store_steps') return v.kind + ' steps · ' + v.store;
+  if (v.action === 'store_steps') return [v.kind ? v.kind + ' steps' : 'Store steps', v.store].filter(Boolean).join(' · ');
   if (v.action === 'ask') return 'Ask the user';
+  if (v.action === 'refund') return ['Refund to a person', v.store].filter(Boolean).join(' · ');
+  if (v.action === 'no_reply') return 'Close, no reply';
   return 'Reply, no action';
 }
-function isEdited(id, edits) {
+// Live compares as text: an <input> gives "7" for the agent's 7.
+function same(a, b) { return LIVE ? String(a == null ? '' : a) === String(b == null ? '' : b) : a === b; }
+function isEdited(base, id, edits) {
   var e = edits[id]; if (!e) return false;
-  for (var k in e) { if (e[k] !== BASE[id][k]) return true; }
+  for (var k in e) { if (!same(e[k], base[id][k])) return true; }
   return false;
 }
 function until(days) {
@@ -383,44 +423,222 @@ function until(days) {
   d.setUTCDate(d.getUTCDate() + Number(days || 0));
   return MONTHS[d.getUTCMonth()] + ' ' + d.getUTCDate();
 }
-function outcomeOf(v) {
-  if (v.action === 'grant') return 'Granted ' + v.days + ' days, until ' + until(v.days);
-  if (v.action === 'store_steps') return 'Sent ' + v.kind.toLowerCase() + ' steps · ' + v.store;
+function outcomeOf(v, action) {
+  if (v.action === 'grant') {
+    if (!LIVE) return 'Granted ' + v.days + ' days, until ' + until(v.days);
+    return 'Granted ' + ((action && action.days) || v.days) + ' days' + (action && action.expires_at ? ', until ' + API.day(action.expires_at) : '');
+  }
+  if (v.action === 'store_steps') return 'Sent ' + [v.kind ? v.kind.toLowerCase() + ' steps' : 'store steps', v.store].filter(Boolean).join(' · ');
   if (v.action === 'ask') return 'Asked the user';
+  if (v.action === 'refund') return 'Replied, refund to a person';
+  if (v.action === 'no_reply') return 'Closed, no reply';
   return 'Replied, no action';
+}
+function riskOf(b, v) {
+  if (!LIVE) {
+    var isGrant = v.action === 'grant';
+    return { has: isGrant, text: isGrant ? (Number(v.days) > 7 ? 'High risk · more than 7 days, second grant' : 'High risk · second grant in 30 days') : '', cls: 'risk-high' };
+  }
+  // The agent's risk, shown while the answer keeps the agent's action.
+  var has = (b.risk === 'medium' || b.risk === 'high') && v.action === b.action;
+  return { has: has, text: has ? cap(b.risk) + ' risk' + (b.riskReason ? ' · ' + b.riskReason : '') : '', cls: has ? 'risk-' + b.risk : '' };
+}
+// OptionEdits: only what the person changed; switching the action also sends the new action's shown params.
+function editsFor(base, id, edits) {
+  var b = base[id], e = edits[id] || {}, v = merged(base, id, edits), out = {};
+  var changed = function (k) { return k in e && !same(e[k], b[k]); };
+  var switched = changed('action');
+  if (switched) out.action = ACT_API[v.action];
+  if (changed('reply')) out.reply = v.reply;
+  if (v.action === 'grant' && (switched || changed('days')) && String(v.days).trim() !== '') {
+    var n = Number(v.days);
+    out.days = Number.isInteger(n) ? n : v.days;
+  }
+  if (v.action === 'store_steps' && (switched || changed('store')) && v.store) out.store = STORE_API[v.store];
+  if (v.action === 'store_steps' && (switched || changed('kind')) && v.kind) out.kind = KIND_API[v.kind];
+  if (v.action === 'ask' && (switched || changed('question'))) out.question = v.question;
+  return out;
+}
+
+function evidenceRow(line) {
+  var i = String(line).indexOf(': ');
+  var key = i > 0 ? line.slice(0, i) : '';
+  return /^[\w.\[\]-]+$/.test(key) ? { k: key, v: line.slice(i + 2) } : { k: '', v: line };
+}
+function money(n) { return '$' + Number(n).toFixed(2); }
+function account(t) {
+  var p = t.profile, tri = t.triage, now = Date.now(), rows = [];
+  if (t.customer_user_id) rows.push(['customer_user_id', t.customer_user_id]);
+  if (t.email) rows.push(['email', t.email]);
+  var how = tri && !t.legacy && tri.lookup ? cap(tri.lookup)
+    : t.customer_user_id ? 'User id from the ' + (SOURCE_WORDS[t.source] || t.source) + '.' : 'Not identified: the ticket has no user id.';
+  if (!p) return { acc1: 'No profile loaded', acc2: t.customer_user_id || t.email || 'Unknown user', acc3: how, rows: pairs(rows) };
+  var levels = p.access_levels || [];
+  var level = levels.filter(function (l) { return !l.expires_at || Date.parse(l.expires_at) > now; })[0] || levels[0];
+  var purchases = (p.subscriptions || []).concat(p.non_subscriptions || []).sort(function (a, b) { return Date.parse(b.purchased_at || 0) - Date.parse(a.purchased_at || 0); });
+  var buy = purchases[0];
+  var acc1 = 'No access level';
+  if (level) {
+    var lifetime = !level.expires_at, active = lifetime || Date.parse(level.expires_at) > now;
+    acc1 = cap(level.access_level_id) + ' · ' + (lifetime ? 'lifetime' : (active ? 'active until ' : 'expired ') + API.day(level.expires_at, true));
+    rows.push(['access_level', level.access_level_id + ' · ' + (active ? 'active' : 'expired')]);
+    rows.push(['expires_at', lifetime ? 'never' : API.day(level.expires_at, true) + ', ' + API.hm(level.expires_at)]);
+    if (level.store === 'adapty') rows.push(['granted', 'server side, ' + API.day(level.purchased_at, true)]);
+  }
+  if (buy) {
+    rows.push(['store', STORE_NAMES[buy.store] || buy.store]);
+    rows.push(['product', buy.store_product_id]);
+    rows.push(['purchased_at', API.day(buy.purchased_at, true)]);
+    if (buy.renewal_cancelled_at) rows.push(['renewal_cancelled', API.day(buy.renewal_cancelled_at, true)]);
+    else if (buy.expires_at && Date.parse(buy.expires_at) > now) rows.push(['renews_at', API.day(buy.expires_at, true)]);
+    if (buy.billing_issue_detected_at) rows.push(['billing_issue', API.day(buy.billing_issue_detected_at, true)]);
+    if (buy.is_in_grace_period) rows.push(['grace_period', 'yes']);
+  }
+  var refunded = purchases.filter(function (x) { return x.is_refund; }).map(function (x) { return x.store_product_id; });
+  if (refunded.length) rows.push(['refunded', refunded.join(', ')]);
+  var revenue = p.total_revenue_usd != null ? money(p.total_revenue_usd) : '';
+  if (revenue) rows.push(['revenue', revenue]);
+  var acc2 = [buy && (STORE_NAMES[buy.store] || buy.store), buy && buy.store_product_id, revenue && revenue + ' revenue'].filter(Boolean).join(' · ') || 'No purchases';
+  return { acc1: acc1, acc2: acc2, acc3: how, rows: pairs(rows) };
+}
+
+function liveModel(t, cfg) {
+  var tri = t.triage;
+  var name = cfg && cfg.app_name;
+  var maxDays = cfg && cfg.grant ? cfg.grant.max_days : '';
+  var base = {}, order = [];
+  ((tri && tri.options) || []).forEach(function (o, i) {
+    var p = o.params || {};
+    order.push(String(i));
+    base[String(i)] = { emoji: o.emoji || EMOJI[o.action] || '', action: ACT[o.action] || o.action, days: p.days != null ? p.days : maxDays, store: STORES[p.store] || '', kind: KINDS[p.kind] || '', question: p.question || '', reply: o.reply || '', risk: o.risk, riskReason: o.risk_reason || '' };
+  });
+  // The user wrote: the chat for a handoff, else the ticket body.
+  var convo = t.conversation && t.conversation.length ? t.conversation : [{ role: 'user', content: t.body, ts: t.created_at }];
+  var prev = null;
+  var messages = convo.map(function (m) {
+    var isUser = m.role === 'user';
+    var labelled = !isUser && m.role !== prev;
+    if (!isUser) prev = m.role;
+    var label = cap((name ? name + ' ' : '') + (m.role === 'support' ? 'support' : 'assistant'));
+    return { isUser: isUser, labelled: labelled, plain: !isUser && !labelled, text: m.content, time: API.hm(m.ts), label: label, avatar: label.charAt(0) };
+  });
+  // A closed ticket: its decision in the design's shapes (selected / edits / own).
+  var closed = null, d = t.decision, a = t.action;
+  if (t.status === 'done' || t.status === 'dismissed') {
+    closed = { selected: null, edits: {}, own: '' };
+    if (d && d.rejected) {
+      if (d.reply) { closed.selected = 'own'; closed.own = d.reply; }
+    } else if (d && base[String(d.option)]) {
+      var e = d.edits || {}, de = {};
+      if (e.action) de.action = ACT[e.action] || e.action;
+      if (e.reply != null) de.reply = e.reply;
+      if (e.days != null) de.days = e.days;
+      if (e.store) de.store = STORES[e.store];
+      if (e.kind) de.kind = KINDS[e.kind];
+      if (e.question != null) de.question = e.question;
+      closed.selected = String(d.option);
+      closed.edits[closed.selected] = de;
+    } else if (a && order.length) {
+      // v1 tickets closed before decisions were stored: the option with the executed action.
+      var act = ACT[LEGACY_ACT[a.type] || a.type];
+      closed.selected = a.option != null && base[String(a.option)] ? String(a.option) : order.filter(function (id) { return base[id].action === act; })[0] || order[0];
+    }
+  }
+  var noReply = t.status === 'done' && closed && closed.selected && closed.selected !== 'own' && merged(base, closed.selected, closed.edits).action === 'no_reply';
+  var at = (a && a.approved_at) || t.updated_at || t.created_at;
+  var acc = account(t);
+  var found = tri ? tri.summary : t.triage_error ? 'Triage failed: ' + t.triage_error : 'Not triaged yet.';
+  return {
+    base: base, order: order, user: t.customer_user_id || t.email || 'unknown user', action: a, actionError: t.action_error,
+    phase: t.status === 'dismissed' || noReply ? 'dismissed' : t.status === 'done' ? 'closed' : 'open',
+    closed: closed,
+    title: t.subject, meta: (t.customer_user_id || t.email || 'unknown user') + ' · ' + when(t.created_at),
+    messages: messages,
+    hasTriage: !!tri, foundSummary: found, foundCause: tri && tri.root_cause !== tri.summary ? tri.root_cause : '',
+    confidence: tri ? Math.round((tri.confidence || 0) * 100) + '%' : '', category: tri ? CATEGORIES[tri.category] || tri.category : '',
+    evidenceRows: ((tri && tri.evidence) || []).map(evidenceRow),
+    acc1: acc.acc1, acc2: acc.acc2, acc3: acc.acc3, accountRows: acc.rows,
+    closedAt: stamp(at), sentTime: API.hm(at), postmark: API.day(at).toUpperCase(),
+    reopenHref: 'Reopen.dc.html?id=' + encodeURIComponent(t.id)
+  };
 }
 
 class Component extends DCLogic {
-  componentWillUnmount() { if (this.tt) clearTimeout(this.tt); }
+  componentDidMount() {
+    if (!LIVE) return;
+    var self = this;
+    if (!this.props.id) { this.setState({ loadError: 'The link has no ticket id: open the ticket from Incoming.' }); return; }
+    API.get('/api/config').then(function (cfg) { self.setState({ cfg: cfg }); }, function () {});
+    this.load();
+  }
+  componentWillUnmount() { if (this.tt) clearTimeout(this.tt); if (this.pt) clearTimeout(this.pt); }
+  path() { return '/api/tickets/' + encodeURIComponent(this.props.id); }
+  load() {
+    var self = this;
+    return API.get(this.path()).then(function (t) {
+      self.setState({ ticket: t, loadError: null });
+      // Triage runs in the background after a ticket is created: look again for a while.
+      self.polls = (self.polls || 0) + 1;
+      if (t.status === 'new' && !t.triage && !t.triage_error && self.polls <= 20) self.pt = setTimeout(function () { self.load(); }, 4000);
+    }, function (err) {
+      if (!self.state.ticket) self.setState({ loadError: err.message });
+    });
+  }
+  submit(url, body) {
+    var self = this, began = Date.now();
+    API.post(url, body).then(function (t) {
+      self.tt = setTimeout(function () {
+        if (t.status !== 'done' && t.status !== 'dismissed') {
+          self.setState({ ticket: t, checking: false, error: t.action_error || 'The reply was not sent: try again.' });
+          return;
+        }
+        self.setState({ vanish: true });
+        self.tt = setTimeout(function () {
+          var sent = liveModel(t, null).phase === 'closed';
+          self.setState({ ticket: t, vanish: false, checking: false, editing: null, toast: sent ? 'Sent · moved to Closed' : '', ballot: false });
+          self.load();
+          self.tt = setTimeout(function () { self.setState({ toast: '' }); }, 2600);
+        }, 340);
+      }, Math.max(0, 480 - (Date.now() - began)));
+    }, function (err) {
+      self.setState({ checking: false, error: err.message });
+    });
+  }
   renderVals() {
     var self = this;
     var s = this.state || {};
     var p = this.props || {};
+    var m = LIVE ? (s.ticket ? liveModel(s.ticket, s.cfg) : null) : MOCK;
+    var base = m ? m.base : {};
+    var order = m ? m.order : [];
+    var user = m ? m.user : '';
     var start = p.startState || 'open';
-    var phase = s.phase || start;
-    var selected = s.selected !== undefined ? s.selected : (start === 'closed' ? 'grant' : null);
+    var phase = LIVE ? (m ? m.phase : 'loading') : (s.phase || start);
+    var fixed = LIVE && m && m.closed;
+    var selected = fixed ? m.closed.selected : (s.selected !== undefined ? s.selected : (!LIVE && start === 'closed' ? 'grant' : null));
     var editing = s.editing || null;
-    var edits = s.edits || {};
-    var own = s.own || '';
+    var edits = fixed ? m.closed.edits : (s.edits || {});
+    var own = fixed ? m.closed.own : (s.own || '');
     var setEdit = function (id, key, value) {
       var next = Object.assign({}, edits);
       next[id] = Object.assign({}, next[id] || {}); next[id][key] = value;
       self.setState({ edits: next, selected: id });
     };
 
-    var answers = ORDER.map(function (id, i) {
-      var v = merged(id, edits);
+    var answers = order.map(function (id, i) {
+      var v = merged(base, id, edits);
       var isGrant = v.action === 'grant';
+      var risk = riskOf(base[id], v);
       return {
         cls: selected === id ? 'ans sel' : 'ans',
         selected: selected === id,
         emoji: v.emoji,
         title: titleOf(v),
         isPick: i === 0,
-        edited: isEdited(id, edits),
-        hasRisk: isGrant,
-        risk: isGrant ? (Number(v.days) > 7 ? 'High risk · more than 7 days, second grant' : 'High risk · second grant in 30 days') : '',
-        riskCls: 'risk-high',
+        edited: isEdited(base, id, edits),
+        hasRisk: risk.has,
+        risk: risk.text,
+        riskCls: risk.cls,
         showText: editing !== id,
         reply: v.reply,
         action: v.action, days: v.days, store: v.store, kind: v.kind, question: v.question,
@@ -453,23 +671,32 @@ class Component extends DCLogic {
       pick: function () { self.setState({ selected: 'own', editing: null, error: null }); }
     });
 
-    var chosenVal = selected && selected !== 'own' ? merged(selected, edits) : null;
+    var chosenVal = selected && selected !== 'own' && base[selected] ? merged(base, selected, edits) : null;
     var summary = selected === 'own' ? 'Your own reply' : (chosenVal ? titleOf(chosenVal) : '');
     var cantSend = !selected || (selected === 'own' && !own.trim());
     var sentText = selected === 'own' ? own : (chosenVal ? chosenVal.reply : '');
     var firstLine = sentText.split(/(?<=[.!?])\s/)[0] || sentText;
 
-    var ballotRows = ORDER.map(function (id) {
-      var v = merged(id, edits);
+    var ballotRows = order.map(function (id) {
+      var v = merged(base, id, edits);
       var chosen = selected === id;
-      return { cls: chosen ? 'bl' : 'bl off', emoji: v.emoji, title: titleOf(v), edited: chosen && isEdited(id, edits), chosen: chosen, text: chosen ? v.reply : v.reply.slice(0, 64) + (v.reply.length > 64 ? '…' : '') };
+      return { cls: chosen ? 'bl' : 'bl off', emoji: v.emoji, title: titleOf(v), edited: chosen && isEdited(base, id, edits), chosen: chosen, text: chosen ? v.reply : v.reply.slice(0, 64) + (v.reply.length > 64 ? '…' : '') };
     });
     if (selected === 'own') ballotRows.push({ cls: 'bl', emoji: '🧠', title: 'Your own reply', edited: false, chosen: true, text: own });
 
     var dot = phase === 'closed' ? 'dot dot-closed' : (phase === 'dismissed' ? 'dot dot-dismissed' : 'dot dot-ready');
     var word = phase === 'closed' ? 'Closed' : (phase === 'dismissed' ? 'Dismissed' : 'Waiting for a person');
+    var error = 'error' in s ? s.error : (m && phase === 'open' ? m.actionError : null);
     var menu = !!s.menu;
     return {
+      live: LIVE,
+      title: m ? m.title : (s.loadError ? 'Could not open the ticket' : ''),
+      meta: m ? m.meta : (s.loadError || 'Loading…'),
+      messages: m ? m.messages : [],
+      hasTriage: m && m.hasTriage, foundSummary: m ? m.foundSummary : '', foundCause: m ? m.foundCause : '',
+      confidence: m ? m.confidence : '', category: m ? m.category : '', evidenceRows: m ? m.evidenceRows : [],
+      acc1: m ? m.acc1 : '', acc2: m ? m.acc2 : '', acc3: m ? m.acc3 : '', accountRows: m ? m.accountRows : [],
+      user: user, closedAt: m ? m.closedAt : '', sentTime: m ? m.sentTime : '', postmark: m ? m.postmark : '', reopenHref: m ? m.reopenHref : '',
       isOpen: phase === 'open', isClosed: phase === 'closed', isDismissed: phase === 'dismissed',
       dotCls: dot, stateWord: word,
       answers: answers,
@@ -480,13 +707,18 @@ class Component extends DCLogic {
       cantSend: cantSend,
       okCls: s.checking ? 'gstamp on' : 'gstamp',
       okLabel: selected ? 'Stamp it to send' : 'Pick an answer',
-      okSub: selected ? summary + ' → ' + USER : 'It gets an OK stamp, then stamp here to send',
+      okSub: selected ? summary + ' → ' + user : 'It gets an OK stamp, then stamp here to send',
       openCls: s.vanish ? 'vanish' : '',
-      hasError: !!s.error, error: s.error || '',
+      hasError: !!error, error: error || '',
       send: function () {
-        if (s.checking) return;
+        if (s.checking || s.closing) return;
         self.setState({ checking: true, error: null });
         if (self.tt) clearTimeout(self.tt);
+        if (LIVE) {
+          if (selected === 'own') self.submit(self.path() + '/reject', { note: '', reply: own });
+          else self.submit(self.path() + '/accept', { option: Number(selected), edits: editsFor(base, selected, edits) });
+          return;
+        }
         self.tt = setTimeout(function () {
           if (p.failFirstSend && !s.tried) {
             self.setState({ checking: false, tried: true, error: chosenVal && chosenVal.action === 'grant' ? 'Adapty did not accept the grant: try again.' : 'The reply was not sent: try again.' });
@@ -499,8 +731,16 @@ class Component extends DCLogic {
           }, 340);
         }, 480);
       },
-      dismiss: function () { self.setState({ phase: 'dismissed' }); },
-      outcome: selected === 'own' ? 'Sent your own reply' : (chosenVal ? outcomeOf(chosenVal) : ''),
+      dismiss: function () {
+        if (!LIVE) { self.setState({ phase: 'dismissed' }); return; }
+        if (s.checking || s.closing) return;
+        self.setState({ closing: true, error: null });
+        API.post(self.path() + '/reject', {}).then(function (t) {
+          self.setState({ ticket: t, closing: false });
+          self.load();
+        }, function (err) { self.setState({ closing: false, error: err.message }); });
+      },
+      outcome: selected === 'own' ? 'Sent your own reply' : (chosenVal ? outcomeOf(chosenVal, m && m.action) : ''),
       chosenEmoji: selected === 'own' ? '🧠' : (chosenVal ? chosenVal.emoji : ''),
       firstLine: firstLine,
       ballot: !!s.ballot,

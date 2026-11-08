@@ -163,48 +163,48 @@ td{padding:7px 10px;border-bottom:1px solid #f4f4f5;text-align:right;font-varian
 <div class="seg seg-dark" role="tablist" aria-label="Date range">
 <sc-for list="{{ ranges }}" as="r" hint-placeholder-count="3"><button type="button" role="tab" aria-selected="{{ r.on }}" class="{{ r.cls }}" onClick="{{ r.pick }}">{{ r.label }}</button></sc-for>
 </div>
-<button type="button" style="height: 38px; padding: 0 14px; border-radius: 10px; border: 1px solid rgba(255,255,255,.22); background: rgba(255,255,255,.08); color: #fff; font-size: 13.5px; font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; gap: 8px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"></path></svg>Export CSV</button>
+<button type="button" style="height: 38px; padding: 0 14px; border-radius: 10px; border: 1px solid rgba(255,255,255,.22); background: rgba(255,255,255,.08); color: #fff; font-size: 13.5px; font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; gap: 8px" onClick="{{ exportCsv }}"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"></path></svg>Export CSV</button>
 </div>
 </div>
 
 <div style="display: flex; flex-direction: column; gap: 10px">
-<div role="img" aria-label="Of 26 closed chats, machines closed 73% and humans 27%" style="position: relative; display: flex; height: 80px; border-radius: 16px; overflow: hidden; box-shadow: 0 24px 50px -24px rgba(0,0,0,.6), inset 0 0 0 1px rgba(255,255,255,.14)">
-<div style="width: 73%; display: flex; flex-direction: column; justify-content: center; padding: 0 24px; background: radial-gradient(rgba(255,255,255,.22) 0.9px, transparent 1.4px) 0 0/6px 6px, linear-gradient(90deg, #142a6e 0%, #1d4ed8 55%, #3b82f6 100%)">
+<div role="img" aria-label="{{ hero.aria }}" style="position: relative; display: flex; height: 80px; border-radius: 16px; overflow: hidden; box-shadow: 0 24px 50px -24px rgba(0,0,0,.6), inset 0 0 0 1px rgba(255,255,255,.14)">
+<div style="width: {{ hero.w }}%; display: flex; flex-direction: column; justify-content: center; padding: 0 24px; background: radial-gradient(rgba(255,255,255,.22) 0.9px, transparent 1.4px) 0 0/6px 6px, linear-gradient(90deg, #142a6e 0%, #1d4ed8 55%, #3b82f6 100%)">
 <span class="side-l">MACHINES</span>
-<span class="side-v">73%</span>
+<span class="side-v">{{ hero.machines }}</span>
 </div>
 <div style="flex: 1; display: flex; flex-direction: column; align-items: flex-end; justify-content: center; padding: 0 24px; background: radial-gradient(rgba(255,255,255,.22) 0.9px, transparent 1.4px) 0 0/6px 6px, linear-gradient(90deg, #f26b6f 0%, #e5484d 35%, #8f1d3a 100%)">
 <span class="side-l">HUMANS</span>
-<span class="side-v">27%</span>
+<span class="side-v">{{ hero.humans }}</span>
 </div>
-<svg class="seam" aria-hidden="true" viewBox="0 0 18 80" preserveAspectRatio="none" style="position: absolute; top: 0; left: calc(73% - 1px); width: 20px; height: 100%; overflow: visible">
+<svg class="seam" aria-hidden="true" viewBox="0 0 18 80" preserveAspectRatio="none" style="position: absolute; top: 0; left: calc({{ hero.w }}% - 1px); width: 20px; height: 100%; overflow: visible">
 <polygon points="0,0 10,0 18,10 8,20 18,30 8,40 18,50 8,60 18,70 10,80 0,80" fill="#3b82f6"></polygon>
 <polyline points="10,0 18,10 8,20 18,30 8,40 18,50 8,60 18,70 10,80" fill="none" stroke="#fff" stroke-width="1.6" stroke-linejoin="round" vector-effect="non-scaling-stroke"></polyline>
 </svg>
 </div>
-<p style="margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; font-size: 13.5px; color: rgba(255,255,255,.78)"><span class="delta">▲ 6 pts for the machines</span>vs Nov 6 · 19 of 26 closed chats ended without a human, 7 needed one</p>
+<p style="margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; font-size: 13.5px; color: rgba(255,255,255,.78)"><span class="delta">{{ hero.delta }}</span>{{ hero.line }}</p>
 </div>
 
 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr)); gap: 12px">
 <div class="glass" style="padding: 20px 22px; display: flex; flex-direction: column; gap: 8px; min-width: 0">
 <span class="kpi-l">Chats with the agent</span>
-<span class="num" style="font-size: 34px; font-weight: 600; letter-spacing: -0.03em; line-height: 1.05">31</span>
-<span class="kpi-s">26 closed · 5 still open</span>
+<span class="num" style="font-size: 34px; font-weight: 600; letter-spacing: -0.03em; line-height: 1.05">{{ kpi.chats }}</span>
+<span class="kpi-s">{{ kpi.chatsSub }}</span>
 </div>
 <div class="glass" style="padding: 20px 22px; display: flex; flex-direction: column; gap: 8px; min-width: 0">
 <span class="kpi-l">Median first reply</span>
-<span style="display: flex; align-items: center; gap: 10px"><span class="num" style="font-size: 34px; font-weight: 600; letter-spacing: -0.03em; line-height: 1.05">3.8 s</span><span class="delta">▼ 0.6 s</span></span>
-<span class="kpi-s">People: 18 min</span>
+<span style="display: flex; align-items: center; gap: 10px"><span class="num" style="font-size: 34px; font-weight: 600; letter-spacing: -0.03em; line-height: 1.05">{{ kpi.first }}</span><span class="delta">{{ kpi.firstDelta }}</span></span>
+<span class="kpi-s">People: {{ kpi.people }}</span>
 </div>
 <div class="glass" style="padding: 20px 22px; display: flex; flex-direction: column; gap: 8px; min-width: 0">
 <span class="kpi-l">Free days granted</span>
-<span style="display: flex; align-items: flex-end; gap: 12px"><span class="num" style="font-size: 34px; font-weight: 600; letter-spacing: -0.03em; line-height: 1.05">52</span><span aria-hidden="true" style="display: flex; align-items: flex-end; gap: 3px; height: 26px; padding-bottom: 4px"><sc-for list="{{ grantBars }}" as="g" hint-placeholder-count="7"><span style="width: 5px; height: {{ g.h }}px; border-radius: 2px; background: rgba(255,255,255,.7)"></span></sc-for></span></span>
-<span class="kpi-s">7 grants · 11 blocked by limits</span>
+<span style="display: flex; align-items: flex-end; gap: 12px"><span class="num" style="font-size: 34px; font-weight: 600; letter-spacing: -0.03em; line-height: 1.05">{{ kpi.days }}</span><span aria-hidden="true" style="display: flex; align-items: flex-end; gap: 3px; height: 26px; padding-bottom: 4px"><sc-for list="{{ grantBars }}" as="g" hint-placeholder-count="7"><span style="width: 5px; height: {{ g.h }}px; border-radius: 2px; background: rgba(255,255,255,.7)"></span></sc-for></span></span>
+<span class="kpi-s">{{ kpi.daysSub }}</span>
 </div>
 <div class="glass" style="padding: 20px 22px; display: flex; flex-direction: column; gap: 8px; min-width: 0">
 <span class="kpi-l">Waiting for a person</span>
-<span class="num" style="font-size: 34px; font-weight: 600; letter-spacing: -0.03em; line-height: 1.05">4</span>
-<span class="kpi-s">Oldest 1h 04m · <a href="Main.dc.html" style="color: #fff; font-weight: 500; text-decoration: underline; text-underline-offset: 3px; text-decoration-color: rgba(255,255,255,.45)">Open Incoming</a></span>
+<span class="num" style="font-size: 34px; font-weight: 600; letter-spacing: -0.03em; line-height: 1.05">{{ kpi.waiting }}</span>
+<span class="kpi-s">Oldest {{ kpi.oldest }} · <a href="Main.dc.html" style="color: #fff; font-weight: 500; text-decoration: underline; text-underline-offset: 3px; text-decoration-color: rgba(255,255,255,.45)">Open Incoming</a></span>
 </div>
 </div>
 </div>
@@ -215,7 +215,7 @@ td{padding:7px 10px;border-bottom:1px solid #f4f4f5;text-align:right;font-varian
 <div style="padding: 8px; border-radius: 24px; background: rgba(255,255,255,.24); border: 1px solid rgba(255,255,255,.5); box-shadow: 0 40px 90px -40px rgba(30,10,120,.5); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px)">
 <section class="card" aria-labelledby="big-h" style="padding: 22px 24px 20px; border-radius: 17px">
 <div class="ch">
-<div><h2 id="big-h">Conversations by hour</h2><p>Who closed each chat or ticket</p></div>
+<div><h2 id="big-h">{{ chartTitle }}</h2><p>Who closed each chat or ticket</p></div>
 <div class="seg seg-light" role="tablist" aria-label="View">
 <button type="button" role="tab" aria-selected="{{ chart }}" class="{{ chartCls }}" onClick="{{ showChart }}">Chart</button>
 <button type="button" role="tab" aria-selected="{{ table }}" class="{{ tableCls }}" onClick="{{ showTable }}">Table</button>
@@ -233,7 +233,7 @@ td{padding:7px 10px;border-bottom:1px solid #f4f4f5;text-align:right;font-varian
 <sc-for list="{{ yTicks }}" as="y" hint-placeholder-count="3"><span class="num" style="position: absolute; right: 0; top: {{ y.top }}px; transform: translateY(-50%)">{{ y.v }}</span></sc-for>
 </div>
 <div style="position: relative; height: 280px" onMouseLeave="{{ unhover }}">
-<svg role="img" aria-label="Stacked area chart of chats per hour from 11:00 to 23:00: 19 kept by the agent, 7 handed to people, 5 closed by people, 4 other feedback." viewBox="0 0 1000 280" preserveAspectRatio="none" style="position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible">
+<svg role="img" aria-label="{{ chartAria }}" viewBox="0 0 1000 280" preserveAspectRatio="none" style="position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible">
 <defs><linearGradient id="agentFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4f8bff"></stop><stop offset="1" stop-color="#2563eb"></stop></linearGradient></defs>
 <sc-for list="{{ yTicks }}" as="y"><line x1="0" x2="1000" y1="{{ y.top }}" y2="{{ y.top }}" stroke="{{ y.stroke }}" stroke-width="1" vector-effect="non-scaling-stroke"></line></sc-for>
 <path d="{{ areas.closed }}" fill="#8f1d3a" fill-opacity=".9" stroke="#fff" stroke-width="2" vector-effect="non-scaling-stroke"></path>
@@ -268,7 +268,7 @@ td{padding:7px 10px;border-bottom:1px solid #f4f4f5;text-align:right;font-varian
 <sc-if value="{{ table }}" hint-placeholder-val="{{ false }}">
 <div style="overflow-x: auto">
 <table>
-<thead><tr><th scope="col">Hour</th><th scope="col">Kept by the agent</th><th scope="col">Handed to people</th><th scope="col">Closed by people</th><th scope="col">Other feedback</th></tr></thead>
+<thead><tr><th scope="col">{{ bucketHead }}</th><th scope="col">Kept by the agent</th><th scope="col">Handed to people</th><th scope="col">Closed by people</th><th scope="col">Other feedback</th></tr></thead>
 <tbody>
 <sc-for list="{{ rows }}" as="r" hint-placeholder-count="13"><tr><td>{{ r.label }}</td><td>{{ r.agent }}</td><td>{{ r.handed }}</td><td>{{ r.closed }}</td><td>{{ r.feedback }}</td></tr></sc-for>
 </tbody>
@@ -287,8 +287,8 @@ td{padding:7px 10px;border-bottom:1px solid #f4f4f5;text-align:right;font-varian
 </div>
 <div class="cmp-head">
 <span></span>
-<span class="who"><span class="sw" style="background: #2563eb"></span>Machines<span class="src">96 replies · from app logs</span></span>
-<span class="who"><span class="sw" style="background: #e5484d"></span>Humans<span class="src">7 replies · from Incoming</span></span>
+<span class="who"><span class="sw" style="background: #2563eb"></span>Machines<span class="src">{{ agentReplies }} replies · from app logs</span></span>
+<span class="who"><span class="sw" style="background: #e5484d"></span>Humans<span class="src">{{ peopleReplies }} replies · from Incoming</span></span>
 </div>
 <sc-for list="{{ vs }}" as="m" hint-placeholder-count="5">
 <div class="cmp">
@@ -326,15 +326,15 @@ td{padding:7px 10px;border-bottom:1px solid #f4f4f5;text-align:right;font-varian
 <div style="display: flex; align-items: center; gap: 12px">
 <span class="itile" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"></circle><path d="M12 4a8 8 0 0 1 8 8h-8z"></path></svg></span>
 <div style="flex: 1; min-width: 0"><h2 id="c1" style="margin: 0; font-size: 15px; font-weight: 600">Chat outcomes</h2></div>
-<span class="meta num">31 chats</span>
+<span class="meta num">{{ donutTotal }} chats</span>
 </div>
 <div style="position: relative; width: 140px; height: 140px; align-self: center">
-<svg role="img" aria-label="31 chats: 19 resolved by the agent, 7 handed to people, 5 still open" width="140" height="140" viewBox="0 0 148 148" style="transform: rotate(-90deg)">
+<svg role="img" aria-label="{{ donutAria }}" width="140" height="140" viewBox="0 0 148 148" style="transform: rotate(-90deg)">
 <circle cx="74" cy="74" r="56" fill="none" stroke="#f1f1f3" stroke-width="14"></circle>
 <sc-for list="{{ donut }}" as="d"><circle cx="74" cy="74" r="56" fill="none" stroke="{{ d.color }}" stroke-width="14" stroke-dasharray="{{ d.dash }}" stroke-dashoffset="{{ d.offset }}"></circle></sc-for>
 </svg>
 <div style="position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center">
-<span class="num" style="font-size: 28px; font-weight: 600; letter-spacing: -0.03em; line-height: 1">61%</span>
+<span class="num" style="font-size: 28px; font-weight: 600; letter-spacing: -0.03em; line-height: 1">{{ donutPct }}</span>
 <span style="font-size: 11.5px; color: #71717a; margin-top: 4px">by the agent</span>
 </div>
 </div>
@@ -347,7 +347,7 @@ td{padding:7px 10px;border-bottom:1px solid #f4f4f5;text-align:right;font-varian
 <div style="display: flex; align-items: center; gap: 12px">
 <span class="itile" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#e5484d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"></path></svg></span>
 <div style="flex: 1; min-width: 0"><h2 id="c2" style="margin: 0; font-size: 15px; font-weight: 600">Why chats went to people</h2></div>
-<span class="meta num">7</span>
+<span class="meta num">{{ reasonsTotal }}</span>
 </div>
 <div style="display: flex; flex-direction: column; gap: 12px">
 <sc-for list="{{ reasons }}" as="b" hint-placeholder-count="4"><div><div class="bar-lbl">{{ b.name }}</div><div class="bar-row"><div class="track"><div class="fill" style="width: {{ b.pct }}%; background: #e5484d"></div></div><span class="num" style="font-size: 13.5px; font-weight: 600; text-align: right">{{ b.v }}</span></div></div></sc-for>
@@ -358,7 +358,7 @@ td{padding:7px 10px;border-bottom:1px solid #f4f4f5;text-align:right;font-varian
 <div style="display: flex; align-items: center; gap: 12px">
 <span class="itile" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v6c0 4.4-3 7.6-7 9-4-1.4-7-4.6-7-9V6z"></path></svg></span>
 <div style="flex: 1; min-width: 0"><h2 id="c3" style="margin: 0; font-size: 15px; font-weight: 600">Blocked by limits</h2></div>
-<span class="meta num">11</span>
+<span class="meta num">{{ blockedTotal }}</span>
 </div>
 <div style="display: flex; flex-direction: column; gap: 12px">
 <sc-for list="{{ blocked }}" as="b" hint-placeholder-count="4"><div><div class="bar-lbl">{{ b.name }}</div><div class="bar-row"><div class="track"><div class="fill" style="width: {{ b.pct }}%; background: #2563eb"></div></div><span class="num" style="font-size: 13.5px; font-weight: 600; text-align: right">{{ b.v }}</span></div></div></sc-for>
@@ -369,7 +369,7 @@ td{padding:7px 10px;border-bottom:1px solid #f4f4f5;text-align:right;font-varian
 <div style="display: flex; align-items: center; gap: 12px">
 <span class="itile" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8f1d3a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16l-6 7v6l-4 2v-8z"></path></svg></span>
 <div style="flex: 1; min-width: 0"><h2 id="c4" style="margin: 0; font-size: 15px; font-weight: 600">Level 1 decisions</h2></div>
-<span class="meta num">12 triaged</span>
+<span class="meta num">{{ triagedTotal }} triaged</span>
 </div>
 <div style="display: flex; flex-direction: column; gap: 12px">
 <sc-for list="{{ funnel }}" as="b" hint-placeholder-count="5"><div><div class="bar-lbl">{{ b.name }}</div><div class="bar-row"><div class="track"><div class="fill" style="width: {{ b.pct }}%; background: #8f1d3a"></div></div><span class="num" style="font-size: 13.5px; font-weight: 600; text-align: right">{{ b.v }}</span></div></div></sc-for>
@@ -404,7 +404,7 @@ td{padding:7px 10px;border-bottom:1px solid #f4f4f5;text-align:right;font-varian
 </div>
 </section>
 
-<p style="margin: 8px 0 0; font-size: 12.5px; color: #71717a">Agent data comes from the Lumen app's chat logs; people's from tickets answered in Incoming. Updated 23:00.</p>
+<p style="margin: 8px 0 0; font-size: 12.5px; color: #71717a">Agent data comes from the Lumen app's chat logs; people's from tickets answered in Incoming. Updated {{ updated }}.</p>
 </main>
 </div>
 </x-dc>
@@ -457,8 +457,19 @@ var TASKS = [
     { title: 'Where is my money', user: 'unknown user', note: 'ask for the receipt', age: 3644, href: 'Ticket.dc.html' } ] }
 ];
 
-function xAt(i) { return i / (HOURS.length - 1) * W; }
-function yAt(v) { return H - v / YMAX * H; }
+// --- live data (GET /api/analytics); the design's sample data above stays for ?mock=1 ---------------
+var API_RANGE = { today: 'today', week: '7d', month: '30d' };
+var PREV_LABEL = { week: 'the week before', month: 'the 30 days before' };
+var REASONS = { refund: 'Refund', repeat_after_grant: 'Repeat after a grant', asks_for_human: 'Asks for a human', chargeback: 'Chargeback', threat: 'Threat', profile_mismatch: 'Profile does not match', other: 'Other' };
+var BLOCKS = { grant_limit_30d: 'Second grant within 30 days', over_max_days: 'More days than allowed', not_paid: 'User never paid', lifetime: 'Lifetime user', already_granted_this_session: 'Already granted in this chat', tool_disabled: 'Grants switched off' };
+var OUTCOME = { resolved: ['ok', 'resolved'], granted: ['ok', 'granted'], answered: ['ok', 'answered'], with_teammate: ['go', 'with a teammate'], handed_off: ['go', 'handed off'], grant_blocked: ['no', 'grant blocked'] };
+var GROUPS = [['chat', 'Talking now', 'pulse'], ['triage', 'Being triaged', 'ring'], ['review', 'Waiting for a person', 'solid']];
+var LIVE_ITEMS = 5, REFRESH_MS = 15000;
+var NO_SIDE = { replies: 0, first_reply_median_s: null, closed_with_reply: null, came_back: null, passed_on: null, free_days: 0 };
+var NO_SUMMARY = { chats: { total: 0, resolved: 0, handed_off: 0, open: 0 }, machine_share: null, machines: NO_SIDE, humans: NO_SIDE, grants: { count: 0, days: 0, days_each: [] }, handoff_reasons: {}, blocked: {}, decisions: { triaged: 0, decided: 0, first: 0, second_third: 0, edited: 0, own_reply: 0, no_reply: 0 } };
+
+function xAt(i, n) { return i / ((n || HOURS.length) - 1) * W; }
+function yAt(v, ymax) { return H - v / (ymax || YMAX) * H; }
 function curve(pts, move) {
   var d = (move ? 'M' : 'L') + pts[0][0].toFixed(1) + ' ' + pts[0][1].toFixed(1);
   for (var i = 1; i < pts.length; i++) {
@@ -467,96 +478,278 @@ function curve(pts, move) {
   }
   return d;
 }
-function band(lower, upper) {
-  var top = upper.map(function (v, i) { return [xAt(i), yAt(v)]; });
-  var bot = lower.map(function (v, i) { return [xAt(i), yAt(v)]; }).reverse();
+function band(lower, upper, ymax) {
+  var n = upper.length;
+  var top = upper.map(function (v, i) { return [xAt(i, n), yAt(v, ymax)]; });
+  var bot = lower.map(function (v, i) { return [xAt(i, n), yAt(v, ymax)]; }).reverse();
   return curve(top, true) + ' ' + curve(bot, false) + ' Z';
 }
 function fmtAge(s) {
+  if (s >= 86400) { var d = Math.floor(s / 86400), dh = Math.floor((s % 86400) / 3600); return d + 'd ' + ('0' + dh).slice(-2) + 'h'; }
   if (s >= 3600) { var h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60); return h + 'h ' + ('0' + m).slice(-2) + 'm'; }
   var mm = Math.floor(s / 60), ss = s % 60;
   return mm + 'm ' + ('0' + ss).slice(-2) + 's';
 }
 function bars(list) { var max = Math.max.apply(null, list.map(function (b) { return b[1]; })); return list.map(function (b) { return { name: b[0], v: b[1], pct: Math.max(4, b[1] / max * 100) }; }); }
+function liveBars(list) { var max = Math.max.apply(null, [1].concat(list.map(function (b) { return b[1]; }))); return list.map(function (b) { return { name: b[0], v: b[1], pct: b[1] ? Math.max(4, b[1] / max * 100) : 0 }; }); }
+function counted(obj, names) {
+  return Object.keys(obj || {}).map(function (k) { return [names[k] || k, obj[k]]; }).sort(function (a, b) { return b[1] - a[1]; });
+}
+function sum(list) { return list.reduce(function (a, b) { return a + b; }, 0); }
+function plural(n, word) { return n + ' ' + word + (n === 1 ? '' : 's'); }
+/** Seconds as the design writes them: '3.8 s', '18 min', '2.5 h', '3 d'; null → '—'. */
+function dur(sec) {
+  if (sec === null || sec === undefined) return '—';
+  if (sec < 60) return sec.toFixed(1) + ' s';
+  if (sec < 3600) return Math.round(sec / 60) + ' min';
+  if (sec < 86400) return String(Math.round(sec / 360) / 10) + ' h';
+  return String(Math.round(sec / 8640) / 10) + ' d';
+}
+function pct(x) { return x === null || x === undefined ? '—' : Math.round(x * 100) + '%'; }
+function addSec(ts, s) { return new Date(new Date(ts).getTime() + s * 1000).toISOString(); }
+function csvCell(v) { v = String(v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }
+
+/** The design's own numbers (mock mode). */
+function mockView(range, tick) {
+  var parts = [['Resolved by the agent', 19, C.agent], ['Handed to people', 7, C.handed], ['Still open', 5, C.open]];
+  return {
+    labels: HOURS, starts: HOURS, tipLabels: HOURS.map(function (h, i) { return h + '–' + (HOURS[i + 1] || '24:00'); }),
+    xLabels: HOURS.filter(function (h, i) { return i % 2 === 0; }),
+    agent: AGENT, handed: HANDED, closed: CLOSED, feedback: FEEDBACK, ymax: YMAX, step: 1, totals: [19, 7, 5, 4],
+    rangeNote: RANGES.filter(function (r) { return r.id === range; })[0].note,
+    hero: { w: 73, machines: '73%', humans: '27%', aria: 'Of 26 closed chats, machines closed 73% and humans 27%', delta: '▲ 6 pts for the machines', line: 'vs Nov 6 · 19 of 26 closed chats ended without a human, 7 needed one' },
+    kpi: { chats: 31, chatsSub: '26 closed · 5 still open', first: '3.8 s', firstDelta: '▼ 0.6 s', people: '18 min', days: 52, daysSub: '7 grants · 11 blocked by limits', waiting: 4, oldest: '1h 04m' },
+    grants: GRANTS,
+    chartTitle: 'Conversations by hour', bucketHead: 'Hour',
+    chartAria: 'Stacked area chart of chats per hour from 11:00 to 23:00: 19 kept by the agent, 7 handed to people, 5 closed by people, 4 other feedback.',
+    vs: VS, agentReplies: 96, peopleReplies: 7, logs: LOGS,
+    donutParts: parts, donutTotal: 31, donutPct: '61%', donutAria: '31 chats: 19 resolved by the agent, 7 handed to people, 5 still open',
+    reasons: bars([['Refund', 3], ['Repeat after a grant', 2], ['Asks for a human', 1], ['Chargeback', 1]]),
+    blocked: bars([['Second grant within 30 days', 5], ['More days than allowed', 3], ['User never paid', 2], ['Lifetime user', 1]]),
+    funnel: bars([['Decided', 10], ['Took the 1st answer', 6], ['Took the 2nd or 3rd', 2], ['Edited before sending', 3], ['Wrote their own', 2]]),
+    reasonsTotal: 7, blockedTotal: 11, triagedTotal: 12,
+    work: TASKS.map(function (g) { return { label: g.label, dot: g.dot, count: g.items.length, items: g.items.map(function (t) { return { title: t.title, user: t.user, note: t.note, href: t.href, age: fmtAge(t.age + tick) }; }) }; }),
+    updated: '23:00'
+  };
+}
+
+/** GET /api/analytics → the same shapes as mockView (null numbers → '—'). */
+function liveView(data, range, elapsed, updated, error) {
+  data = data || {};
+  var p = data.period || { range: API_RANGE[range], bucket: range === 'today' ? 'hour' : 'day', points: [], current: NO_SUMMARY, previous: NO_SUMMARY };
+  var cur = p.current, prev = p.previous, hourly = p.bucket === 'hour';
+  var pts = p.points;
+  var labels = pts.map(function (x) { return hourly ? API.hm(x.t) : API.day(x.t); });
+  var series = function (k) { return pts.map(function (x) { return x[k]; }); };
+  var agent = series('agent'), handed = series('handed_off'), closed = series('closed_by_people'), feedback = series('feedback');
+  var top = Math.max.apply(null, [0].concat(pts.map(function (x) { return Math.max(x.agent + x.handed_off + x.closed_by_people, x.feedback); })));
+  var step = [1, 2, 3, 4, 5, 10, 20, 25, 50, 100, 200, 250, 500, 1000].filter(function (s) { return s * 5 >= top; })[0] || Math.ceil(top / 5);
+  var every = Math.max(1, Math.ceil((pts.length - 1) / 6));
+  var ch = cur.chats, m = cur.machines, h = cur.humans;
+  var closedChats = ch.resolved + ch.handed_off;
+  var share = cur.machine_share, prevShare = prev.machine_share;
+  var dShare = share !== null && prevShare !== null ? Math.round((share - prevShare) * 100) : null;
+  var dFirst = m.first_reply_median_s !== null && prev.machines.first_reply_median_s !== null ? m.first_reply_median_s - prev.machines.first_reply_median_s : null;
+  var blockedTotal = sum(Object.keys(cur.blocked).map(function (k) { return cur.blocked[k]; }));
+  var reasonsTotal = sum(Object.keys(cur.handoff_reasons).map(function (k) { return cur.handoff_reasons[k]; }));
+  var d = cur.decisions;
+  var tasks = data.open_tasks || [], counts = data.open_counts || { chat: 0, triage: 0, review: 0 };
+  var waiting = tasks.filter(function (t) { return t.kind === 'review'; });
+  var oldest = waiting.length ? Math.max.apply(null, waiting.map(function (t) { return t.age_s || 0; })) + elapsed : null;
+  var prevLabel = range === 'today' ? API.day(p.prev_start) : PREV_LABEL[range];
+  var note = '';
+  if (p.start) {
+    var s0 = API.day(p.start), e0 = API.day(p.end);
+    if (range === 'today') note = s0 + ', ' + API.hm(p.start) + '–' + API.hm(p.end) + ' · compared with ' + prevLabel;
+    else note = (s0.split(' ')[0] === e0.split(' ')[0] ? s0 + '–' + e0.split(' ')[1] : s0 + '–' + e0) + ' · compared with ' + PREV_LABEL[range];
+  }
+  var side = function (v, f) { return v === null || v === undefined ? null : f(v); };
+  var vsRow = function (label, a, b, better, fmt, scale) {
+    return { label: label, a: fmt(a), p: fmt(b), av: side(a, scale), pv: side(b, scale), better: better };
+  };
+  var ident = function (x) { return x; }, hundred = function (x) { return x * 100; };
+  return {
+    labels: labels, starts: pts.map(function (x) { return x.t; }),
+    tipLabels: pts.map(function (x, i) {
+      if (!hourly) return labels[i];
+      var next = API.hm(addSec(x.t, 3600));
+      return labels[i] + '–' + (next === '00:00' ? '24:00' : next);
+    }),
+    xLabels: labels.map(function (l, i) { return i % every === 0 || i === labels.length - 1 && (i % every) * 2 > every ? l : ''; }),
+    agent: agent, handed: handed, closed: closed, feedback: feedback, ymax: step * 5, step: step,
+    totals: [sum(agent), sum(handed), sum(closed), sum(feedback)],
+    rangeNote: error ? 'Could not load the numbers: ' + error : note,
+    hero: {
+      w: share === null ? 50 : Math.min(88, Math.max(12, Math.round(share * 100))),
+      machines: pct(share), humans: share === null ? '—' : (100 - Math.round(share * 100)) + '%',
+      aria: share === null ? 'No closed chats in this period' : 'Of ' + closedChats + ' closed chats, machines closed ' + pct(share) + ' and humans ' + (100 - Math.round(share * 100)) + '%',
+      delta: dShare === null ? '—' : (dShare > 0 ? '▲ ' : dShare < 0 ? '▼ ' : '± ') + Math.abs(dShare) + ' pts for the machines',
+      line: 'vs ' + prevLabel + ' · ' + (closedChats ? ch.resolved + ' of ' + closedChats + ' closed chats ended without a human, ' + ch.handed_off + ' needed one' : 'no closed chats in this period')
+    },
+    kpi: {
+      chats: ch.total, chatsSub: closedChats + ' closed · ' + ch.open + ' still open',
+      first: dur(m.first_reply_median_s),
+      firstDelta: dFirst === null ? '—' : (dFirst < 0 ? '▼ ' : dFirst > 0 ? '▲ ' : '± ') + dur(Math.abs(dFirst)),
+      people: dur(h.first_reply_median_s),
+      days: cur.grants.days, daysSub: plural(cur.grants.count, 'grant') + ' · ' + blockedTotal + ' blocked by limits',
+      waiting: counts.review, oldest: oldest === null ? '—' : fmtAge(oldest)
+    },
+    grants: cur.grants.days_each.slice(-7),
+    chartTitle: hourly ? 'Conversations by hour' : 'Conversations by day', bucketHead: hourly ? 'Hour' : 'Day',
+    chartAria: 'Stacked area chart of chats per ' + (hourly ? 'hour' : 'day') + (labels.length ? ' from ' + labels[0] + ' to ' + labels[labels.length - 1] : '') + ': ' + sum(agent) + ' kept by the agent, ' + sum(handed) + ' handed to people, ' + sum(closed) + ' closed by people, ' + sum(feedback) + ' other feedback.',
+    vs: [
+      vsRow('Time to first reply', m.first_reply_median_s, h.first_reply_median_s, 'low', dur, ident),
+      vsRow('Closed with that reply', m.closed_with_reply, h.closed_with_reply, 'high', pct, hundred),
+      vsRow('User came back unhappy', m.came_back, h.came_back, 'low', pct, hundred),
+      vsRow('Passed on to someone else', m.passed_on, h.passed_on, 'low', pct, hundred),
+      vsRow('Free days given away', m.free_days, h.free_days, 'low', String, ident)
+    ],
+    agentReplies: m.replies, peopleReplies: h.replies,
+    logs: (data.agent_log || []).slice(0, 6).map(function (r) {
+      var o = OUTCOME[r.outcome] || ['ok', r.outcome];
+      return { t: API.hms(r.ts), kind: o[0], out: r.outcome === 'granted' && r.grant_days ? 'granted ' + plural(r.grant_days, 'day') : o[1], user: r.user || 'unknown user', reply: r.reply, lat: dur(r.latency_s) };
+    }),
+    donutParts: [['Resolved by the agent', ch.resolved, C.agent], ['Handed to people', ch.handed_off, C.handed], ['Still open', ch.open, C.open]],
+    donutTotal: ch.total, donutPct: ch.total ? Math.round(ch.resolved / ch.total * 100) + '%' : '—',
+    donutAria: ch.total + ' chats: ' + ch.resolved + ' resolved by the agent, ' + ch.handed_off + ' handed to people, ' + ch.open + ' still open',
+    reasons: liveBars(counted(cur.handoff_reasons, REASONS)),
+    blocked: liveBars(counted(cur.blocked, BLOCKS)),
+    funnel: liveBars([['Decided', d.decided], ['Took the 1st answer', d.first], ['Took the 2nd or 3rd', d.second_third], ['Edited before sending', d.edited], ['Wrote their own', d.own_reply], ['Closed without a reply', d.no_reply]]),
+    reasonsTotal: reasonsTotal, blockedTotal: blockedTotal, triagedTotal: d.triaged,
+    work: GROUPS.map(function (g) {
+      var items = tasks.filter(function (t) { return t.kind === g[0]; }).sort(function (a, b) { return (a.age_s || 0) - (b.age_s || 0); }).slice(0, LIVE_ITEMS);
+      return { label: g[1], dot: g[2], count: counts[g[0]], items: items.map(function (t) {
+        return { title: t.title || '(no text)', user: t.user || 'unknown user', note: t.detail || t.note, age: fmtAge((t.age_s || 0) + elapsed),
+          href: t.kind === 'chat' ? 'Chat.dc.html?session=' + encodeURIComponent(t.id) : 'Ticket.dc.html?id=' + encodeURIComponent(t.id) };
+      }) };
+    }),
+    updated: updated || '—'
+  };
+}
 
 class Component extends DCLogic {
-  componentDidMount() { var self = this; this.iv = setInterval(function () { self.setState({ tick: ((self.state || {}).tick || 0) + 1 }); }, 1000); }
-  componentWillUnmount() { if (this.iv) clearInterval(this.iv); }
+  componentDidMount() {
+    var self = this;
+    this.iv = setInterval(function () { self.setState({ tick: ((self.state || {}).tick || 0) + 1 }); }, 1000);
+    if (!API.mock) {
+      this.load();
+      this.refresh = setInterval(function () { self.load(); }, REFRESH_MS);
+    }
+  }
+  componentWillUnmount() { if (this.iv) clearInterval(this.iv); if (this.refresh) clearInterval(this.refresh); }
+  load(range) {
+    var self = this;
+    range = range || (this.state || {}).range || 'today';
+    var tz = -new Date().getTimezoneOffset();
+    var seq = this.seq = (this.seq || 0) + 1;
+    API.get('/api/analytics?range=' + API_RANGE[range] + '&tz=' + tz).then(function (data) {
+      if (seq !== self.seq) return;
+      self.setState({ data: data, dataRange: range, fetchedAt: Date.now(), updated: API.hm(new Date().toISOString()), error: null });
+    }).catch(function (e) {
+      if (seq === self.seq) self.setState({ error: e.message });
+    });
+  }
   renderVals() {
     var self = this;
     var s = this.state || {};
     var tick = s.tick || 0;
     var range = s.range || 'today';
-    var zero = AGENT.map(function () { return 0; });
-    var l1 = CLOSED;
-    var l2 = CLOSED.map(function (v, i) { return v + HANDED[i]; });
-    var l3 = l2.map(function (v, i) { return v + AGENT[i]; });
-    var feedback = curve(FEEDBACK.map(function (v, i) { return [xAt(i), yAt(v)]; }), true);
+    var elapsed = s.fetchedAt ? Math.max(0, Math.floor((Date.now() - s.fetchedAt) / 1000)) : 0;
+    var v = API.mock ? mockView(range, tick) : liveView(s.dataRange === range ? s.data : null, range, elapsed, s.updated, s.error);
+    // One bucket (or none) is drawn as one flat column across the chart.
+    var pad = function (a) { return a.length >= 2 ? a : a.length === 1 ? [a[0], a[0]] : [0, 0]; };
+    var AG = pad(v.agent), HA = pad(v.handed), CL = pad(v.closed), FB = pad(v.feedback);
+    var n = AG.length, ymax = v.ymax;
+    var buckets = v.labels.length;
+    var zero = AG.map(function () { return 0; });
+    var l1 = CL;
+    var l2 = CL.map(function (x, i) { return x + HA[i]; });
+    var l3 = l2.map(function (x, i) { return x + AG[i]; });
+    var feedback = curve(FB.map(function (x, i) { return [xAt(i, n), yAt(x, ymax)]; }), true);
     var hover = s.hover;
-    var hovering = hover !== undefined && hover !== null;
-    var last = HOURS.length - 1;
+    var hovering = hover !== undefined && hover !== null && hover < buckets;
+    var last = n - 1;
     var circ = 2 * Math.PI * 56;
-    var parts = [['Resolved by the agent', 19, C.agent], ['Handed to people', 7, C.handed], ['Still open', 5, C.open]];
+    var parts = v.donutParts;
     var acc = 0;
     var donut = parts.map(function (p) {
-      var len = p[1] / 31 * circ;
+      var len = v.donutTotal ? p[1] / v.donutTotal * circ : 0;
       var seg = { name: p[0], v: p[1], color: p[2], dash: Math.max(0, len - 3).toFixed(2) + ' ' + circ.toFixed(2), offset: (-acc).toFixed(2) };
       acc += len;
       return seg;
     });
     var isTable = !!s.table;
     var menu = !!s.menu;
-    var agentMid = (yAt(l3[last]) + yAt(l2[last])) / 2;
-    var peopleMid = (yAt(l2[last]) + yAt(0)) / 2;
+    var agentMid = (yAt(l3[last], ymax) + yAt(l2[last], ymax)) / 2;
+    var peopleMid = (yAt(l2[last], ymax) + yAt(0, ymax)) / 2;
     if (agentMid - peopleMid > -16) { agentMid = Math.min(agentMid, peopleMid - 18); }
+    var rows = v.labels.map(function (h, i) { return { label: h, agent: v.agent[i], handed: v.handed[i], closed: v.closed[i], feedback: v.feedback[i] }; });
     return {
-      rangeNote: RANGES.filter(function (r) { return r.id === range; })[0].note,
-      ranges: RANGES.map(function (r) { return { label: r.label, on: r.id === range, cls: r.id === range ? 'on' : '', pick: function () { self.setState({ range: r.id }); } }; }),
-      grantBars: GRANTS.map(function (g) { return { h: Math.round(6 + g / 14 * 18) }; }),
+      rangeNote: v.rangeNote,
+      ranges: RANGES.map(function (r) { return { label: r.label, on: r.id === range, cls: r.id === range ? 'on' : '', pick: function () { if (r.id === range) return; self.setState({ range: r.id, hover: null }); if (!API.mock) self.load(r.id); } }; }),
+      grantBars: (function () { var gmax = Math.max.apply(null, [1].concat(v.grants)); return v.grants.map(function (g) { return { h: Math.round(6 + g / gmax * 18) }; }); })(),
+      hero: v.hero, kpi: v.kpi,
+      chartTitle: v.chartTitle, chartAria: v.chartAria, bucketHead: v.bucketHead,
+      agentReplies: v.agentReplies, peopleReplies: v.peopleReplies,
+      donutTotal: v.donutTotal, donutPct: v.donutPct, donutAria: v.donutAria,
+      reasonsTotal: v.reasonsTotal, blockedTotal: v.blockedTotal, triagedTotal: v.triagedTotal,
+      updated: v.updated,
+      exportCsv: function () {
+        var head = [API.mock ? v.bucketHead : v.bucketHead + ' start (UTC)', 'Kept by the agent', 'Handed to people', 'Closed by people', 'Other feedback'];
+        var lines = [head].concat(rows.map(function (r, i) { return [API.mock ? r.label : v.starts[i], r.agent, r.handed, r.closed, r.feedback]; }));
+        var blob = new Blob([lines.map(function (l) { return l.map(csvCell).join(','); }).join('\n') + '\n'], { type: 'text/csv' });
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'analyze-' + (API_RANGE[range]) + '.csv';
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 0);
+      },
       legend: [
-        { name: 'Kept by the agent', total: 19, color: C.agent, h: 10 },
-        { name: 'Handed to people', total: 7, color: C.handed, h: 10 },
-        { name: 'Closed by people', total: 5, color: C.closed, h: 10 },
-        { name: 'Other feedback', total: 4, color: C.feedback, h: 2 }
+        { name: 'Kept by the agent', total: v.totals[0], color: C.agent, h: 10 },
+        { name: 'Handed to people', total: v.totals[1], color: C.handed, h: 10 },
+        { name: 'Closed by people', total: v.totals[2], color: C.closed, h: 10 },
+        { name: 'Other feedback', total: v.totals[3], color: C.feedback, h: 2 }
       ],
       chart: !isTable, table: isTable,
       chartCls: isTable ? '' : 'on', tableCls: isTable ? 'on' : '',
       showChart: function () { self.setState({ table: false }); },
       showTable: function () { self.setState({ table: true, hover: null }); },
-      yTicks: [0, 1, 2, 3, 4, 5].map(function (v) { return { v: v, top: yAt(v), stroke: v === 0 ? '#d4d4d8' : '#f1f1f3' }; }),
-      xLabels: HOURS.filter(function (h, i) { return i % 2 === 0; }),
-      areas: { closed: band(zero, l1), handed: band(l1, l2), agent: band(l2, l3), feedback: feedback },
+      yTicks: [0, 1, 2, 3, 4, 5].map(function (k) { var y = k * v.step; return { v: y, top: yAt(y, ymax), stroke: k === 0 ? '#d4d4d8' : '#f1f1f3' }; }),
+      xLabels: v.xLabels,
+      areas: { closed: band(zero, l1, ymax), handed: band(l1, l2, ymax), agent: band(l2, l3, ymax), feedback: feedback },
       agentMid: Math.round(agentMid),
       peopleMid: Math.round(peopleMid),
-      hits: HOURS.map(function (h, i) { return { enter: function () { self.setState({ hover: i }); } }; }),
+      hits: v.labels.map(function (h, i) { return { enter: function () { self.setState({ hover: i }); } }; }),
       unhover: function () { self.setState({ hover: null }); },
       hovering: hovering,
-      hoverX: hovering ? xAt(hover) : 0,
-      tipLeft: hovering ? (hover / last * 100) : 0,
+      hoverX: hovering ? (buckets === 1 ? W / 2 : xAt(hover, n)) : 0,
+      tipLeft: hovering ? (buckets === 1 ? 50 : hover / last * 100) : 0,
       tipShift: hovering ? (hover > last / 2 ? -108 : 8) : 0,
       tip: hovering ? {
-        label: HOURS[hover] + '–' + (HOURS[hover + 1] || '24:00'),
+        label: v.tipLabels[hover],
         rows: [
-          { name: 'Kept by the agent', v: AGENT[hover], color: C.agent },
-          { name: 'Handed to people', v: HANDED[hover], color: C.handed },
-          { name: 'Closed by people', v: CLOSED[hover], color: C.closed },
-          { name: 'Other feedback', v: FEEDBACK[hover], color: C.feedback }
+          { name: 'Kept by the agent', v: v.agent[hover], color: C.agent },
+          { name: 'Handed to people', v: v.handed[hover], color: C.handed },
+          { name: 'Closed by people', v: v.closed[hover], color: C.closed },
+          { name: 'Other feedback', v: v.feedback[hover], color: C.feedback }
         ]
       } : { label: '', rows: [] },
-      rows: HOURS.map(function (h, i) { return { label: h, agent: AGENT[i], handed: HANDED[i], closed: CLOSED[i], feedback: FEEDBACK[i] }; }),
-      vs: VS.map(function (m) {
-        var max = Math.max(m.av, m.pv) || 1;
-        var aWin = m.better === 'low' ? m.av < m.pv : m.av > m.pv;
-        var pWin = m.better === 'low' ? m.pv < m.av : m.pv > m.av;
-        return { label: m.label, a: m.a, p: m.p, aPct: Math.max(2, m.av / max * 100), pPct: Math.max(2, m.pv / max * 100), aCls: aWin ? 'v win' : 'v', pCls: pWin ? 'v win' : 'v' };
+      rows: rows,
+      vs: v.vs.map(function (m) {
+        var known = m.av !== null && m.pv !== null;
+        var max = Math.max(m.av || 0, m.pv || 0) || 1;
+        var aWin = known && (m.better === 'low' ? m.av < m.pv : m.av > m.pv);
+        var pWin = known && (m.better === 'low' ? m.pv < m.av : m.pv > m.av);
+        return { label: m.label, a: m.a, p: m.p, aPct: m.av === null ? 0 : Math.max(2, m.av / max * 100), pPct: m.pv === null ? 0 : Math.max(2, m.pv / max * 100), aCls: aWin ? 'v win' : 'v', pCls: pWin ? 'v win' : 'v' };
       }),
-      logs: LOGS.map(function (l) { return { t: l.t, out: l.out, user: l.user, reply: l.reply, lat: l.lat, mark: LOGMARK[l.kind], cls: 'o-' + l.kind }; }),
+      logs: v.logs.map(function (l) { return { t: l.t, out: l.out, user: l.user, reply: l.reply, lat: l.lat, mark: LOGMARK[l.kind], cls: 'o-' + l.kind }; }),
       donut: donut,
-      reasons: bars([['Refund', 3], ['Repeat after a grant', 2], ['Asks for a human', 1], ['Chargeback', 1]]),
-      blocked: bars([['Second grant within 30 days', 5], ['More days than allowed', 3], ['User never paid', 2], ['Lifetime user', 1]]),
-      funnel: bars([['Decided', 10], ['Took the 1st answer', 6], ['Took the 2nd or 3rd', 2], ['Edited before sending', 3], ['Wrote their own', 2]]),
-      work: TASKS.map(function (g) {
-        return { label: g.label, dot: g.dot, count: g.items.length, items: g.items.map(function (t, i) { return { cls: i === 0 ? 'task' : 'task', title: t.title, user: t.user, note: t.note, href: t.href, age: fmtAge(t.age + tick) }; }) };
+      reasons: v.reasons,
+      blocked: v.blocked,
+      funnel: v.funnel,
+      work: v.work.map(function (g) {
+        return { label: g.label, dot: g.dot, count: g.count, items: g.items.map(function (t) { return { cls: 'task', title: t.title, user: t.user, note: t.note, href: t.href, age: t.age }; }) };
       }),
       menu: menu, menuCls: menu ? 'nl open' : 'nl',
       toggleMenu: function () { self.setState({ menu: !menu }); },
