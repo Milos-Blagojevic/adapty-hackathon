@@ -25,6 +25,16 @@ CATEGORIES = (
     "price_complaint",
     "other",
 )
+# One line per category: the Level 1 prompt shows them to label tickets, the insights facts to read the counts.
+CATEGORY_MEANING = {
+    "charged_after_trial": "the user did not expect the charge when a free trial converted.",
+    "no_access_after_purchase": "the user paid and says premium features are still locked.",
+    "billing_issue": "the store could not charge the user (billing_issue_detected_at set, grace period or expired) and the user lost access.",
+    "refund_request": "the user wants money back.",
+    "cancel_how": "the user asks how to cancel or asks you to cancel.",
+    "price_complaint": "the user objects to the price or how it was shown.",
+    "other": "anything else (bugs, feature requests, questions).",
+}
 ACTIONS = ("grant_access", "explain", "escalate_refund", "no_action")
 STATUSES = ("new", "triaged", "proposed", "approved", "done", "dismissed")
 
@@ -314,3 +324,13 @@ def _weighted_sample(pool: list[dict], count: int, rng: random.Random) -> list[d
         remaining.remove(choice)
         picked.append(choice)
     return picked
+
+CATEGORY_LABELS = {
+    "charged_after_trial": "Charged after trial",
+    "no_access_after_purchase": "No access after purchase",
+    "billing_issue": "Billing issue",
+    "refund_request": "Refund request",
+    "cancel_how": "How to cancel",
+    "price_complaint": "Price complaint",
+    "other": "Other",
+}

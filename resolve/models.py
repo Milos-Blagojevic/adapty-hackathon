@@ -10,6 +10,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from resolve.insights import PLACEMENT_IDS
 from resolve.tickets import CATEGORIES
 
 # Level 1 option actions (what the support person can accept or switch to).
@@ -394,3 +395,124 @@ class FeedbackRequest(BaseModel):
     customer_user_id: str | None = None
     email: str | None = None
     subject: str | None = None
+
+
+# --- Insights (docs/agents.md, "Insights: JSON API and live screen") --------------------------------
+
+
+class InsightCount(BaseModel):
+    product: str
+    count: int
+
+
+class InsightFlowCount(BaseModel):
+    flow: str = Field(description="Flow key from the offline dataset, or 'unknown'")
+    title: str
+    count: int
+
+
+class InsightCategory(BaseModel):
+    category: str
+    count: int
+    share: float = Field(description="count / triaged")
+    products: list[InsightCount]
+    flows: list[InsightFlowCount]
+
+
+class InsightTop(BaseModel):
+    category: str
+    flow: str | None
+    title: str
+    count: int
+
+
+class InsightCell(BaseModel):
+    category: str
+    flow: str = Field(description="Flow key from the offline dataset")
+    tickets: int
+    users: int = Field(description="Distinct customers in the cell")
+
+
+class InsightReport(BaseModel):
+    headline: str
+    hypothesis: str
+    caveat: str | None = Field(None, description="What the data cannot tell, or the part a paywall cannot fix")
+    placement: str
+    placement_title: str | None
+    control_flow: str
+    variant_source: Literal["existing_flow", "edited_copy"] | None = Field(None, description="The variant arm is another existing flow, or an edited copy of the control")
+    variant_flow: str | None = Field(None, description="The existing flow used as the variant arm (variant_source = existing_flow)")
+    variant: str
+    expected_effect: str
+    evidence: list[str]
+    ticket_ids: list[str] = Field(default_factory=list, description="Tickets the hypothesis was read from")
+    cited_cells: list[InsightCell] = Field(default_factory=list, description="The first is the tested cell")
+    what_changed: str | None = Field(None, description="Computed from counts against the replaced report: the test kept or moved")
+    model_calls: int | None = Field(None, description="Model calls the run took (2 = one corrective retry)")
+    latency_s: float | None = Field(None, description="Wall time of the model calls")
+    created_at: str | None
+    trigger: Literal["manual", "auto"] | None = None
+    reason: str | None = Field(None, description="What started an auto run")
+
+
+class InsightRun(BaseModel):
+    state: Literal["idle", "running", "error"]
+    trigger: Literal["manual", "auto"] | None
+    reason: str | None
+    started_at: str | None
+    finished_at: str | None
+    error: str | None
+
+
+class InsightPending(BaseModel):
+    reason: str = Field(description="What changed, e.g. 'top issue changed: Refund request → Charged after trial'")
+    since: str | None
+    due_in_s: float = Field(description="Seconds until the debounce ends")
+    blocked: str | None = Field(description="Why it will not start: 'hourly cap', 'cooling down', 'last auto run failed'")
+
+
+class InsightPlacement(BaseModel):
+    key: str
+    title: str
+    flows: list[str]
+    draftable: bool = Field(description="Two or more flows: can be an A/B test")
+
+
+class DraftArm(BaseModel):
+    title: str
+    weight: int
+
+
+class AbDraft(BaseModel):
+    ab_test_id: str
+    title: str
+    state: str
+    placement: str | None
+    placement_id: str
+    arms: list[DraftArm]
+    goal: str
+    created_at: str
+
+
+class InsightsView(BaseModel):
+    updated_at: str
+    demo: bool
+    llm: bool = Field(description="A model client is configured")
+    auto: bool = Field(description="The hypothesis re-runs on its own after a material change")
+    total: int
+    triaged: int
+    untriaged: int
+    categories: list[InsightCategory]
+    top: InsightTop | None = Field(description="Raw top: the category with most tickets and its most common flow")
+    tested: InsightTop | None = Field(None, description="The cell the current report tests (its cited_cells[0]), with its ticket count now")
+    report: InsightReport | None
+    previous: InsightReport | None = Field(description="The report the current one replaced")
+    run: InsightRun
+    pending: InsightPending | None
+    placements: list[InsightPlacement]
+    drafts: list[AbDraft]
+
+
+class AbDraftRequest(BaseModel):
+    placement: Literal[*PLACEMENT_IDS] = Field(description="insights.PLACEMENTS key")
+    goal: str = Field("", max_length=500)

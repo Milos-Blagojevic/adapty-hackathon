@@ -15,7 +15,7 @@ from fastapi.templating import Jinja2Templates
 from resolve.models import Health
 from resolve import api, config, db, insights, llm, models, policy, triage, workflow
 from resolve.adapty import Client, parse_datetime
-from resolve.tickets import CATEGORIES, STATUSES
+from resolve.tickets import CATEGORIES, CATEGORY_LABELS, STATUSES
 from resolve.workflow import Services
 
 HERE = Path(__file__).resolve().parent
@@ -31,15 +31,6 @@ ACTION_LABELS = {
     "explain": "Reply only",
     "escalate_refund": "Reply and flag for a store refund",
     "no_action": "No action",
-}
-CATEGORY_LABELS = {
-    "charged_after_trial": "Charged after trial",
-    "no_access_after_purchase": "No access after purchase",
-    "billing_issue": "Billing issue",
-    "refund_request": "Refund request",
-    "cancel_how": "How to cancel",
-    "price_complaint": "Price complaint",
-    "other": "Other",
 }
 
 
