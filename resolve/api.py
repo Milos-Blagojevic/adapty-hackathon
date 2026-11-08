@@ -251,6 +251,8 @@ def build_router(services, live: insights_live.Live | None = None, ab_runner=lam
             raise HTTPException(409, "only a proposed ticket can be accepted")
         try:
             workflow.accept(services, ticket_id, body)
+        except workflow.OptionsChanged as exc:
+            raise HTTPException(409, str(exc)) from None
         except workflow.NotFound:
             raise HTTPException(404, f"no ticket {ticket_id}") from None
         except workflow.TranslationFailed as exc:

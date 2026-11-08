@@ -32,6 +32,10 @@ class Services:
     llm: LLM | None = None
 
 
+class OptionsChanged(Exception):
+    pass
+
+
 class NotFound(Exception):
     pass
 
@@ -137,6 +141,8 @@ def accept(services: Services, ticket_id: str, decision: Decision) -> dict:
         raise ValueError("the ticket has no options to accept")
     if decision.option >= len(proposed["options"]):
         raise ValueError(f"option {decision.option} does not exist; the ticket has {len(proposed['options'])}")
+    if decision.expected_action and proposed["options"][decision.option].get("action") != decision.expected_action:
+        raise OptionsChanged("the options changed after a new message from the user; reload the ticket")
     final = final_option(services, proposed["options"][decision.option], decision)
     language = user_language(ticket)
     edits = decision.edits

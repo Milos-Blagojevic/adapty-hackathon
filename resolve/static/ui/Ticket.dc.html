@@ -605,7 +605,7 @@ function liveModel(t, cfg) {
     var p = o.params || {};
     order.push(String(i));
     conf[String(i)] = typeof o.confidence === 'number' ? Math.round(o.confidence * 100) : null;
-    base[String(i)] = { emoji: o.emoji || EMOJI[o.action] || '', action: ACT[o.action] || o.action, days: p.days != null ? p.days : maxDays, store: STORES[p.store] || '', kind: KINDS[p.kind] || '', question: p.question || '', reply: (lang && o.reply_en) || o.reply || '', orig: lang ? o.reply || '' : '', risk: o.risk, riskReason: o.risk_reason || '' };
+    base[String(i)] = { rawAction: o.action, emoji: o.emoji || EMOJI[o.action] || '', action: ACT[o.action] || o.action, days: p.days != null ? p.days : maxDays, store: STORES[p.store] || '', kind: KINDS[p.kind] || '', question: p.question || '', reply: (lang && o.reply_en) || o.reply || '', orig: lang ? o.reply || '' : '', risk: o.risk, riskReason: o.risk_reason || '' };
   });
   // The user wrote: the chat for a handoff, else the ticket body.
   var convo = t.conversation && t.conversation.length ? t.conversation : [{ role: 'user', content: t.body, ts: t.created_at }];
@@ -856,7 +856,7 @@ class Component extends DCLogic {
         if (self.tt) clearTimeout(self.tt);
         if (LIVE) {
           if (selected === 'own') self.submit(self.path() + '/reject', lang && !s.ownDirect ? { note: '', reply_en: own } : { note: '', reply: own });
-          else self.submit(self.path() + '/accept', { option: Number(selected), edits: editsFor(base, selected, edits) });
+          else self.submit(self.path() + '/accept', { option: Number(selected), expected_action: base[selected] && base[selected].rawAction, edits: editsFor(base, selected, edits) });
           return;
         }
         self.tt = setTimeout(function () {

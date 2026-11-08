@@ -99,6 +99,7 @@ class OptionEdits(BaseModel):
 class Decision(BaseModel):
     option: int = Field(ge=0, le=2)
     edits: OptionEdits = Field(default_factory=OptionEdits)
+    expected_action: str | None = Field(None, exclude=True)  # the action the person saw; a Level 1 rerun may have replaced the options
 
 
 class Reopen(BaseModel):

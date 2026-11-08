@@ -1587,6 +1587,17 @@
      },
      "edits": {
       "$ref": "#/components/schemas/OptionEdits"
+     },
+     "expected_action": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Expected Action"
      }
     },
     "type": "object",

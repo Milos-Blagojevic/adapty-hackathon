@@ -297,6 +297,15 @@ def test_message_after_handoff_reruns_level_1_on_the_same_ticket(env):
     assert any(m["content"] == "I want my money back" for m in t["conversation"])
 
 
+def test_accept_refuses_when_the_options_changed_under_the_person(env):
+    env.chat.steps.extend([call("handoff", reason="other", summary="asked for a human"), say("Passed to our team.")])
+    env.triage.steps.extend([call("get_profile", customer_user_id=CUID), submit(triage_ticket(category="other"))])
+    out = env.client.post("/chat", json={"customer_user_id": CUID, "session_id": "s-stale", "message": "a human please"}).json()
+    r = env.client.post(f"/api/tickets/{out['ticket_id']}/accept", json={"option": 0, "expected_action": "not_the_action_now"})
+    assert r.status_code == 409
+    assert get_ticket(env, out["ticket_id"])["status"] == "proposed"
+
+
 # --- config, analytics, users -----------------------------------------------------------------------
 
 
