@@ -121,6 +121,11 @@ def create_app(
         """The support web UI (Claude Design screens in static/ui, wired to the JSON API)."""
         return RedirectResponse("/static/ui/Main.dc.html")
 
+    @app.get("/impact", include_in_schema=False)
+    def impact():
+        """The closing demo screen: market size, Lumen numbers, what Resolve and Adapty gain. Static, numbers baked in."""
+        return RedirectResponse("/static/impact.html")
+
     @app.get("/inbox", response_class=HTMLResponse)
     def inbox(request: Request, status: str | None = None):
         if status and status not in STATUSES:
