@@ -15,7 +15,7 @@ Python 3.11+, FastAPI, SQLite, one `uvicorn` process. One tool-calling interface
 | `resolve/policy.py` | Grant limits as pure code (`check_grant`), config loading |
 | `resolve/actions.py` | `execute(...)`: the only place an action writes to Adapty; grants recorded in `grants` |
 | `resolve/frontline.py` | Level 2 chat loop: enabled tools only, every call checked and logged, handoff in code after a blocked grant, after-handoff mode, `cancel_handoff` |
-| `resolve/triage.py` | Level 1 tool loop (`get_profile`, `find_user_by_email`, `get_user_history`, `get_agent_config`, `submit_ticket`), checks on the submitted ticket, insights |
+| `resolve/triage.py` | Level 1: code prefetches user, profile, history and config (`prefetch`), then usually one `submit_ticket` call; `get_profile`, `find_user_by_email`, `get_user_history` stay for a second id/email, checks on the submitted ticket, insights |
 | `resolve/workflow.py` | accept / reject / reopen, idempotent status transitions |
 | `resolve/api.py`, `resolve/analytics.py` | JSON API (CORS for the phone apps), full-text search, analytics (timeline, open tasks) |
 | `resolve/db.py` | SQLite schema + migrations (tickets, conversations, messages, l2_events, grants, agent_config, email_index) |

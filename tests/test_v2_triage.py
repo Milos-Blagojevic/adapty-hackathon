@@ -10,6 +10,7 @@ from resolve.models import TriageTicket
 from tests.fakes import legacy_proposal
 from tests.fakes_v2 import (
     CUID,
+    PROFILE_URL,
     OTHER,
     STRANGER,
     call,
@@ -30,7 +31,7 @@ from tests.fakes_v2 import (
     say,
 )
 
-L1_TOOLS = {"get_profile", "find_user_by_email", "get_user_history", "get_agent_config", "submit_ticket"}
+L1_TOOLS = {"get_profile", "find_user_by_email", "get_user_history", "submit_ticket"}  # v3: get_agent_config removed
 
 
 @pytest.fixture
@@ -94,7 +95,7 @@ def test_still_invalid_after_the_retry_is_a_triage_error(http, conn):
 def test_get_profile_for_a_foreign_id_is_not_allowed(http, conn):
     mock_profile(http, paid_profile(STRANGER))
     ticket, fake = run(conn, [call("get_profile", customer_user_id=STRANGER), submit(triage_ticket())])
-    assert len(http.calls) == 0, "no Adapty call for an id the run did not earn"
+    assert customer_headers(http) == {CUID}, "no Adapty call for an id the run did not earn (v3: the ticket's own id is prefetched)"
     (shown,) = tool_results(fake, "get_profile")
     assert "not allowed" in shown["content"]
     assert ticket["status"] == "proposed"
@@ -150,15 +151,15 @@ def test_get_user_history_shows_earlier_tickets_and_grants(http, conn):
     assert "t-001" in content
 
 
-def test_get_agent_config_returns_the_config(http, conn):
+def test_config_is_in_the_prefetched_facts(http, conn):
     mock_profile(http, paid_profile())
-    _, fake = run(conn, [call("get_agent_config"), submit(triage_ticket())])
-    assert "Lumen" in tool_results(fake, "get_agent_config")[0]["content"]
+    _, fake = run(conn, [submit(triage_ticket())])
+    assert "up to 7 days of premium" in fake.calls[0]["messages"][0]["content"]
 
 
 def test_call_cap_counts_model_calls(http, conn):
     mock_profile(http, paid_profile())
-    fake = FakeLLM([call("get_agent_config") for _ in range(12)] + [submit(triage_ticket())])
+    fake = FakeLLM([call("get_user_history", customer_user_id=CUID) for _ in range(12)] + [submit(triage_ticket())])
     ticket, _ = run(conn, fake)
     assert 1 <= len(fake.calls) <= 8
     assert ticket["model_calls"] == len(fake.calls), "every model call is reserved in model_calls"
@@ -214,7 +215,7 @@ STORE = option("store_instructions", reply="Here is how to cancel.", kind="cance
 
 BAD_SUBMITS = {
     "unknown-customer-id": ([], triage_dict(customer_user_id=STRANGER)),
-    "grant-without-get_profile": ([], grant_dict()),
+    "grant-profile-not-loaded": ([], grant_dict()),  # v3: the prefetch counts as get_profile; here it fails
     "grant-for-lifetime": ([GP], grant_dict()),
     "grant-0-days": ([GP], triage_dict(options=[option("grant_access", days=0, reply="x"), REPLY])),
     "grant-400-days": ([GP], triage_dict(options=[option("grant_access", days=400, reply="x"), REPLY])),
@@ -230,7 +231,10 @@ BAD_SUBMITS = {
 @pytest.mark.parametrize("case", list(BAD_SUBMITS))
 def test_failed_submit_check_gets_one_corrective_retry(http, conn, case):
     prefix, bad = BAD_SUBMITS[case]
-    mock_profile(http, lifetime_profile() if case == "grant-for-lifetime" else paid_profile())
+    if case == "grant-profile-not-loaded":
+        http.get(PROFILE_URL, status=500, json={"errors": [{"detail": "down"}]})
+    else:
+        mock_profile(http, lifetime_profile() if case == "grant-for-lifetime" else paid_profile())
     ticket, fake = run(conn, [*prefix, call("submit_ticket", **bad), submit(triage_ticket())])
     assert len(fake.calls) == len(prefix) + 2
     assert ticket["status"] == "proposed"
@@ -240,7 +244,10 @@ def test_failed_submit_check_gets_one_corrective_retry(http, conn, case):
 @pytest.mark.parametrize("case", list(BAD_SUBMITS))
 def test_failed_submit_check_twice_is_a_triage_error(http, conn, case):
     prefix, bad = BAD_SUBMITS[case]
-    mock_profile(http, lifetime_profile() if case == "grant-for-lifetime" else paid_profile())
+    if case == "grant-profile-not-loaded":
+        http.get(PROFILE_URL, status=500, json={"errors": [{"detail": "down"}]})
+    else:
+        mock_profile(http, lifetime_profile() if case == "grant-for-lifetime" else paid_profile())
     fake = FakeLLM([*prefix, call("submit_ticket", **bad), call("submit_ticket", **bad), submit(triage_ticket())])
     ticket, _ = run(conn, fake)
     assert len(fake.calls) == len(prefix) + 2, "only one corrective retry"

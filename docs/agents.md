@@ -185,7 +185,7 @@ Level 1 (`triage`):
 - `get_profile {customer_user_id: str}`: only the ticket's id or an id returned by `find_user_by_email` in this run; anything else → error result `not allowed`
 - `find_user_by_email {email: str}` → `{customer_user_id}` or `{not_found: true}`
 - `get_user_history {customer_user_id: str}` → earlier tickets (id, created_at, category, status, decision), grants, Level 2 sessions (outcome, last messages)
-- `get_agent_config {}` → AgentConfig
+- ~~`get_agent_config {}`~~ removed in v3 (the config is in the prefetched facts)
 - `submit_ticket {TriageTicket}` → ends the run
 
 Legacy proposals (v1 `proposal_json`, e.g. in `data/demo.sqlite`) are shown as a one-option ticket via `triage.legacy_to_ticket(proposal)`: grant_access→grant_access(days 7), explain→reply_only, escalate_refund→refund_to_human, no_action→no_reply.
